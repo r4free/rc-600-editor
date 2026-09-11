@@ -1,4 +1,12 @@
 import {
+  FX_BANKS,
+  INPUT_EQ_SECTIONS,
+  OUTPUT_EQ_SECTIONS,
+  fxSlotSection,
+  type InputEqSection,
+  type OutputEqSection,
+} from "../catalog/params.js";
+import {
   extractCount,
   findSection,
   getTagContent,
@@ -31,12 +39,29 @@ export interface MemoryModel {
   play: TagMap;
   rhythm: TagMap;
   assigns: TagMap[];
+  /** Pedal Mode 1–3 × Pedal 1–9 (ICTL{mode}_PEDAL{n}). */
+  ctlPedals: TagMap[][];
+  /** External CTL 1–4 (ECTL_CTL{n}). */
+  ectlCtl: TagMap[];
+  /** External EXP 1–2 (ECTL_EXP{n}). */
+  ectlExp: TagMap[];
   input: TagMap;
+  /** INPUT EQ for MIC 1/2 and INST 1/2 L/R. */
+  eq: Record<InputEqSection, TagMap>;
   output: TagMap;
   routing: TagMap;
+  /** OUTPUT EQ for MAIN / SUB 1 / SUB 2 L/R. */
+  outputEq: Record<OutputEqSection, TagMap>;
+  masterFx: TagMap;
   mixer: TagMap;
   ifxSetup: TagMap;
+  /** Bank A–D under `<ifx>` (SW, MODE, FX TARGET). */
+  ifxBanks: TagMap[];
+  /** 4 banks × 4 slots (AA–AD … DA–DD). */
+  ifxSlots: TagMap[][];
   tfxSetup: TagMap;
+  tfxBanks: TagMap[];
+  tfxSlots: TagMap[][];
   raw: string;
 }
 
@@ -56,6 +81,111 @@ function readTags(xml: string, from: number, to: number): TagMap {
     if (v !== null) out[tag] = v;
   }
   return out;
+}
+
+const EMPTY_FX_BANKS: TagMap[] = [{}, {}, {}, {}];
+const EMPTY_FX_SLOTS: TagMap[][] = [
+  [{}, {}, {}, {}],
+  [{}, {}, {}, {}],
+  [{}, {}, {}, {}],
+  [{}, {}, {}, {}],
+];
+
+function isNamedOpenTag(xml: string, name: string, at: number): boolean {
+  if (!xml.startsWith(`<${name}`, at)) return false;
+  const next = xml[at + name.length + 1];
+  return next === ">" || next === " " || next === "\t" || next === "\r" || next === "\n";
+}
+
+function findNamedOpen(xml: string, name: string, from: number, to: number): number {
+  const open = `<${name}`;
+  let i = from;
+  while (i < to) {
+    const at = xml.indexOf(open, i);
+    if (at < 0 || at >= to) return -1;
+    if (isNamedOpenTag(xml, name, at)) return at;
+    i = at + open.length;
+  }
+  return -1;
+}
+
+function matchingClose(xml: string, name: string, openAt: number, to: number): number {
+  const close = `</${name}>`;
+  let depth = 1;
+  let i = xml.indexOf(">", openAt) + 1;
+  while (i < to && depth > 0) {
+    const nextOpen = findNamedOpen(xml, name, i, to);
+    const nextClose = xml.indexOf(close, i);
+    if (nextClose < 0 || nextClose >= to) return -1;
+    if (nextOpen >= 0 && nextOpen < nextClose) {
+      depth++;
+      i = xml.indexOf(">", nextOpen) + 1;
+    } else {
+      depth--;
+      if (depth === 0) return nextClose;
+      i = nextClose + close.length;
+    }
+  }
+  return -1;
+}
+
+/** Bank `<A>`–`<D>` under ifx/tfx, skipping letter tags such as SETUP's `<A>`. */
+function findFxBankSection(
+  xml: string,
+  name: string,
+  from: number,
+  to: number,
+): [number, number] | null {
+  const close = `</${name}>`;
+  let i = from;
+  while (i < to) {
+    const at = findNamedOpen(xml, name, i, to);
+    if (at < 0) return null;
+    const end = matchingClose(xml, name, at, to);
+    if (end < 0) return null;
+    const gt = xml.indexOf(">", at);
+    const inner = xml.slice(gt + 1, end);
+    if (inner.includes("<A>") && inner.includes("<B>")) {
+      return [at, end + close.length];
+    }
+    i = end + close.length;
+  }
+  return null;
+}
+
+function parseFxFamily(
+  xml: string,
+  kind: "ifx" | "tfx",
+): { setup: TagMap; banks: TagMap[]; slots: TagMap[][] } {
+  const range = findSection(xml, kind);
+  if (!range) {
+    return {
+      setup: {},
+      banks: EMPTY_FX_BANKS.map((b) => ({ ...b })),
+      slots: EMPTY_FX_SLOTS.map((row) => row.map((s) => ({ ...s }))),
+    };
+  }
+  const setupSec = findSection(xml, "SETUP", range[0], range[1]);
+  const setup = setupSec ? readTags(xml, setupSec[0], setupSec[1]) : {};
+  const banks: TagMap[] = [];
+  const slots: TagMap[][] = [];
+  for (let b = 0; b < FX_BANKS.length; b++) {
+    const bankSec = findFxBankSection(xml, FX_BANKS[b], range[0], range[1]);
+    if (bankSec) {
+      const innerFrom = xml.indexOf(">", bankSec[0]) + 1;
+      banks.push(readTags(xml, innerFrom, bankSec[1]));
+    } else {
+      banks.push({});
+    }
+    const row: TagMap[] = [];
+    for (let s = 0; s < FX_BANKS.length; s++) {
+      const name = fxSlotSection(b, s);
+      const sec = findSection(xml, name, range[0], range[1]);
+      row.push(sec ? readTags(xml, sec[0], sec[1]) : {});
+    }
+    slots.push(row);
+  }
+  return { setup, banks, slots };
 }
 
 export function decodeName(xml: string, memRange: [number, number]): string {
@@ -96,22 +226,22 @@ export function parseMemory(xml: string, slot: number): MemoryModel {
     const sec = findSection(xml, `ASSIGN${i}`, mem[0], mem[1]);
     assigns.push(sec ? readTags(xml, sec[0], sec[1]) : {});
   }
-  const ifx = findSection(xml, "ifx");
-  const tfx = findSection(xml, "tfx");
-  const ifxSetup = ifx
-    ? (() => {
-        const s = findSection(xml, "SETUP", ifx[0], ifx[1]);
-        return s ? readTags(xml, s[0], s[1]) : {};
-      })()
-    : {};
-  const tfxSetup = tfx
-    ? (() => {
-        const s = findSection(xml, "SETUP", tfx[0], tfx[1]);
-        return s ? readTags(xml, s[0], s[1]) : {};
-      })()
-    : {};
+  const ifx = parseFxFamily(xml, "ifx");
+  const tfx = parseFxFamily(xml, "tfx");
 
   const master = section("MASTER");
+  const ctlPedals: TagMap[][] = [];
+  for (let mode = 1; mode <= 3; mode++) {
+    const row: TagMap[] = [];
+    for (let pedal = 1; pedal <= 9; pedal++) {
+      row.push(section(`ICTL${mode}_PEDAL${pedal}`));
+    }
+    ctlPedals.push(row);
+  }
+  const ectlCtl: TagMap[] = [];
+  for (let n = 1; n <= 4; n++) ectlCtl.push(section(`ECTL_CTL${n}`));
+  const ectlExp: TagMap[] = [];
+  for (let n = 1; n <= 2; n++) ectlExp.push(section(`ECTL_EXP${n}`));
   return {
     slot,
     name: decodeName(xml, mem),
@@ -122,12 +252,28 @@ export function parseMemory(xml: string, slot: number): MemoryModel {
     play: section("PLAY"),
     rhythm: section("RHYTHM"),
     assigns,
+    ctlPedals,
+    ectlCtl,
+    ectlExp,
     input: section("INPUT"),
+    eq: Object.fromEntries(INPUT_EQ_SECTIONS.map((name) => [name, section(name)])) as Record<
+      InputEqSection,
+      TagMap
+    >,
     output: section("OUTPUT"),
     routing: section("ROUTING"),
+    outputEq: Object.fromEntries(OUTPUT_EQ_SECTIONS.map((name) => [name, section(name)])) as Record<
+      OutputEqSection,
+      TagMap
+    >,
+    masterFx: section("MASTER_FX"),
     mixer: section("MIXER"),
-    ifxSetup,
-    tfxSetup,
+    ifxSetup: ifx.setup,
+    ifxBanks: ifx.banks,
+    ifxSlots: ifx.slots,
+    tfxSetup: tfx.setup,
+    tfxBanks: tfx.banks,
+    tfxSlots: tfx.slots,
     raw: xml,
   };
 }
@@ -196,6 +342,33 @@ export function parseSystem(xml: string, side: "1" | "2"): SystemModel {
   return { side, count: extractCount(xml), sections, raw: xml };
 }
 
+/** SYSTEM1/2 pair: higher `<count>` wins (same rule as memory A/B). */
+export function pickActiveSystem(
+  xml1: string | undefined,
+  xml2: string | undefined,
+): { side: "1" | "2"; xml: string } | null {
+  if (xml1 && xml2) {
+    const side = activeSide(extractCount(xml1), extractCount(xml2));
+    return { side: side === "a" ? "1" : "2", xml: side === "a" ? xml1 : xml2 };
+  }
+  if (xml1) return { side: "1", xml: xml1 };
+  if (xml2) return { side: "2", xml: xml2 };
+  return null;
+}
+
+/**
+ * System `.RC0` has the same INPUT/OUTPUT/MIXER/CTL sections as memory, but under `<sys>`
+ * instead of `<mem>`. `parseMemory` already falls back to the whole document when `<mem>` is absent.
+ */
+export function systemAsMemoryModel(xml: string): MemoryModel {
+  return parseMemory(xml, 0);
+}
+
+/** Patch a top-level section in SYSTEM*.RC0 (no `<mem>` wrapper). */
+export function patchSysSection(xml: string, section: string, tags: TagMap): string {
+  return patchSectionTags(xml, section, tags);
+}
+
 /** Patch tags inside a named section under mem (or root for system). */
 export function patchSectionTags(
   xml: string,
@@ -243,6 +416,38 @@ export function patchMemSection(xml: string, section: string, tags: TagMap): str
   const mem = findSection(xml, "mem");
   if (!mem) return xml;
   return patchSectionTags(xml, section, tags, mem[0], mem[1]);
+}
+
+/** Patch a named section inside `<ifx>` (SETUP, bank A–D, or slot AA–DD). */
+export function patchIfxSection(xml: string, section: string, tags: TagMap): string {
+  return patchFxFamilySection(xml, "ifx", section, tags);
+}
+
+/** Patch a named section inside `<tfx>` (SETUP, bank A–D, or slot AA–DD). */
+export function patchTfxSection(xml: string, section: string, tags: TagMap): string {
+  return patchFxFamilySection(xml, "tfx", section, tags);
+}
+
+function patchFxFamilySection(
+  xml: string,
+  kind: "ifx" | "tfx",
+  section: string,
+  tags: TagMap,
+): string {
+  let next = xml;
+  for (const [tag, value] of Object.entries(tags)) {
+    const parent = findSection(next, kind);
+    if (!parent) break;
+    const sec =
+      section.length === 1
+        ? findFxBankSection(next, section, parent[0], parent[1])
+        : findSection(next, section, parent[0], parent[1]);
+    if (!sec) break;
+    const from = section.length === 1 ? next.indexOf(">", sec[0]) + 1 : sec[0];
+    const patched = setTagContent(next, tag, value, from, sec[1]);
+    if (patched) next = patched;
+  }
+  return next;
 }
 
 export function prepareSaveXml(xml: string): string {

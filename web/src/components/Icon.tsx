@@ -52,6 +52,8 @@ const ICONS = {
   archive: "mdi:folder-zip-outline",
   restore: "mdi:restore",
   note: "mdi:music-note",
+  mic: "mdi:microphone-outline",
+  equalizer: "mdi:equalizer",
 } as const;
 
 export type IconName = keyof typeof ICONS;

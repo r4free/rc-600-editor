@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ASSIGN_PARAMS,
-  SYSTEM_SECTIONS,
-} from "@rc600/catalog/params";
-import {
   type MemoryModel,
   type MemorySummary,
-  type SystemModel,
   type TagMap,
   parseMemory,
-  parseSystem,
   patchAssign,
-  patchMemSection,
   patchMemoryName,
+  pickActiveSystem,
   pickActiveXml,
   prepareSaveXml,
   summarizePair,
@@ -31,8 +25,14 @@ import {
   zipRoland,
 } from "@rc600/files/roland";
 import { MidiBar } from "./components/MidiBar";
-import { ParamControl, TagMapEditor } from "./components/ParamControl";
 import { LoopTab } from "./components/LoopTab";
+import { ControlTab } from "./components/ControlTab";
+import { AssignTab } from "./components/AssignTab";
+import { InputTab } from "./components/InputTab";
+import { OutputTab } from "./components/OutputTab";
+import { MixerTab } from "./components/MixerTab";
+import { InputFxTab } from "./components/InputFxTab";
+import { SystemTab } from "./components/SystemTab";
 import { Icon } from "./components/Icon";
 import {
   Rc600Midi,
@@ -45,6 +45,8 @@ import {
   type MidiPortInfo,
 } from "@rc600/midi/rc600-midi";
 
+type Workspace = "memory" | "system";
+
 type TabId =
   | "info"
   | "loop"
@@ -55,7 +57,6 @@ type TabId =
   | "mixer"
   | "ifx"
   | "tfx"
-  | "system"
   | "copy";
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
@@ -75,6 +76,7 @@ export function App() {
   const [xml, setXml] = useState<string>("");
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState<TabId>("loop");
+  const [workspace, setWorkspace] = useState<Workspace>("memory");
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -117,9 +119,9 @@ export function App() {
     return parseMemory(xml, slot);
   }, [xml, slot]);
 
-  const systemModel: SystemModel | null = useMemo(() => {
+  const systemModel = useMemo(() => {
     if (!sysXml) return null;
-    return parseSystem(sysXml, sysSide);
+    return { side: sysSide, count: sysXml.match(/<count>([^<]+)<\/count>/)?.[1] ?? "—" };
   }, [sysXml, sysSide]);
 
   const loadSlot = useCallback(
@@ -145,16 +147,16 @@ export function App() {
     [files],
   );
 
-  const loadSystem = useCallback(
-    (side: "1" | "2", map: Map<string, string> = files) => {
-      const raw = map.get(systemFileName(side));
-      if (!raw) return;
-      setSysSide(side);
-      setSysXml(raw);
-      setSysDirty(false);
-    },
-    [files],
-  );
+  const loadSystem = useCallback((map: Map<string, string> = files) => {
+    const picked = pickActiveSystem(map.get(systemFileName("1")), map.get(systemFileName("2")));
+    if (!picked) {
+      setSysXml("");
+      return;
+    }
+    setSysSide(picked.side);
+    setSysXml(picked.xml);
+    setSysDirty(false);
+  }, [files]);
 
   function markXml(next: string) {
     setXml(next);
@@ -176,7 +178,7 @@ export function App() {
       setStatus(`${result.files.files.size} files · ${result.files.rootLabel}`);
       const first = listMemorySlots(result.files.files)[0];
       if (first) loadSlot(first, result.files.files);
-      if (hasSystem(result.files.files)) loadSystem("1", result.files.files);
+      if (hasSystem(result.files.files)) loadSystem(result.files.files);
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       setError(String(e));
@@ -193,7 +195,7 @@ export function App() {
     setStatus(`${rolled.files.size} files`);
     const first = listMemorySlots(rolled.files)[0];
     if (first) loadSlot(first, rolled.files);
-    if (hasSystem(rolled.files)) loadSystem("1", rolled.files);
+    if (hasSystem(rolled.files)) loadSystem(rolled.files);
   }
 
   async function openZip(file: File | null) {
@@ -206,7 +208,7 @@ export function App() {
     setStatus(`${rolled.files.size} files (ZIP)`);
     const first = listMemorySlots(rolled.files)[0];
     if (first) loadSlot(first, rolled.files);
-    if (hasSystem(rolled.files)) loadSystem("1", rolled.files);
+    if (hasSystem(rolled.files)) loadSystem(rolled.files);
   }
 
   async function loadDemoFixtures() {
@@ -234,7 +236,7 @@ export function App() {
       setBackupAck(false);
       setStatus(`${map.size} demo files`);
       loadSlot(1, map);
-      loadSystem("1", map);
+      loadSystem(map);
     } catch (e) {
       setError(String(e));
     }
@@ -450,7 +452,6 @@ export function App() {
     { id: "mixer", label: "Mixer" },
     { id: "ifx", label: "Input FX" },
     { id: "tfx", label: "Track FX" },
-    { id: "system", label: "System" },
     { id: "copy", label: "Copy" },
   ];
 
@@ -552,318 +553,242 @@ export function App() {
         </div>
       ) : (
         <div className="main">
-          <aside className="sidebar">
-            <div className="sidebar-head">
-              <span>Memories ({slots.length})</span>
-            </div>
-            <div className="mem-list">
-              {summaries.map((s) => (
-                <button
-                  key={s.slot}
-                  type="button"
-                  className={`mem-item ${slot === s.slot ? "active" : ""}`}
-                  onClick={() => loadSlot(s.slot)}
-                >
-                  <span className="slot">{String(s.slot).padStart(2, "0")}</span>
-                  <span className="name">{s.name || "—"}</span>
-                  <span className="meta">{s.active.toUpperCase()}</span>
-                </button>
-              ))}
-            </div>
-          </aside>
-
           <section className="editor-panel">
-            <div className="tabs" role="tablist" aria-label="Memory editor">
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === t.id}
-                  className={`tab ${tab === t.id ? "active" : ""}`}
-                  onClick={() => setTab(t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <div className="editor-body">
-              {!model && tab !== "system" ? <p className="hint">Select a memory.</p> : null}
-
-              {tab === "info" && model && (
+            <div className="tabs tabs-workspace" role="tablist" aria-label="Workspace">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "memory"}
+                className={`tab ${workspace === "memory" ? "active" : ""}`}
+                onClick={() => setWorkspace("memory")}
+              >
+                <Icon name="library" size={14} />
+                Memory
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "system"}
+                className={`tab ${workspace === "system" ? "active" : ""}`}
+                onClick={() => {
+                  setWorkspace("system");
+                  if (!sysXml) loadSystem();
+                }}
+              >
+                <Icon name="system" size={14} />
+                System
+              </button>
+              {workspace === "system" ? (
                 <>
-                  <h3 className="section-title">
-                    Memory {String(slot).padStart(2, "0")} · side {activeSide.toUpperCase()} · count{" "}
-                    {model.count}
-                  </h3>
-                  <div className="param-row">
-                    <div className="param-label">
-                      <label htmlFor="mem-name">Name</label>
-                    </div>
-                    <div className="param-control">
-                      <input
-                        id="mem-name"
-                        type="text"
-                        maxLength={12}
-                        value={model.name}
-                        onChange={(e) => markXml(patchMemoryName(xml, e.target.value))}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {tab === "loop" && model ? (
-                <LoopTab model={model} xml={xml} onXml={markXml} />
-              ) : null}
-
-              {tab === "assigns" && model && (
-                <table className="assign-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      {ASSIGN_PARAMS.map((p) => (
-                        <th key={p.tag}>{p.name}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {model.assigns.map((asg, i) => (
-                      <tr key={i}>
-                        <td>{i + 1}</td>
-                        {ASSIGN_PARAMS.map((p) => (
-                          <td key={p.tag}>
-                            {p.kind === "bool" ? (
-                              <button
-                                type="button"
-                                className={`btn ${num(asg, p.tag) ? "primary" : "ghost"}`}
-                                onClick={() =>
-                                  markXml(
-                                    patchAssign(xml, i + 1, {
-                                      [p.tag]: num(asg, p.tag) ? "0" : "1",
-                                    }),
-                                  )
-                                }
-                              >
-                                {num(asg, p.tag) ? "ON" : "OFF"}
-                              </button>
-                            ) : (
-                              <input
-                                type="number"
-                                value={num(asg, p.tag)}
-                                onChange={(e) =>
-                                  markXml(
-                                    patchAssign(xml, i + 1, {
-                                      [p.tag]: String(Number(e.target.value) || 0),
-                                    }),
-                                  )
-                                }
-                              />
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {tab === "ctl" && model ? (
-                <p className="hint">
-                  Control-function mapping comes next. MEMORY vs SYSTEM preference lives in System →
-                  PREF.
-                </p>
-              ) : null}
-
-              {tab === "input" && model ? (
-                <>
-                  <h3 className="section-title">Input</h3>
-                  <TagMapEditor
-                    tags={model.input}
-                    onChange={(tag, value) => markXml(patchMemSection(xml, "INPUT", { [tag]: value }))}
-                  />
-                </>
-              ) : null}
-
-              {tab === "output" && model ? (
-                <>
-                  <h3 className="section-title">Output</h3>
-                  <TagMapEditor
-                    tags={model.output}
-                    onChange={(tag, value) => markXml(patchMemSection(xml, "OUTPUT", { [tag]: value }))}
-                  />
-                  <h3 className="section-title">Routing</h3>
-                  <TagMapEditor
-                    tags={model.routing}
-                    onChange={(tag, value) =>
-                      markXml(patchMemSection(xml, "ROUTING", { [tag]: value }))
-                    }
-                  />
-                </>
-              ) : null}
-
-              {tab === "mixer" && model ? (
-                <>
-                  <h3 className="section-title">Mixer</h3>
-                  <TagMapEditor
-                    tags={model.mixer}
-                    onChange={(tag, value) => markXml(patchMemSection(xml, "MIXER", { [tag]: value }))}
-                  />
-                </>
-              ) : null}
-
-              {(tab === "ifx" || tab === "tfx") && model ? (
-                <>
-                  <h3 className="section-title">{tab === "ifx" ? "Input FX" : "Track FX"}</h3>
-                  <p className="hint">
-                    FX blocks stay in the XML. Bank select is below; per-slot type/params come in a
-                    later pass.
-                  </p>
-                  <div className="param-row">
-                    <div className="param-label">
-                      <label htmlFor="fx-bank">{tab === "ifx" ? "IFX bank" : "TFX bank"}</label>
-                    </div>
-                    <div className="param-control">
-                      <input
-                        id="fx-bank"
-                        type="number"
-                        min={0}
-                        max={3}
-                        value={num(tab === "ifx" ? model.ifxSetup : model.tfxSetup, "A")}
-                        onChange={(e) => {
-                          const marker = tab === "ifx" ? "<ifx" : "<tfx";
-                          const start = xml.indexOf(marker);
-                          if (start < 0) return;
-                          markXml(
-                            patchSectionTags(
-                              xml,
-                              "SETUP",
-                              { A: String(Number(e.target.value) || 0) },
-                              start,
-                            ),
-                          );
-                        }}
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : null}
-
-              {tab === "system" && (
-                <>
-                  <div className="row-actions">
-                    <button
-                      type="button"
-                      className={`btn ${sysSide === "1" ? "primary" : "ghost"}`}
-                      onClick={() => loadSystem("1")}
-                    >
-                      SYSTEM1
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${sysSide === "2" ? "primary" : "ghost"}`}
-                      onClick={() => loadSystem("2")}
-                    >
-                      SYSTEM2
-                    </button>
-                    <button
-                      type="button"
-                      className="btn warn"
-                      disabled={!sysDirty}
-                      onClick={saveSystem}
-                    >
-                      Save system
-                    </button>
-                    <span className="status-pill">count {systemModel?.count ?? "—"}</span>
-                  </div>
-                  {!systemModel ? (
-                    <p>SYSTEM1/2.RC0 not found in this folder.</p>
-                  ) : (
-                    SYSTEM_SECTIONS.map((sec) => {
-                      const tags = systemModel.sections[sec];
-                      if (!tags) return null;
-                      return (
-                        <div key={sec} style={{ marginBottom: "1rem" }}>
-                          <h3 className="section-title">{sec}</h3>
-                          <TagMapEditor
-                            tags={tags}
-                            onChange={(tag, value) => {
-                              const next = patchSectionTags(sysXml, sec, { [tag]: value });
-                              setSysXml(next);
-                              setSysDirty(true);
-                            }}
-                          />
-                        </div>
-                      );
-                    })
-                  )}
-                  {systemModel &&
-                    Object.keys(systemModel.sections)
-                      .filter((k) => k.startsWith("EQ_"))
-                      .map((sec) => (
-                        <div key={sec} style={{ marginBottom: "1rem" }}>
-                          <h3 className="section-title">{sec}</h3>
-                          <TagMapEditor
-                            tags={systemModel.sections[sec]}
-                            onChange={(tag, value) => {
-                              const next = patchSectionTags(sysXml, sec, { [tag]: value });
-                              setSysXml(next);
-                              setSysDirty(true);
-                            }}
-                          />
-                        </div>
-                      ))}
-                </>
-              )}
-
-              {tab === "copy" && model && (
-                <div className="copy-panel">
-                  <h3 className="section-title">Copy from memory {slot}</h3>
-                  <div className="row-actions">
-                    <button
-                      type="button"
-                      className={`btn ${copyMode === "assigns" ? "primary" : "ghost"}`}
-                      onClick={() => setCopyMode("assigns")}
-                    >
-                      Assigns only
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${copyMode === "all" ? "primary" : "ghost"}`}
-                      onClick={() => setCopyMode("all")}
-                    >
-                      Entire memory
-                    </button>
-                  </div>
-                  <div className="targets">
-                    {slots.map((s) => (
-                      <label key={s}>
-                        <input
-                          type="checkbox"
-                          checked={copyTargets.has(s)}
-                          disabled={s === slot}
-                          onChange={(e) => {
-                            const next = new Set(copyTargets);
-                            if (e.target.checked) next.add(s);
-                            else next.delete(s);
-                            setCopyTargets(next);
-                          }}
-                        />
-                        {String(s).padStart(2, "0")}
-                      </label>
-                    ))}
-                  </div>
+                  <span className="status-pill" style={{ marginLeft: "auto" }}>
+                    SYSTEM{sysSide} · count {systemModel?.count ?? "—"}
+                  </span>
                   <button
                     type="button"
-                    className="btn primary"
-                    disabled={!copyTargets.size || !backupAck}
-                    onClick={applyCopy}
+                    className="btn warn"
+                    disabled={!sysDirty}
+                    onClick={saveSystem}
                   >
-                    Apply copy
+                    <Icon name="save" size={14} />
+                    Save system
                   </button>
-                </div>
-              )}
+                </>
+              ) : null}
             </div>
+
+            {workspace === "memory" ? (
+              <div className="memory-layout">
+                <aside className="sidebar">
+                  <div className="sidebar-head">
+                    <span>Memories ({slots.length})</span>
+                  </div>
+                  <div className="mem-list">
+                    {summaries.map((s) => (
+                      <button
+                        key={s.slot}
+                        type="button"
+                        className={`mem-item ${slot === s.slot ? "active" : ""}`}
+                        onClick={() => loadSlot(s.slot)}
+                      >
+                        <span className="slot">{String(s.slot).padStart(2, "0")}</span>
+                        <span className="name">{s.name || "—"}</span>
+                        <span className="meta">{s.active.toUpperCase()}</span>
+                      </button>
+                    ))}
+                  </div>
+                </aside>
+
+                <div className="memory-editor">
+                  <div className="tabs" role="tablist" aria-label="Memory editor">
+                    {tabs.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === t.id}
+                        className={`tab ${tab === t.id ? "active" : ""}`}
+                        onClick={() => setTab(t.id)}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="editor-body">
+                    {!model ? <p className="hint">Select a memory.</p> : null}
+
+                    {tab === "info" && model && (
+                      <>
+                        <h3 className="section-title">
+                          Memory {String(slot).padStart(2, "0")} · side {activeSide.toUpperCase()} ·
+                          count {model.count}
+                        </h3>
+                        <div className="param-row">
+                          <div className="param-label">
+                            <label htmlFor="mem-name">Name</label>
+                          </div>
+                          <div className="param-control">
+                            <input
+                              id="mem-name"
+                              type="text"
+                              maxLength={12}
+                              value={model.name}
+                              onChange={(e) => markXml(patchMemoryName(xml, e.target.value))}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {tab === "loop" && model ? (
+                      <LoopTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "assigns" && model ? (
+                      <AssignTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "ctl" && model ? (
+                      <ControlTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "input" && model ? (
+                      <InputTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "output" && model ? (
+                      <OutputTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "mixer" && model ? (
+                      <MixerTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "ifx" && model ? (
+                      <InputFxTab model={model} xml={xml} onXml={markXml} />
+                    ) : null}
+
+                    {tab === "tfx" && model ? (
+                      <>
+                        <h3 className="section-title">Track FX</h3>
+                        <p className="hint">
+                          FX blocks stay in the XML. Bank select is below; per-slot type/params come
+                          in a later pass.
+                        </p>
+                        <div className="param-row">
+                          <div className="param-label">
+                            <label htmlFor="fx-bank">TFX bank</label>
+                          </div>
+                          <div className="param-control">
+                            <input
+                              id="fx-bank"
+                              type="number"
+                              min={0}
+                              max={3}
+                              value={num(model.tfxSetup, "A")}
+                              onChange={(e) => {
+                                const start = xml.indexOf("<tfx");
+                                if (start < 0) return;
+                                markXml(
+                                  patchSectionTags(
+                                    xml,
+                                    "SETUP",
+                                    { A: String(Number(e.target.value) || 0) },
+                                    start,
+                                  ),
+                                );
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {tab === "copy" && model && (
+                      <div className="copy-panel">
+                        <h3 className="section-title">Copy from memory {slot}</h3>
+                        <div className="row-actions">
+                          <button
+                            type="button"
+                            className={`btn ${copyMode === "assigns" ? "primary" : "ghost"}`}
+                            onClick={() => setCopyMode("assigns")}
+                          >
+                            Assigns only
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn ${copyMode === "all" ? "primary" : "ghost"}`}
+                            onClick={() => setCopyMode("all")}
+                          >
+                            Entire memory
+                          </button>
+                        </div>
+                        <div className="targets">
+                          {slots.map((s) => (
+                            <label key={s}>
+                              <input
+                                type="checkbox"
+                                checked={copyTargets.has(s)}
+                                disabled={s === slot}
+                                onChange={(e) => {
+                                  const next = new Set(copyTargets);
+                                  if (e.target.checked) next.add(s);
+                                  else next.delete(s);
+                                  setCopyTargets(next);
+                                }}
+                              />
+                              {String(s).padStart(2, "0")}
+                            </label>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn primary"
+                          disabled={!copyTargets.size || !backupAck}
+                          onClick={applyCopy}
+                        >
+                          Apply copy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="editor-body">
+                {!sysXml ? (
+                  <p>SYSTEM1/2.RC0 not found in this folder.</p>
+                ) : (
+                  <SystemTab
+                    xml={sysXml}
+                    side={sysSide}
+                    onXml={(next) => {
+                      setSysXml(next);
+                      setSysDirty(true);
+                    }}
+                  />
+                )}
+              </div>
+            )}
           </section>
         </div>
       )}

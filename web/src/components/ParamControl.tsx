@@ -15,10 +15,12 @@ function PowerSwitch({
   id,
   on,
   onChange,
+  disabled = false,
 }: {
   id: string;
   on: boolean;
   onChange: (v: number) => void;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -27,6 +29,7 @@ function PowerSwitch({
       role="switch"
       className={`power-switch${on ? " on" : ""}`}
       aria-checked={on}
+      disabled={disabled}
       onClick={() => onChange(on ? 0 : 1)}
     >
       <span className="power-switch-track">
@@ -42,18 +45,25 @@ export function ParamControl({
   value,
   onChange,
   id,
+  disabled = false,
 }: {
   def: ParamDef;
   value: number;
   onChange: (v: number) => void;
   id: string;
+  disabled?: boolean;
 }) {
   if (def.kind === "bool") {
     return (
-      <div className="param-row">
+      <div className={`param-row${disabled ? " readonly" : ""}`}>
         <ParamLabel def={def} id={id} />
         <div className="param-control">
-          <PowerSwitch id={id} on={Boolean(value)} onChange={onChange} />
+          <PowerSwitch
+            id={id}
+            on={Boolean(value)}
+            onChange={onChange}
+            disabled={disabled}
+          />
         </div>
       </div>
     );
@@ -61,10 +71,15 @@ export function ParamControl({
 
   if (def.kind === "enum" && def.options) {
     return (
-      <div className="param-row">
+      <div className={`param-row${disabled ? " readonly" : ""}`}>
         <ParamLabel def={def} id={id} />
         <div className="param-control">
-          <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
+          <select
+            id={id}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(Number(e.target.value))}
+          >
             {def.options.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -79,7 +94,7 @@ export function ParamControl({
   const min = def.min ?? 0;
   const max = def.max ?? 127;
   return (
-    <div className="param-row">
+    <div className={`param-row${disabled ? " readonly" : ""}`}>
       <ParamLabel def={def} id={id} />
       <div className="param-control param-slider">
         <input
@@ -88,6 +103,7 @@ export function ParamControl({
           min={min}
           max={max}
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(Number(e.target.value))}
         />
         <span className="param-val">{displayParam(def, value)}</span>
