@@ -1,0 +1,173 @@
+import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
+
+export interface RolandFiles {
+  /** Relative path under ROLAND, e.g. DATA/MEMORY001A.RC0 */
+  files: Map<string, string>;
+  rootLabel: string;
+}
+
+export function normalizeRolandPath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+export function slotFileName(slot: number, side: "A" | "B"): string {
+  return `DATA/MEMORY${String(slot).padStart(3, "0")}${side}.RC0`;
+}
+
+export function systemFileName(side: "1" | "2"): string {
+  return `DATA/SYSTEM${side}.RC0`;
+}
+
+export function listMemorySlots(files: Map<string, string>): number[] {
+  const slots = new Set<number>();
+  for (const key of files.keys()) {
+    const m = key.match(/DATA\/MEMORY(\d{3})[AB]\.RC0$/i);
+    if (m) slots.add(parseInt(m[1], 10));
+  }
+  return [...slots].sort((a, b) => a - b);
+}
+
+export function hasSystem(files: Map<string, string>): boolean {
+  return files.has(systemFileName("1")) || files.has(systemFileName("2"));
+}
+
+/** Build a Map from FileList / drag-drop, keeping only ROLAND-relative paths. */
+export async function filesFromFileList(list: FileList | File[]): Promise<RolandFiles> {
+  const arr = [...list];
+  const files = new Map<string, string>();
+  let rootLabel = "ROLAND";
+
+  for (const file of arr) {
+    const rel = normalizeRolandPath((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name);
+    const idx = rel.toUpperCase().indexOf("ROLAND/");
+    const path = idx >= 0 ? rel.slice(idx + "ROLAND/".length) : rel.replace(/^DATA\//i, "DATA/");
+    if (!/\.(RC0|RCE)$/i.test(path)) continue;
+    if (/EDITOR\.RCE$/i.test(path)) continue;
+    const text = await file.text();
+    files.set(normalizeRolandPath(path), text);
+    if (idx >= 0) rootLabel = "ROLAND";
+  }
+
+  // If paths were just DATA/..., accept them
+  if (files.size === 0) {
+    for (const file of arr) {
+      if (!/\.RC0$/i.test(file.name)) continue;
+      const text = await file.text();
+      files.set(`DATA/${file.name}`, text);
+    }
+  }
+
+  return { files, rootLabel };
+}
+
+export async function filesFromZip(buffer: ArrayBuffer): Promise<RolandFiles> {
+  const unzipped = unzipSync(new Uint8Array(buffer));
+  const files = new Map<string, string>();
+  for (const [name, data] of Object.entries(unzipped)) {
+    const rel = normalizeRolandPath(name);
+    const idx = rel.toUpperCase().indexOf("ROLAND/");
+    const path = idx >= 0 ? rel.slice(idx + "ROLAND/".length) : rel;
+    if (!/\.RC0$/i.test(path)) continue;
+    if (/EDITOR\.RCE$/i.test(path)) continue;
+    files.set(normalizeRolandPath(path), strFromU8(data));
+  }
+  return { files, rootLabel: "ROLAND.zip" };
+}
+
+export function zipRoland(files: Map<string, string>): Uint8Array {
+  const obj: Record<string, Uint8Array> = {};
+  for (const [path, text] of files) {
+    obj[`ROLAND/${path}`] = strToU8(text);
+  }
+  return zipSync(obj);
+}
+
+export type DirectoryHandleLike = {
+  name: string;
+  entries: () => AsyncIterableIterator<[string, FileSystemHandle]>;
+  getDirectoryHandle: (name: string, opts?: { create?: boolean }) => Promise<DirectoryHandleLike>;
+  getFileHandle: (name: string, opts?: { create?: boolean }) => Promise<{
+    getFile: () => Promise<File>;
+    createWritable: () => Promise<{ write: (d: string) => Promise<void>; close: () => Promise<void> }>;
+  }>;
+};
+
+async function walkDir(
+  dir: DirectoryHandleLike,
+  prefix: string,
+  out: Map<string, string>,
+): Promise<void> {
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === "directory") {
+      if (name === "WAVE" || name.startsWith(".")) continue;
+      await walkDir(handle as unknown as DirectoryHandleLike, `${prefix}${name}/`, out);
+    } else if (handle.kind === "file") {
+      if (!/\.RC0$/i.test(name)) continue;
+      if (/EDITOR\.RCE$/i.test(name)) continue;
+      const file = await (handle as unknown as { getFile: () => Promise<File> }).getFile();
+      out.set(normalizeRolandPath(`${prefix}${name}`), await file.text());
+    }
+  }
+}
+
+export async function filesFromDirectoryHandle(dir: DirectoryHandleLike): Promise<{
+  files: RolandFiles;
+  handle: DirectoryHandleLike;
+}> {
+  // Accept ROLAND itself or a parent containing ROLAND
+  let root = dir;
+  let label = dir.name;
+  try {
+    if (dir.name.toUpperCase() !== "ROLAND" && dir.name.toUpperCase() !== "DATA") {
+      root = await dir.getDirectoryHandle("ROLAND");
+      label = "ROLAND";
+    }
+  } catch {
+    // maybe already DATA or ROLAND contents
+  }
+
+  const files = new Map<string, string>();
+  if (root.name.toUpperCase() === "DATA") {
+    await walkDir(root, "DATA/", files);
+  } else {
+    await walkDir(root, "", files);
+  }
+  return { files: { files, rootLabel: label }, handle: root };
+}
+
+export async function writeFileToDirectory(
+  root: DirectoryHandleLike,
+  relativePath: string,
+  content: string,
+): Promise<void> {
+  const parts = normalizeRolandPath(relativePath).split("/");
+  let dir = root;
+  // If root is ROLAND, paths start with DATA/
+  // If root is DATA, strip DATA/
+  if (root.name.toUpperCase() === "DATA" && parts[0]?.toUpperCase() === "DATA") {
+    parts.shift();
+  }
+  for (let i = 0; i < parts.length - 1; i++) {
+    dir = await dir.getDirectoryHandle(parts[i], { create: true });
+  }
+  const fileName = parts[parts.length - 1];
+  const fh = await dir.getFileHandle(fileName, { create: true });
+  const w = await fh.createWritable();
+  await w.write(content);
+  await w.close();
+}
+
+declare global {
+  interface Window {
+    showDirectoryPicker?: (opts?: { mode?: string }) => Promise<DirectoryHandleLike>;
+  }
+}
+
+export async function pickRolandDirectory(): Promise<{
+  files: RolandFiles;
+  handle: DirectoryHandleLike;
+} | null> {
+  if (!window.showDirectoryPicker) return null;
+  const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+  return filesFromDirectoryHandle(handle);
+}
