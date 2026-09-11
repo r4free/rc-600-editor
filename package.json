@@ -14,11 +14,14 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@iconify/types": "^2.0.0",
     "fflate": "^0.8.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@iconify-json/mdi": "^1.2.3",
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

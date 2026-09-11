@@ -116,7 +116,7 @@ export function MidiBar({
           CC64
         </button>
       </div>
-      <span className="hint">Live: Program Change + CC via ASSIGN (sem SysEx de parâmetros)</span>
+      <span className="hint">Live: Program Change + CC via ASSIGN (no parameter SysEx)</span>
     </div>
   );
 }

@@ -54,14 +54,14 @@ export function midiEnvironment(): MidiEnvironment {
 
   const help =
     blockReason === "ios"
-      ? "Chrome no iPhone/iPad não tem Web MIDI. Use um computador (Chrome/Edge)."
+      ? "Chrome on iPhone/iPad has no Web MIDI. Use a computer (Chrome/Edge)."
       : blockReason === "ide"
-        ? "O preview do Cursor não libera MIDI. Abra http://127.0.0.1:5190 no Chrome ou Edge."
+        ? "The Cursor preview does not allow MIDI. Open http://127.0.0.1:5190 in Chrome or Edge."
         : blockReason === "insecure"
-          ? "Web MIDI precisa de HTTPS (ou localhost)."
+          ? "Web MIDI needs HTTPS (or localhost)."
           : blockReason === "unavailable"
-            ? "Este navegador não tem Web MIDI. Use Chrome ou Edge."
-            : "Allow MIDI, escolha a porta RC-600 e Connect.";
+            ? "This browser has no Web MIDI. Use Chrome or Edge."
+            : "Allow MIDI, choose the RC-600 port, then Connect.";
 
   return {
     supported: hasApi && secureContext && !isIOS && !isIdePreview,

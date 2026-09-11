@@ -38,8 +38,8 @@ export function LeaveEditorGuard() {
   return (
     <div className="modal-backdrop" role="presentation" onClick={() => setOpen(false)}>
       <div className="modal-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <h2>Sair do editor?</h2>
-        <p>O botão voltar sai do editor RC-600. Quer mesmo sair?</p>
+        <h2>Leave the editor?</h2>
+        <p>The back button leaves the RC-600 editor. Leave anyway?</p>
         <div className="modal-foot">
           <button
             type="button"
@@ -50,10 +50,10 @@ export function LeaveEditorGuard() {
               history.go(-2);
             }}
           >
-            Sair
+            Leave
           </button>
           <button ref={stayBtnRef} type="button" className="btn primary" onClick={() => setOpen(false)}>
-            Ficar no editor
+            Stay in the editor
           </button>
         </div>
       </div>

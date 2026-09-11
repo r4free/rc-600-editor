@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ASSIGN_PARAMS,
-  PLAY_PARAMS,
-  REC_PARAMS,
-  RHYTHM_PARAMS,
-  TRACK_PARAMS,
   SYSTEM_SECTIONS,
 } from "@rc600/catalog/params";
 import {
@@ -17,7 +13,6 @@ import {
   patchAssign,
   patchMemSection,
   patchMemoryName,
-  patchTrack,
   pickActiveXml,
   prepareSaveXml,
   summarizePair,
@@ -37,6 +32,8 @@ import {
 } from "@rc600/files/roland";
 import { MidiBar } from "./components/MidiBar";
 import { ParamControl, TagMapEditor } from "./components/ParamControl";
+import { LoopTab } from "./components/LoopTab";
+import { Icon } from "./components/Icon";
 import {
   Rc600Midi,
   midiEnvironment,
@@ -49,14 +46,15 @@ import {
 } from "@rc600/midi/rc600-midi";
 
 type TabId =
-  | "name"
-  | "tracks"
-  | "rec"
-  | "play"
-  | "rhythm"
-  | "assigns"
+  | "info"
+  | "loop"
   | "ctl"
-  | "fx"
+  | "assigns"
+  | "input"
+  | "output"
+  | "mixer"
+  | "ifx"
+  | "tfx"
   | "system"
   | "copy";
 
@@ -76,8 +74,7 @@ export function App() {
   const [activeSide, setActiveSide] = useState<"a" | "b">("a");
   const [xml, setXml] = useState<string>("");
   const [dirty, setDirty] = useState(false);
-  const [tab, setTab] = useState<TabId>("tracks");
-  const [trackNo, setTrackNo] = useState(1);
+  const [tab, setTab] = useState<TabId>("loop");
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -130,7 +127,7 @@ export function App() {
       const a = map.get(slotFileName(s, "A"));
       const b = map.get(slotFileName(s, "B"));
       if (!a && !b) {
-        setError(`Memória ${s} não encontrada`);
+        setError(`Memory ${s} not found`);
         return;
       }
       if (a && b) {
@@ -169,14 +166,14 @@ export function App() {
     try {
       const result = await pickRolandDirectory();
       if (!result) {
-        setError("File System Access API indisponível — use Abrir arquivos ou ZIP.");
+        setError("File System Access API is unavailable — use Files or ZIP.");
         return;
       }
       dirHandleRef.current = result.handle;
       setFiles(result.files.files);
       setRootLabel(result.files.rootLabel);
       setBackupAck(false);
-      setStatus(`${result.files.files.size} arquivos · ${result.files.rootLabel}`);
+      setStatus(`${result.files.files.size} files · ${result.files.rootLabel}`);
       const first = listMemorySlots(result.files.files)[0];
       if (first) loadSlot(first, result.files.files);
       if (hasSystem(result.files.files)) loadSystem("1", result.files.files);
@@ -193,7 +190,7 @@ export function App() {
     setFiles(rolled.files);
     setRootLabel(rolled.rootLabel);
     setBackupAck(false);
-    setStatus(`${rolled.files.size} arquivos`);
+    setStatus(`${rolled.files.size} files`);
     const first = listMemorySlots(rolled.files)[0];
     if (first) loadSlot(first, rolled.files);
     if (hasSystem(rolled.files)) loadSystem("1", rolled.files);
@@ -206,7 +203,7 @@ export function App() {
     setFiles(rolled.files);
     setRootLabel(rolled.rootLabel);
     setBackupAck(false);
-    setStatus(`${rolled.files.size} arquivos (ZIP)`);
+    setStatus(`${rolled.files.size} files (ZIP)`);
     const first = listMemorySlots(rolled.files)[0];
     if (first) loadSlot(first, rolled.files);
     if (hasSystem(rolled.files)) loadSystem("1", rolled.files);
@@ -228,14 +225,14 @@ export function App() {
       await Promise.all(
         names.map(async (name) => {
           const res = await fetch(`/fixtures/DATA/${name}`);
-          if (!res.ok) throw new Error(`Falha ao carregar ${name}`);
+          if (!res.ok) throw new Error(`Failed to load ${name}`);
           map.set(`DATA/${name}`, await res.text());
         }),
       );
       setFiles(map);
       setRootLabel("fixtures (demo)");
       setBackupAck(false);
-      setStatus(`${map.size} arquivos demo`);
+      setStatus(`${map.size} demo files`);
       loadSlot(1, map);
       loadSystem("1", map);
     } catch (e) {
@@ -246,7 +243,7 @@ export function App() {
   async function saveCurrent() {
     if (!slot || !xml) return;
     if (!backupAck) {
-      setError("Confirme o backup antes de gravar no looper.");
+      setError("Confirm the backup before writing to the looper.");
       return;
     }
     const saved = prepareSaveXml(xml);
@@ -260,19 +257,19 @@ export function App() {
     if (dirHandleRef.current) {
       try {
         await writeFileToDirectory(dirHandleRef.current, path, saved);
-        setStatus(`Salvo ${path}`);
+        setStatus(`Saved ${path}`);
       } catch (e) {
-        setError(`Pasta aberta, mas falhou write: ${e}. Baixe o ZIP.`);
+        setError(`Folder is open, but write failed: ${e}. Download the ZIP.`);
       }
     } else {
-      setStatus(`Atualizado em memória: ${path} — baixe ZIP para gravar`);
+      setStatus(`Updated in memory: ${path} — download ZIP to write`);
     }
   }
 
   async function saveSystem() {
     if (!sysXml) return;
     if (!backupAck) {
-      setError("Confirme o backup antes de gravar.");
+      setError("Confirm the backup before writing.");
       return;
     }
     const saved = prepareSaveXml(sysXml);
@@ -284,9 +281,9 @@ export function App() {
     setSysDirty(false);
     if (dirHandleRef.current) {
       await writeFileToDirectory(dirHandleRef.current, path, saved);
-      setStatus(`Salvo ${path}`);
+      setStatus(`Saved ${path}`);
     } else {
-      setStatus(`System atualizado — baixe ZIP`);
+      setStatus(`System updated — download ZIP`);
     }
   }
 
@@ -328,7 +325,7 @@ export function App() {
       next.set(path, patched);
     }
     setFiles(next);
-    setStatus(`Copiado (${copyMode}) para ${copyTargets.size} slots`);
+    setStatus(`Copied (${copyMode}) to ${copyTargets.size} slots`);
   }
 
   const applyMidiPorts = useCallback(
@@ -444,16 +441,17 @@ export function App() {
   }, [env.supported]);
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "name", label: "NAME" },
-    { id: "tracks", label: "TRACK" },
-    { id: "rec", label: "REC" },
-    { id: "play", label: "PLAY" },
-    { id: "rhythm", label: "RHYTHM" },
-    { id: "assigns", label: "ASSIGN" },
-    { id: "ctl", label: "CTL" },
-    { id: "fx", label: "FX" },
-    { id: "system", label: "SYSTEM" },
-    { id: "copy", label: "COPY" },
+    { id: "info", label: "Info" },
+    { id: "loop", label: "Loop" },
+    { id: "ctl", label: "Ctl Func" },
+    { id: "assigns", label: "Assigns" },
+    { id: "input", label: "Input" },
+    { id: "output", label: "Output" },
+    { id: "mixer", label: "Mixer" },
+    { id: "ifx", label: "Input FX" },
+    { id: "tfx", label: "Track FX" },
+    { id: "system", label: "System" },
+    { id: "copy", label: "Copy" },
   ];
 
   return (
@@ -461,17 +459,19 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-name">RC-600 Editor</div>
-          <div className="brand-sub">memórias · system · Web MIDI</div>
+          <div className="brand-sub">memories · system · Web MIDI</div>
         </div>
         <div className="topbar-actions">
           <button type="button" className="btn primary" onClick={openDirectory}>
-            Abrir pasta
+            <Icon name="folderOpen" size={14} />
+            Open folder
           </button>
           <button type="button" className="btn" onClick={loadDemoFixtures}>
             Demo fixtures
           </button>
           <label className="btn">
-            Arquivos
+            <Icon name="folderOpen" size={14} />
+            Files
             <input
               type="file"
               multiple
@@ -482,6 +482,7 @@ export function App() {
             />
           </label>
           <label className="btn">
+            <Icon name="archive" size={14} />
             ZIP
             <input
               type="file"
@@ -491,7 +492,7 @@ export function App() {
             />
           </label>
           <button type="button" className="btn" disabled={!files.size} onClick={downloadZip}>
-            Baixar ZIP
+            Download ZIP
           </button>
           <button
             type="button"
@@ -499,10 +500,11 @@ export function App() {
             disabled={!dirty || !slot}
             onClick={saveCurrent}
           >
-            Salvar memória
+            <Icon name="save" size={14} />
+            Save memory
           </button>
           <span className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}>
-            {rootLabel ?? "sem pasta"}
+            {rootLabel ?? "no folder"}
             {dirty || sysDirty ? " · dirty" : ""}
             {status ? ` · ${status}` : ""}
           </span>
@@ -512,11 +514,11 @@ export function App() {
       {!backupAck && files.size > 0 && (
         <div className="warn-banner">
           <p>
-            Faça backup da pasta ROLAND antes de gravar no looper. O editor faz patch in-place nos
-            .RC0 (par A/B + count).
+            Back up the ROLAND folder before writing to the looper. Saves patch .RC0 files in place
+            (A/B pair + count).
           </p>
           <button type="button" className="btn primary" onClick={() => setBackupAck(true)}>
-            Backup feito — liberar gravação
+            Backup done — unlock save
           </button>
         </div>
       )}
@@ -525,25 +527,26 @@ export function App() {
         <div className="warn-banner" style={{ borderColor: "var(--danger)" }}>
           <p>{error}</p>
           <button type="button" className="btn ghost" onClick={() => setError(null)}>
-            Fechar
+            Close
           </button>
         </div>
       )}
 
       {files.size === 0 ? (
         <div className="empty-state editor-panel">
-          <h2>Abra a pasta ROLAND</h2>
+          <h2>Open the ROLAND folder</h2>
           <p>
-            Coloque o RC-600 em USB Storage (MENU → USB → STORAGE ON) ou escolha um backup no
-            disco. Prefira trabalhar numa <strong>cópia</strong>.
+            Put the RC-600 in USB Storage (MENU → USB → STORAGE ON) or choose a backup on disk.
+            Prefer working on a <strong>copy</strong>.
           </p>
-          <p>Chrome/Edge: Abrir pasta. Firefox: ZIP ou seletor de arquivos.</p>
+          <p>Chrome/Edge: Open folder. Firefox: ZIP or file picker.</p>
           <div className="row-actions" style={{ justifyContent: "center" }}>
             <button type="button" className="btn primary" onClick={openDirectory}>
-              Abrir pasta ROLAND
+              <Icon name="folderOpen" size={14} />
+              Open ROLAND folder
             </button>
             <button type="button" className="btn" onClick={loadDemoFixtures}>
-              Carregar fixtures demo
+              Load demo fixtures
             </button>
           </div>
         </div>
@@ -551,7 +554,7 @@ export function App() {
         <div className="main">
           <aside className="sidebar">
             <div className="sidebar-head">
-              <span>Memórias ({slots.length})</span>
+              <span>Memories ({slots.length})</span>
             </div>
             <div className="mem-list">
               {summaries.map((s) => (
@@ -570,11 +573,13 @@ export function App() {
           </aside>
 
           <section className="editor-panel">
-            <div className="tabs">
+            <div className="tabs" role="tablist" aria-label="Memory editor">
               {tabs.map((t) => (
                 <button
                   key={t.id}
                   type="button"
+                  role="tab"
+                  aria-selected={tab === t.id}
                   className={`tab ${tab === t.id ? "active" : ""}`}
                   onClick={() => setTab(t.id)}
                 >
@@ -583,19 +588,19 @@ export function App() {
               ))}
             </div>
             <div className="editor-body">
-              {!model && tab !== "system" ? (
-                <p className="hint">Selecione uma memória.</p>
-              ) : null}
+              {!model && tab !== "system" ? <p className="hint">Select a memory.</p> : null}
 
-              {tab === "name" && model && (
+              {tab === "info" && model && (
                 <>
                   <h3 className="section-title">
-                    Memory {String(slot).padStart(2, "0")} · lado {activeSide.toUpperCase()} · count{" "}
+                    Memory {String(slot).padStart(2, "0")} · side {activeSide.toUpperCase()} · count{" "}
                     {model.count}
                   </h3>
-                  <div className="param-grid">
-                    <div className="param-card">
-                      <label htmlFor="mem-name">NAME (12 chars)</label>
+                  <div className="param-row">
+                    <div className="param-label">
+                      <label htmlFor="mem-name">Name</label>
+                    </div>
+                    <div className="param-control">
                       <input
                         id="mem-name"
                         type="text"
@@ -608,81 +613,9 @@ export function App() {
                 </>
               )}
 
-              {tab === "tracks" && model && (
-                <>
-                  <div className="track-tabs">
-                    {[1, 2, 3, 4, 5, 6].map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        className={`btn ${trackNo === n ? "primary" : "ghost"}`}
-                        onClick={() => setTrackNo(n)}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="param-grid">
-                    {TRACK_PARAMS.map((def) => (
-                      <ParamControl
-                        key={def.tag}
-                        id={`tr-${trackNo}-${def.tag}`}
-                        def={def}
-                        value={num(model.tracks[trackNo - 1], def.tag, def.default ?? 0)}
-                        onChange={(v) =>
-                          markXml(patchTrack(xml, trackNo, { [def.tag]: String(v) }))
-                        }
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {tab === "rec" && model && (
-                <div className="param-grid">
-                  {REC_PARAMS.map((def) => (
-                    <ParamControl
-                      key={def.tag}
-                      id={`rec-${def.tag}`}
-                      def={def}
-                      value={num(model.rec, def.tag, def.default ?? 0)}
-                      onChange={(v) => markXml(patchMemSection(xml, "REC", { [def.tag]: String(v) }))}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {tab === "play" && model && (
-                <div className="param-grid">
-                  {PLAY_PARAMS.map((def) => (
-                    <ParamControl
-                      key={def.tag}
-                      id={`play-${def.tag}`}
-                      def={def}
-                      value={num(model.play, def.tag, def.default ?? 0)}
-                      onChange={(v) =>
-                        markXml(patchMemSection(xml, "PLAY", { [def.tag]: String(v) }))
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-
-              {tab === "rhythm" && model && (
-                <div className="param-grid">
-                  {RHYTHM_PARAMS.map((def) => (
-                    <ParamControl
-                      key={def.tag}
-                      id={`rhy-${def.tag}`}
-                      def={def}
-                      value={num(model.rhythm, def.tag, def.default ?? 0)}
-                      onChange={(v) =>
-                        markXml(patchMemSection(xml, "RHYTHM", { [def.tag]: String(v) }))
-                      }
-                    />
-                  ))}
-                </div>
-              )}
+              {tab === "loop" && model ? (
+                <LoopTab model={model} xml={xml} onXml={markXml} />
+              ) : null}
 
               {tab === "assigns" && model && (
                 <table className="assign-table">
@@ -735,73 +668,86 @@ export function App() {
                 </table>
               )}
 
-              {tab === "ctl" && model && (
-                <>
-                  <h3 className="section-title">CTL / INPUT / OUTPUT / ROUTING / MIXER (tags brutas)</h3>
-                  <p className="hint" style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-                    Edite valores numéricos das tags A–Z. Preferência MEMORY vs SYSTEM fica no
-                    SYSTEM → PREF.
-                  </p>
-                  {(["INPUT", "OUTPUT", "ROUTING", "MIXER"] as const).map((sec) => (
-                    <div key={sec} style={{ marginBottom: "1rem" }}>
-                      <h3 className="section-title">{sec}</h3>
-                      <TagMapEditor
-                        tags={model[sec.toLowerCase() as "input" | "output" | "routing" | "mixer"]}
-                        onChange={(tag, value) =>
-                          markXml(patchMemSection(xml, sec, { [tag]: value }))
-                        }
-                      />
-                    </div>
-                  ))}
-                </>
-              )}
+              {tab === "ctl" && model ? (
+                <p className="hint">
+                  Control-function mapping comes next. MEMORY vs SYSTEM preference lives in System →
+                  PREF.
+                </p>
+              ) : null}
 
-              {tab === "fx" && model && (
+              {tab === "input" && model ? (
                 <>
-                  <h3 className="section-title">Input FX / Track FX banks</h3>
-                  <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-                    IFX active bank tag A: {model.ifxSetup.A ?? "—"} · TFX: {model.tfxSetup.A ?? "—"}
+                  <h3 className="section-title">Input</h3>
+                  <TagMapEditor
+                    tags={model.input}
+                    onChange={(tag, value) => markXml(patchMemSection(xml, "INPUT", { [tag]: value }))}
+                  />
+                </>
+              ) : null}
+
+              {tab === "output" && model ? (
+                <>
+                  <h3 className="section-title">Output</h3>
+                  <TagMapEditor
+                    tags={model.output}
+                    onChange={(tag, value) => markXml(patchMemSection(xml, "OUTPUT", { [tag]: value }))}
+                  />
+                  <h3 className="section-title">Routing</h3>
+                  <TagMapEditor
+                    tags={model.routing}
+                    onChange={(tag, value) =>
+                      markXml(patchMemSection(xml, "ROUTING", { [tag]: value }))
+                    }
+                  />
+                </>
+              ) : null}
+
+              {tab === "mixer" && model ? (
+                <>
+                  <h3 className="section-title">Mixer</h3>
+                  <TagMapEditor
+                    tags={model.mixer}
+                    onChange={(tag, value) => markXml(patchMemSection(xml, "MIXER", { [tag]: value }))}
+                  />
+                </>
+              ) : null}
+
+              {(tab === "ifx" || tab === "tfx") && model ? (
+                <>
+                  <h3 className="section-title">{tab === "ifx" ? "Input FX" : "Track FX"}</h3>
+                  <p className="hint">
+                    FX blocks stay in the XML. Bank select is below; per-slot type/params come in a
+                    later pass.
                   </p>
-                  <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-                    Os blocos FX (AA_REVERB, etc.) permanecem no XML; use o Moose ou uma versão
-                    futura para editar tipo/params por slot. Setup de bank ativo:
-                  </p>
-                  <div className="param-grid">
-                    <div className="param-card">
-                      <label>IFX BANK</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={3}
-                        value={num(model.ifxSetup, "A")}
-                        onChange={(e) => {
-                          const ifxStart = xml.indexOf("<ifx");
-                          if (ifxStart < 0) return;
-                          markXml(
-                            patchSectionTags(xml, "SETUP", { A: String(Number(e.target.value) || 0) }, ifxStart),
-                          );
-                        }}
-                      />
+                  <div className="param-row">
+                    <div className="param-label">
+                      <label htmlFor="fx-bank">{tab === "ifx" ? "IFX bank" : "TFX bank"}</label>
                     </div>
-                    <div className="param-card">
-                      <label>TFX BANK</label>
+                    <div className="param-control">
                       <input
+                        id="fx-bank"
                         type="number"
                         min={0}
                         max={3}
-                        value={num(model.tfxSetup, "A")}
+                        value={num(tab === "ifx" ? model.ifxSetup : model.tfxSetup, "A")}
                         onChange={(e) => {
-                          const tfxStart = xml.indexOf("<tfx");
-                          if (tfxStart < 0) return;
+                          const marker = tab === "ifx" ? "<ifx" : "<tfx";
+                          const start = xml.indexOf(marker);
+                          if (start < 0) return;
                           markXml(
-                            patchSectionTags(xml, "SETUP", { A: String(Number(e.target.value) || 0) }, tfxStart),
+                            patchSectionTags(
+                              xml,
+                              "SETUP",
+                              { A: String(Number(e.target.value) || 0) },
+                              start,
+                            ),
                           );
                         }}
                       />
                     </div>
                   </div>
                 </>
-              )}
+              ) : null}
 
               {tab === "system" && (
                 <>
@@ -826,12 +772,12 @@ export function App() {
                       disabled={!sysDirty}
                       onClick={saveSystem}
                     >
-                      Salvar system
+                      Save system
                     </button>
                     <span className="status-pill">count {systemModel?.count ?? "—"}</span>
                   </div>
                   {!systemModel ? (
-                    <p>SYSTEM1/2.RC0 não encontrados nesta pasta.</p>
+                    <p>SYSTEM1/2.RC0 not found in this folder.</p>
                   ) : (
                     SYSTEM_SECTIONS.map((sec) => {
                       const tags = systemModel.sections[sec];
@@ -872,21 +818,21 @@ export function App() {
 
               {tab === "copy" && model && (
                 <div className="copy-panel">
-                  <h3 className="section-title">Copiar da memória {slot}</h3>
+                  <h3 className="section-title">Copy from memory {slot}</h3>
                   <div className="row-actions">
                     <button
                       type="button"
                       className={`btn ${copyMode === "assigns" ? "primary" : "ghost"}`}
                       onClick={() => setCopyMode("assigns")}
                     >
-                      Só ASSIGN
+                      Assigns only
                     </button>
                     <button
                       type="button"
                       className={`btn ${copyMode === "all" ? "primary" : "ghost"}`}
                       onClick={() => setCopyMode("all")}
                     >
-                      Memória inteira
+                      Entire memory
                     </button>
                   </div>
                   <div className="targets">
@@ -913,7 +859,7 @@ export function App() {
                     disabled={!copyTargets.size || !backupAck}
                     onClick={applyCopy}
                   >
-                    Aplicar cópia
+                    Apply copy
                   </button>
                 </div>
               )}

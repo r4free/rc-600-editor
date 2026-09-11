@@ -1,5 +1,41 @@
 import type { ParamDef } from "@rc600/catalog/params";
 import { displayParam } from "@rc600/catalog/params";
+import { InfoTip } from "./InfoTip";
+
+function ParamLabel({ def, id }: { def: ParamDef; id: string }) {
+  return (
+    <div className="param-label">
+      <label htmlFor={id}>{def.name}</label>
+      {def.info ? <InfoTip label={def.name} text={def.info} /> : null}
+    </div>
+  );
+}
+
+function PowerSwitch({
+  id,
+  on,
+  onChange,
+}: {
+  id: string;
+  on: boolean;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      className={`power-switch${on ? " on" : ""}`}
+      aria-checked={on}
+      onClick={() => onChange(on ? 0 : 1)}
+    >
+      <span className="power-switch-track">
+        <span className="power-switch-thumb" />
+      </span>
+      <span className="power-switch-state">{on ? "ON" : "OFF"}</span>
+    </button>
+  );
+}
 
 export function ParamControl({
   def,
@@ -14,32 +50,28 @@ export function ParamControl({
 }) {
   if (def.kind === "bool") {
     return (
-      <div className="param-card">
-        <label htmlFor={id}>{def.name}</label>
-        <button
-          id={id}
-          type="button"
-          className={`btn ${value ? "primary" : "ghost"}`}
-          onClick={() => onChange(value ? 0 : 1)}
-        >
-          {displayParam(def, value)}
-        </button>
+      <div className="param-row">
+        <ParamLabel def={def} id={id} />
+        <div className="param-control">
+          <PowerSwitch id={id} on={Boolean(value)} onChange={onChange} />
+        </div>
       </div>
     );
   }
 
   if (def.kind === "enum" && def.options) {
     return (
-      <div className="param-card">
-        <label htmlFor={id}>{def.name}</label>
-        <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
-          {def.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <div className="param-val">{displayParam(def, value)}</div>
+      <div className="param-row">
+        <ParamLabel def={def} id={id} />
+        <div className="param-control">
+          <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
+            {def.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     );
   }
@@ -47,17 +79,19 @@ export function ParamControl({
   const min = def.min ?? 0;
   const max = def.max ?? 127;
   return (
-    <div className="param-card">
-      <label htmlFor={id}>{def.name}</label>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <div className="param-val">{displayParam(def, value)}</div>
+    <div className="param-row">
+      <ParamLabel def={def} id={id} />
+      <div className="param-control param-slider">
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
+        <span className="param-val">{displayParam(def, value)}</span>
+      </div>
     </div>
   );
 }

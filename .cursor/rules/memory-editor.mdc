@@ -1,0 +1,37 @@
+---
+description: Memory editor tabs, controls, icons, and parameter help
+alwaysApply: true
+---
+
+# Memory editor
+
+## Tabs
+
+- Editor tabs are **always horizontal** (main tabs and Loop sub-tabs).
+- Never use a vertical tab rail for memory pages.
+- Tab set may change; keep Info / Loop first. Start new work on **Loop**.
+
+## Controls
+
+Match `ParamDef.kind` (do not invent a second widget):
+
+| Kind | Widget |
+| --- | --- |
+| `enum` | `<select>` |
+| `int` | range slider + numeric readout |
+| `bool` | switch (ON/OFF), not a select or slider |
+
+On/off values inside an enum of only OFF/ON also use a switch.
+
+Layout: labels sit **above** the control. Parameters flow in a responsive column grid (`.param-columns`). Switches have no outer box — only the track.
+
+## Icons and help
+
+- Use the bundled MDI set (`web/src/components/Icon.tsx` + `iconify-mdi.json`), same pattern as gm-800-editor.
+- To add an icon: copy the glyph from `@iconify-json/mdi` into `iconify-mdi.json` and add a name in `ICONS`.
+- Every parameter with Parameter Guide text gets an **Info** icon (`InfoTip`). Click toggles the explanation; hover tooltips are optional extras.
+
+## Sources
+
+- Parameter names, ranges, and InfoTip text: public Boss RC-600 Parameter Guide.
+- Do not copy Moose/third-party UI XML, dictionaries, or code.

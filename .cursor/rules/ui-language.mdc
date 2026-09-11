@@ -1,0 +1,13 @@
+---
+description: All user-visible product text is English
+alwaysApply: true
+---
+
+# UI language
+
+Every user-visible string is **English**: labels, tabs, buttons, empty states, errors, tooltips, and InfoTip copy.
+
+- Do not add Portuguese (or any other language) to the UI.
+- Parameter names follow the Boss RC-600 Parameter Guide in readable English (e.g. `Play Level`, `Loop Sync`).
+- Keep RC0 XML tag letters (`A`–`Z`) in code only, never as the primary label.
+- Comments in code may stay in English.
