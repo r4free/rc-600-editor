@@ -16,16 +16,19 @@ import {
   decodeName,
   parseMemory,
   parseSystem,
-  patchMemoryName,
-  patchIfxSection,
-  patchMemSection,
-  patchTrack,
-  prepareSaveXml,
   pickActiveSystem,
   pickActiveXml,
   summarizePair,
   systemAsMemoryModel,
 } from "./memory.js";
+import {
+  patchIfxSection,
+  patchMemSection,
+  patchMemoryName,
+  patchTrack,
+  prepareSaveXml,
+  assemble,
+} from "./writer.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fix = (name: string) => readFileSync(join(root, "fixtures", "DATA", name), "utf8");
@@ -183,5 +186,34 @@ describe("system parse", () => {
     assert.ok(Object.keys(model.input).length > 0);
     assert.equal(model.ctlPedals.length, 3);
     assert.equal(model.ctlPedals[0]!.length, 9);
+  });
+});
+
+describe("assemble (server writer)", () => {
+  it("applies patch ops and increments count", () => {
+    const xml = fix("MEMORY001A.RC0");
+    const before = parseHexCount(extractCount(xml));
+    const { xml: out } = assemble({
+      kind: "patch",
+      xml,
+      ops: [{ type: "track", track: 1, tags: { D: "180" } }],
+    });
+    assert.equal(parseMemory(out, 1).tracks[0].D, "180");
+    assert.equal(parseHexCount(extractCount(out)), before + 1);
+  });
+
+  it("copies assigns between memories", () => {
+    const source = fix("MEMORY001A.RC0");
+    const target = fix("MEMORY002A.RC0");
+    const { xml: out } = assemble({
+      kind: "copy",
+      sourceXml: source,
+      targetXml: target,
+      mode: "assigns",
+    });
+    const src = parseMemory(source, 1);
+    const dst = parseMemory(out, 2);
+    assert.equal(dst.assigns[0].A, src.assigns[0].A);
+    assert.equal(dst.assigns[0].G, src.assigns[0].G);
   });
 });

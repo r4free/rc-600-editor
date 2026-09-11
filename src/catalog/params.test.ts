@@ -48,7 +48,8 @@ import {
   visibleOutputRouteDests,
   visibleOutputRouteInputGroups,
 } from "./params.js";
-import { parseMemory, parseSystem, patchSysSection } from "../rc0/memory.js";
+import { parseMemory, parseSystem } from "../rc0/memory.js";
+import { patchSysSection } from "../rc0/writer.js";
 import {
   assignTargetLabel,
   assignTargetRange,

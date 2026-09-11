@@ -9,8 +9,8 @@ import {
   type AssignValueRange,
 } from "@rc600/catalog/assign-targets";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchAssign } from "@rc600/rc0/memory";
 import { InfoTip } from "./InfoTip";
+import type { PatchHandler } from "./LoopTab";
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -77,16 +77,9 @@ function RangeControl({
   );
 }
 
-export function AssignTab({
-  model,
-  xml,
-  onXml,
-}: {
-  model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-}) {
-  const patch = (index: number, tags: TagMap) => onXml(patchAssign(xml, index + 1, tags));
+export function AssignTab({ model, onPatch }: { model: MemoryModel; onPatch: PatchHandler }) {
+  const patch = (index: number, tags: TagMap) =>
+    onPatch({ type: "assign", assign: index + 1, tags });
 
   return (
     <table className="assign-table">

@@ -9,8 +9,9 @@ import {
   inputFxInsertDef,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchIfxSection } from "@rc600/rc0/memory";
+import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
+import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
 type IfxPage = "setup" | (typeof FX_BANKS)[number];
@@ -34,15 +35,7 @@ function bankIndex(letter: (typeof FX_BANKS)[number]): number {
   return FX_BANKS.indexOf(letter);
 }
 
-export function InputFxTab({
-  model,
-  xml,
-  onXml,
-}: {
-  model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-}) {
+export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: PatchHandler }) {
   const [page, setPage] = useState<IfxPage>("setup");
   const [slot, setSlot] = useState(0);
   const bank = page === "setup" ? 0 : bankIndex(page);
@@ -50,39 +43,46 @@ export function InputFxTab({
   const insertValue = num(slotTags, "D");
 
   function setSetup(tag: string, value: number) {
-    onXml(patchIfxSection(xml, "SETUP", { [tag]: String(value) }));
+    onPatch({ type: "ifx", section: "SETUP", tags: { [tag]: String(value) } });
   }
 
-  function collapseToSingle(next: string, bankNo: number, keepSlot: number): string {
+  function collapseOps(bankNo: number, keepSlot: number): PatchOp[] {
     const slots = model.ifxSlots[bankNo] ?? [];
-    let out = next;
+    const ops: PatchOp[] = [];
     for (let s = 0; s < FX_BANKS.length; s++) {
       if (s === keepSlot) continue;
       if (num(slots[s] ?? {}, "A") === 1) {
-        out = patchIfxSection(out, fxSlotSection(bankNo, s), { A: "0" });
+        ops.push({ type: "ifx", section: fxSlotSection(bankNo, s), tags: { A: "0" } });
       }
     }
-    return out;
+    return ops;
   }
 
   function setBank(bankNo: number, tag: string, value: number) {
-    let next = patchIfxSection(xml, FX_BANKS[bankNo], { [tag]: String(value) });
+    const ops: PatchOp[] = [
+      { type: "ifx", section: FX_BANKS[bankNo], tags: { [tag]: String(value) } },
+    ];
     if (tag === "B" && value === IFX_MODE_SINGLE) {
       const slots = model.ifxSlots[bankNo] ?? [];
       const target = num(model.ifxBanks[bankNo] ?? {}, "C");
       let keep = num(slots[target] ?? {}, "A") === 1 ? target : slots.findIndex((s) => num(s, "A") === 1);
       if (keep < 0) keep = 0;
-      next = collapseToSingle(next, bankNo, keep);
+      ops.push(...collapseOps(bankNo, keep));
     }
-    onXml(next);
+    onPatch(ops);
   }
 
   function setSlotParam(bankNo: number, slotNo: number, tag: string, value: number) {
-    let next = xml;
+    const ops: PatchOp[] = [];
     if (tag === "A" && value === 1 && num(model.ifxBanks[bankNo] ?? {}, "B") === IFX_MODE_SINGLE) {
-      next = collapseToSingle(next, bankNo, slotNo);
+      ops.push(...collapseOps(bankNo, slotNo));
     }
-    onXml(patchIfxSection(next, fxSlotSection(bankNo, slotNo), { [tag]: String(value) }));
+    ops.push({
+      type: "ifx",
+      section: fxSlotSection(bankNo, slotNo),
+      tags: { [tag]: String(value) },
+    });
+    onPatch(ops);
   }
 
   return (

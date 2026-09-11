@@ -13,7 +13,7 @@ import {
   setBit,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchMemSection, patchTrack } from "@rc600/rc0/memory";
+import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ParamControl } from "./ParamControl";
@@ -34,14 +34,14 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+export type PatchHandler = (ops: PatchOp | PatchOp[]) => void;
+
 export function LoopTab({
   model,
-  xml,
-  onXml,
+  onPatch,
 }: {
   model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
+  onPatch: PatchHandler;
 }) {
   const [sub, setSub] = useState<LoopSub>("track");
   const [trackNo, setTrackNo] = useState(1);
@@ -106,7 +106,9 @@ export function LoopTab({
                 id={`tr-${trackNo}-${def.tag}`}
                 def={def}
                 value={num(track, def.tag, def.default ?? 0)}
-                onChange={(v) => onXml(patchTrack(xml, trackNo, { [def.tag]: String(v) }))}
+                onChange={(v) =>
+                  onPatch({ type: "track", track: trackNo, tags: { [def.tag]: String(v) } })
+                }
               />
             ))}
           </div>
@@ -125,7 +127,11 @@ export function LoopTab({
                 }}
                 value={bitOn(inputMask, inp.bit) ? 1 : 0}
                 onChange={(v) =>
-                  onXml(patchTrack(xml, trackNo, { Q: String(setBit(inputMask, inp.bit, Boolean(v))) }))
+                  onPatch({
+                    type: "track",
+                    track: trackNo,
+                    tags: { Q: String(setBit(inputMask, inp.bit, Boolean(v))) },
+                  })
                 }
               />
             ))}
@@ -142,7 +148,9 @@ export function LoopTab({
                 id={`rec-${def.tag}`}
                 def={def}
                 value={num(model.rec, def.tag, def.default ?? 0)}
-                onChange={(v) => onXml(patchMemSection(xml, "REC", { [def.tag]: String(v) }))}
+                onChange={(v) =>
+                  onPatch({ type: "section", section: "REC", tags: { [def.tag]: String(v) } })
+                }
               />
             ))}
           </div>
@@ -162,7 +170,11 @@ export function LoopTab({
                   }}
                   value={bitOn(mask, inp.bit) ? 1 : 0}
                   onChange={(v) =>
-                    onXml(patchMemSection(xml, "REC", { F: String(setBit(mask, inp.bit, Boolean(v))) }))
+                    onPatch({
+                      type: "section",
+                      section: "REC",
+                      tags: { F: String(setBit(mask, inp.bit, Boolean(v))) },
+                    })
                   }
                 />
               );
@@ -180,7 +192,9 @@ export function LoopTab({
                 id={`play-${def.tag}`}
                 def={def}
                 value={num(model.play, def.tag, def.default ?? 0)}
-                onChange={(v) => onXml(patchMemSection(xml, "PLAY", { [def.tag]: String(v) }))}
+                onChange={(v) =>
+                  onPatch({ type: "section", section: "PLAY", tags: { [def.tag]: String(v) } })
+                }
               />
             ))}
           </div>
@@ -200,7 +214,11 @@ export function LoopTab({
                   }}
                   value={bitOn(mask, inp.bit) ? 1 : 0}
                   onChange={(v) =>
-                    onXml(patchMemSection(xml, "PLAY", { D: String(setBit(mask, inp.bit, Boolean(v))) }))
+                    onPatch({
+                      type: "section",
+                      section: "PLAY",
+                      tags: { D: String(setBit(mask, inp.bit, Boolean(v))) },
+                    })
                   }
                 />
               );
@@ -222,7 +240,11 @@ export function LoopTab({
                   }}
                   value={bitOn(mask, inp.bit) ? 1 : 0}
                   onChange={(v) =>
-                    onXml(patchMemSection(xml, "PLAY", { E: String(setBit(mask, inp.bit, Boolean(v))) }))
+                    onPatch({
+                      type: "section",
+                      section: "PLAY",
+                      tags: { E: String(setBit(mask, inp.bit, Boolean(v))) },
+                    })
                   }
                 />
               );
@@ -231,26 +253,12 @@ export function LoopTab({
         </>
       ) : null}
 
-      {sub === "rhythm" ? (
-        <RhythmEditor
-          tags={model.rhythm}
-          xml={xml}
-          onXml={onXml}
-        />
-      ) : null}
+      {sub === "rhythm" ? <RhythmEditor tags={model.rhythm} onPatch={onPatch} /> : null}
     </div>
   );
 }
 
-function RhythmEditor({
-  tags,
-  xml,
-  onXml,
-}: {
-  tags: TagMap;
-  xml: string;
-  onXml: (next: string) => void;
-}) {
+function RhythmEditor({ tags, onPatch }: { tags: TagMap; onPatch: PatchHandler }) {
   const genre = num(tags, "A", 0);
   const groups: { title: string; tags: string[] }[] = [
     { title: "Pattern", tags: ["A", "B", "C", "D", "E"] },
@@ -258,7 +266,8 @@ function RhythmEditor({
     { title: "Intro / Fill", tags: ["H", "I", "J", "K", "L"] },
   ];
 
-  const patch = (partial: Record<string, string>) => onXml(patchMemSection(xml, "RHYTHM", partial));
+  const patch = (partial: Record<string, string>) =>
+    onPatch({ type: "section", section: "RHYTHM", tags: partial });
 
   return (
     <>

@@ -29,10 +29,10 @@ import {
   type OutputRouteDest,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchMemSection } from "@rc600/rc0/memory";
+import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
+import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
-import type { SectionPatcher } from "./InputTab";
 
 type OutputSub = "setup" | "routing" | "eq" | "mfx";
 type RoutingSub = "track" | "input" | "phones";
@@ -65,15 +65,13 @@ function destIcon(dest: OutputRouteDest): IconName {
 
 export function OutputTab({
   model,
-  xml,
-  onXml,
-  patchSection = patchMemSection,
+  onPatch,
+  scope = "mem",
   preference,
 }: {
   model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-  patchSection?: SectionPatcher;
+  onPatch: PatchHandler;
+  scope?: "mem" | "sys";
   preference?: { tags: TagMap; onChange: (tag: string, value: number) => void };
 }) {
   const [sub, setSub] = useState<OutputSub>("setup");
@@ -89,9 +87,16 @@ export function OutputTab({
   const phonesValue = num(model.routing, "O");
   const insertValue = num(model.masterFx, "C");
 
-  const patchOutput = (partial: TagMap) => onXml(patchSection(xml, "OUTPUT", partial));
-  const patchRouting = (partial: TagMap) => onXml(patchSection(xml, "ROUTING", partial));
-  const patchFx = (partial: TagMap) => onXml(patchSection(xml, "MASTER_FX", partial));
+  const sectionOp = (section: string, tags: TagMap): PatchOp => ({
+    type: "section",
+    section,
+    tags,
+    scope,
+  });
+
+  const patchOutput = (partial: TagMap) => onPatch(sectionOp("OUTPUT", partial));
+  const patchRouting = (partial: TagMap) => onPatch(sectionOp("ROUTING", partial));
+  const patchFx = (partial: TagMap) => onPatch(sectionOp("MASTER_FX", partial));
 
   function setSetup(tag: string, value: number) {
     const partial: TagMap = { [tag]: String(value) };
@@ -101,18 +106,20 @@ export function OutputTab({
       const secondary = primary ? outputRouteLinkPartner(primary) : null;
       const eqPrimary = OUTPUT_EQ_CHANNELS.find((c) => c.linkTag === linkTag && c.role === "primary");
       const eqSecondary = OUTPUT_EQ_CHANNELS.find((c) => c.linkTag === linkTag && c.role === "secondary");
-      let next = patchSection(xml, "OUTPUT", partial);
+      const ops: PatchOp[] = [sectionOp("OUTPUT", partial)];
       if (eqPrimary && eqSecondary) {
-        next = patchSection(next, eqSecondary.section, model.outputEq[eqPrimary.section] ?? {});
+        ops.push(sectionOp(eqSecondary.section, model.outputEq[eqPrimary.section] ?? {}));
       }
       if (primary && secondary) {
-        next = patchSection(next, "ROUTING", {
-          [secondary.tagTrack]: model.routing[primary.tagTrack] ?? "0",
-          [secondary.tagInput]: model.routing[primary.tagInput] ?? "0",
-        });
+        ops.push(
+          sectionOp("ROUTING", {
+            [secondary.tagTrack]: model.routing[primary.tagTrack] ?? "0",
+            [secondary.tagInput]: model.routing[primary.tagInput] ?? "0",
+          }),
+        );
       }
-      next = patchSection(next, "MIXER", mixerCopyForOutputLink(model.mixer, linkTag));
-      onXml(next);
+      ops.push(sectionOp("MIXER", mixerCopyForOutputLink(model.mixer, linkTag)));
+      onPatch(ops);
       return;
     }
     patchOutput(partial);
@@ -120,13 +127,13 @@ export function OutputTab({
 
   function setEq(tag: string, value: number) {
     const partial = { [tag]: String(value) };
-    let next = patchSection(xml, eqSection, partial);
+    const ops: PatchOp[] = [sectionOp(eqSection, partial)];
     const partner = outputEqLinkPartner(eqSection);
     const ch = OUTPUT_EQ_CHANNELS.find((c) => c.section === eqSection);
     if (partner && ch && outputStereoLinked(model.output, ch.linkTag)) {
-      next = patchSection(next, partner, partial);
+      ops.push(sectionOp(partner, partial));
     }
-    onXml(next);
+    onPatch(ops);
   }
 
   function setRouteBits(dest: OutputRouteDest, which: "tagTrack" | "tagInput", bits: number[], on: boolean) {
@@ -329,7 +336,12 @@ export function OutputTab({
                 className={`tab ${eqSection === ch.section ? "active" : ""}`}
                 onClick={() => setEqCh(ch.section)}
               >
-                <Icon name={destIcon(OUTPUT_ROUTE_DESTS.find((d) => d.linkTag === ch.linkTag) ?? OUTPUT_ROUTE_DESTS[0])} size={12} />
+                <Icon
+                  name={destIcon(
+                    OUTPUT_ROUTE_DESTS.find((d) => d.linkTag === ch.linkTag) ?? OUTPUT_ROUTE_DESTS[0],
+                  )}
+                  size={12}
+                />
                 {outputEqChannelLabel(ch, model.output)}
               </button>
             ))}

@@ -4,14 +4,11 @@ import {
   type MemorySummary,
   type TagMap,
   parseMemory,
-  patchAssign,
-  patchMemoryName,
   pickActiveSystem,
   pickActiveXml,
-  prepareSaveXml,
   summarizePair,
-  patchSectionTags,
 } from "@rc600/rc0/memory";
+import { applyOpsToModel, normalizeOps, type PatchOp } from "@rc600/rc0/ops";
 import {
   type DirectoryHandleLike,
   filesFromFileList,
@@ -24,6 +21,12 @@ import {
   writeFileToDirectory,
   zipRoland,
 } from "@rc600/files/roland";
+import {
+  assembleRemote,
+  fetchSession,
+  lockSession,
+  type SessionInfo,
+} from "./api";
 import { MidiBar } from "./components/MidiBar";
 import { LoopTab } from "./components/LoopTab";
 import { ControlTab } from "./components/ControlTab";
@@ -33,6 +36,8 @@ import { OutputTab } from "./components/OutputTab";
 import { MixerTab } from "./components/MixerTab";
 import { InputFxTab } from "./components/InputFxTab";
 import { SystemTab } from "./components/SystemTab";
+import { LicenseScreen } from "./components/LicenseScreen";
+import { PlatformSelect } from "./components/PlatformSelect";
 import { Icon } from "./components/Icon";
 import {
   Rc600Midi,
@@ -67,18 +72,21 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
 }
 
 export function App() {
+  const [session, setSession] = useState<SessionInfo | null>(null);
   const [files, setFiles] = useState<Map<string, string>>(new Map());
   const [rootLabel, setRootLabel] = useState<string | null>(null);
   const dirHandleRef = useRef<DirectoryHandleLike | null>(null);
   const [backupAck, setBackupAck] = useState(false);
   const [slot, setSlot] = useState<number | null>(null);
   const [activeSide, setActiveSide] = useState<"a" | "b">("a");
-  const [xml, setXml] = useState<string>("");
+  const [baseXml, setBaseXml] = useState("");
+  const [ops, setOps] = useState<PatchOp[]>([]);
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState<TabId>("loop");
   const [workspace, setWorkspace] = useState<Workspace>("memory");
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const midiRef = useRef(new Rc600Midi());
   const env = useMemo(() => midiEnvironment(), []);
@@ -91,11 +99,24 @@ export function App() {
   const [midiBusy, setMidiBusy] = useState(() => env.supported && midiPrefs.allowed);
 
   const [sysSide, setSysSide] = useState<"1" | "2">("1");
-  const [sysXml, setSysXml] = useState("");
+  const [sysBaseXml, setSysBaseXml] = useState("");
+  const [sysOps, setSysOps] = useState<PatchOp[]>([]);
   const [sysDirty, setSysDirty] = useState(false);
   const [copyTargets, setCopyTargets] = useState<Set<number>>(new Set());
   const [copyMode, setCopyMode] = useState<"all" | "assigns">("assigns");
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchSession().then((info) => {
+      if (!cancelled) setSession(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sessionOk = session?.ok === true;
+  const requireLicense = session?.requireLicense === true;
   const slots = useMemo(() => listMemorySlots(files), [files]);
   const summaries: MemorySummary[] = useMemo(() => {
     return slots.map((s) => {
@@ -115,14 +136,14 @@ export function App() {
   }, [files, slots]);
 
   const model: MemoryModel | null = useMemo(() => {
-    if (!xml || slot == null) return null;
-    return parseMemory(xml, slot);
-  }, [xml, slot]);
+    if (!baseXml || slot == null) return null;
+    return applyOpsToModel(parseMemory(baseXml, slot), ops);
+  }, [baseXml, slot, ops]);
 
   const systemModel = useMemo(() => {
-    if (!sysXml) return null;
-    return { side: sysSide, count: sysXml.match(/<count>([^<]+)<\/count>/)?.[1] ?? "—" };
-  }, [sysXml, sysSide]);
+    if (!sysBaseXml) return null;
+    return { side: sysSide, count: sysBaseXml.match(/<count>([^<]+)<\/count>/)?.[1] ?? "—" };
+  }, [sysBaseXml, sysSide]);
 
   const loadSlot = useCallback(
     (s: number, map: Map<string, string> = files) => {
@@ -135,12 +156,13 @@ export function App() {
       if (a && b) {
         const picked = pickActiveXml(a, b);
         setActiveSide(picked.side);
-        setXml(picked.xml);
+        setBaseXml(picked.xml);
       } else {
         setActiveSide(a ? "a" : "b");
-        setXml((a || b)!);
+        setBaseXml((a || b)!);
       }
       setSlot(s);
+      setOps([]);
       setDirty(false);
       setError(null);
     },
@@ -150,18 +172,25 @@ export function App() {
   const loadSystem = useCallback((map: Map<string, string> = files) => {
     const picked = pickActiveSystem(map.get(systemFileName("1")), map.get(systemFileName("2")));
     if (!picked) {
-      setSysXml("");
+      setSysBaseXml("");
+      setSysOps([]);
       return;
     }
     setSysSide(picked.side);
-    setSysXml(picked.xml);
+    setSysBaseXml(picked.xml);
+    setSysOps([]);
     setSysDirty(false);
   }, [files]);
 
-  function markXml(next: string) {
-    setXml(next);
+  const pushOps = useCallback((next: PatchOp | PatchOp[]) => {
+    setOps((prev) => [...prev, ...normalizeOps(next)]);
     setDirty(true);
-  }
+  }, []);
+
+  const pushSysOps = useCallback((next: PatchOp | PatchOp[]) => {
+    setSysOps((prev) => [...prev, ...normalizeOps(next)]);
+    setSysDirty(true);
+  }, []);
 
   async function openDirectory() {
     setError(null);
@@ -243,57 +272,108 @@ export function App() {
   }
 
   async function saveCurrent() {
-    if (!slot || !xml) return;
+    if (!slot || !baseXml) return;
+    if (!sessionOk) {
+      setError(
+        requireLicense
+          ? "Enter a valid license key before saving."
+          : "Cannot reach the assemble API.",
+      );
+      return;
+    }
     if (!backupAck) {
       setError("Confirm the backup before writing to the looper.");
       return;
     }
-    const saved = prepareSaveXml(xml);
-    const path = slotFileName(slot, activeSide === "a" ? "A" : "B");
-    const next = new Map(files);
-    next.set(path, saved);
-    setFiles(next);
-    setXml(saved);
-    setDirty(false);
+    setSaving(true);
+    setError(null);
+    try {
+      const { xml: saved } = await assembleRemote({ kind: "patch", xml: baseXml, ops });
+      const path = slotFileName(slot, activeSide === "a" ? "A" : "B");
+      const next = new Map(files);
+      next.set(path, saved);
+      setFiles(next);
+      setBaseXml(saved);
+      setOps([]);
+      setDirty(false);
 
-    if (dirHandleRef.current) {
-      try {
-        await writeFileToDirectory(dirHandleRef.current, path, saved);
-        setStatus(`Saved ${path}`);
-      } catch (e) {
-        setError(`Folder is open, but write failed: ${e}. Download the ZIP.`);
+      if (dirHandleRef.current) {
+        try {
+          await writeFileToDirectory(dirHandleRef.current, path, saved);
+          setStatus(`Saved ${path}`);
+        } catch (e) {
+          setError(`Folder is open, but write failed: ${e}. Download the ZIP.`);
+        }
+      } else {
+        setStatus(`Updated in memory: ${path} — download ZIP to write`);
       }
-    } else {
-      setStatus(`Updated in memory: ${path} — download ZIP to write`);
+    } catch (e) {
+      setError(String(e));
+      if (String(e).includes("License required") || String(e).includes("expired")) {
+        void fetchSession().then(setSession);
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
   async function saveSystem() {
-    if (!sysXml) return;
+    if (!sysBaseXml) return;
+    if (!sessionOk) {
+      setError(
+        requireLicense
+          ? "Enter a valid license key before saving."
+          : "Cannot reach the assemble API.",
+      );
+      return;
+    }
     if (!backupAck) {
       setError("Confirm the backup before writing.");
       return;
     }
-    const saved = prepareSaveXml(sysXml);
-    const path = systemFileName(sysSide);
-    const next = new Map(files);
-    next.set(path, saved);
-    setFiles(next);
-    setSysXml(saved);
-    setSysDirty(false);
-    if (dirHandleRef.current) {
-      await writeFileToDirectory(dirHandleRef.current, path, saved);
-      setStatus(`Saved ${path}`);
-    } else {
-      setStatus(`System updated — download ZIP`);
+    setSaving(true);
+    setError(null);
+    try {
+      const { xml: saved } = await assembleRemote({
+        kind: "patch",
+        xml: sysBaseXml,
+        ops: sysOps,
+      });
+      const path = systemFileName(sysSide);
+      const next = new Map(files);
+      next.set(path, saved);
+      setFiles(next);
+      setSysBaseXml(saved);
+      setSysOps([]);
+      setSysDirty(false);
+      if (dirHandleRef.current) {
+        await writeFileToDirectory(dirHandleRef.current, path, saved);
+        setStatus(`Saved ${path}`);
+      } else {
+        setStatus(`System updated — download ZIP`);
+      }
+    } catch (e) {
+      setError(String(e));
+      if (String(e).includes("License required") || String(e).includes("expired")) {
+        void fetchSession().then(setSession);
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
   function downloadZip() {
+    if (dirty || sysDirty) {
+      setError(
+        "Unsaved edits are not in the ZIP yet. Save memory/system first (needs the server), then download.",
+      );
+      return;
+    }
     const zipped = zipRoland(files);
-    const blob = new Blob([zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer], {
-      type: "application/zip",
-    });
+    const blob = new Blob(
+      [zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer],
+      { type: "application/zip" },
+    );
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `ROLAND-backup-${new Date().toISOString().slice(0, 10)}.zip`;
@@ -301,33 +381,69 @@ export function App() {
     URL.revokeObjectURL(a.href);
   }
 
-  function applyCopy() {
-    if (!slot || !xml || copyTargets.size === 0) return;
-    const next = new Map(files);
-    const source = parseMemory(xml, slot);
-    for (const target of copyTargets) {
-      if (target === slot) continue;
-      const aPath = slotFileName(target, "A");
-      const bPath = slotFileName(target, "B");
-      const a = next.get(aPath);
-      const b = next.get(bPath);
-      if (!a && !b) continue;
-      const picked = a && b ? pickActiveXml(a, b) : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
-      let patched = picked.xml;
-      if (copyMode === "all") {
-        patched = prepareSaveXml(xml); // full clone of current active xml into target active side
-        // keep target slot identity via filename only
-      } else {
-        for (let i = 1; i <= 16; i++) {
-          patched = patchAssign(patched, i, source.assigns[i - 1] ?? {});
-        }
-        patched = prepareSaveXml(patched);
-      }
-      const path = slotFileName(target, picked.side === "a" ? "A" : "B");
-      next.set(path, patched);
+  async function applyCopy() {
+    if (!slot || !baseXml || copyTargets.size === 0) return;
+    if (!sessionOk) {
+      setError(
+        requireLicense
+          ? "Enter a valid license key before copying."
+          : "Cannot reach the assemble API.",
+      );
+      return;
     }
-    setFiles(next);
-    setStatus(`Copied (${copyMode}) to ${copyTargets.size} slots`);
+    if (!backupAck) {
+      setError("Confirm the backup before writing.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const sourceXml = dirty
+        ? (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml
+        : baseXml;
+      const next = new Map(files);
+      const selfPath = slotFileName(slot, activeSide === "a" ? "A" : "B");
+      next.set(selfPath, sourceXml);
+      if (dirty) {
+        setBaseXml(sourceXml);
+        setOps([]);
+        setDirty(false);
+        if (dirHandleRef.current) {
+          await writeFileToDirectory(dirHandleRef.current, selfPath, sourceXml);
+        }
+      }
+
+      for (const target of copyTargets) {
+        if (target === slot) continue;
+        const aPath = slotFileName(target, "A");
+        const bPath = slotFileName(target, "B");
+        const a = next.get(aPath);
+        const b = next.get(bPath);
+        if (!a && !b) continue;
+        const picked =
+          a && b ? pickActiveXml(a, b) : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
+        const { xml: patched } = await assembleRemote({
+          kind: "copy",
+          sourceXml,
+          targetXml: picked.xml,
+          mode: copyMode,
+        });
+        const path = slotFileName(target, picked.side === "a" ? "A" : "B");
+        next.set(path, patched);
+        if (dirHandleRef.current) {
+          await writeFileToDirectory(dirHandleRef.current, path, patched);
+        }
+      }
+      setFiles(next);
+      setStatus(`Copied (${copyMode}) to ${copyTargets.size} slots`);
+    } catch (e) {
+      setError(String(e));
+      if (String(e).includes("License required") || String(e).includes("expired")) {
+        void fetchSession().then(setSession);
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   const applyMidiPorts = useCallback(
@@ -455,12 +571,42 @@ export function App() {
     { id: "copy", label: "Copy" },
   ];
 
+  if (session === null) {
+    return (
+      <div className="app">
+        <div className="empty-state editor-panel">
+          <p>Checking session…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (requireLicense && !sessionOk) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <div className="topbar-start">
+            <div className="brand">
+              <div className="brand-name">RC-600 Editor</div>
+              <div className="brand-sub">memories · system · Web MIDI</div>
+            </div>
+            <PlatformSelect current="rc-600" />
+          </div>
+        </header>
+        <LicenseScreen onActivated={setSession} />
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          <div className="brand-name">RC-600 Editor</div>
-          <div className="brand-sub">memories · system · Web MIDI</div>
+        <div className="topbar-start">
+          <div className="brand">
+            <div className="brand-name">RC-600 Editor</div>
+            <div className="brand-sub">memories · system · Web MIDI</div>
+          </div>
+          <PlatformSelect current="rc-600" />
         </div>
         <div className="topbar-actions">
           <button type="button" className="btn primary" onClick={openDirectory}>
@@ -498,14 +644,32 @@ export function App() {
           <button
             type="button"
             className="btn warn"
-            disabled={!dirty || !slot}
-            onClick={saveCurrent}
+            disabled={!dirty || !slot || saving}
+            onClick={() => void saveCurrent()}
           >
             <Icon name="save" size={14} />
             Save memory
           </button>
+          {requireLicense ? (
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                void lockSession().then((info) => {
+                  setSession(info ?? { ok: false, mode: "license", requireLicense: true, license: null });
+                });
+              }}
+            >
+              Clear license
+            </button>
+          ) : null}
           <span className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}>
             {rootLabel ?? "no folder"}
+            {session.license
+              ? ` · license until ${session.license.expiresAt.slice(0, 10)}`
+              : session.mode === "open"
+                ? " · public"
+                : ""}
             {dirty || sysDirty ? " · dirty" : ""}
             {status ? ` · ${status}` : ""}
           </span>
@@ -516,7 +680,7 @@ export function App() {
         <div className="warn-banner">
           <p>
             Back up the ROLAND folder before writing to the looper. Saves patch .RC0 files in place
-            (A/B pair + count).
+            (A/B pair + count). Needs this server online.
           </p>
           <button type="button" className="btn primary" onClick={() => setBackupAck(true)}>
             Backup done — unlock save
@@ -572,7 +736,7 @@ export function App() {
                 className={`tab ${workspace === "system" ? "active" : ""}`}
                 onClick={() => {
                   setWorkspace("system");
-                  if (!sysXml) loadSystem();
+                  if (!sysBaseXml) loadSystem();
                 }}
               >
                 <Icon name="system" size={14} />
@@ -586,8 +750,8 @@ export function App() {
                   <button
                     type="button"
                     className="btn warn"
-                    disabled={!sysDirty}
-                    onClick={saveSystem}
+                    disabled={!sysDirty || saving}
+                    onClick={() => void saveSystem()}
                   >
                     <Icon name="save" size={14} />
                     Save system
@@ -652,40 +816,30 @@ export function App() {
                               type="text"
                               maxLength={12}
                               value={model.name}
-                              onChange={(e) => markXml(patchMemoryName(xml, e.target.value))}
+                              onChange={(e) => pushOps({ type: "name", name: e.target.value })}
                             />
                           </div>
                         </div>
                       </>
                     )}
 
-                    {tab === "loop" && model ? (
-                      <LoopTab model={model} xml={xml} onXml={markXml} />
-                    ) : null}
+                    {tab === "loop" && model ? <LoopTab model={model} onPatch={pushOps} /> : null}
 
                     {tab === "assigns" && model ? (
-                      <AssignTab model={model} xml={xml} onXml={markXml} />
+                      <AssignTab model={model} onPatch={pushOps} />
                     ) : null}
 
-                    {tab === "ctl" && model ? (
-                      <ControlTab model={model} xml={xml} onXml={markXml} />
-                    ) : null}
+                    {tab === "ctl" && model ? <ControlTab model={model} onPatch={pushOps} /> : null}
 
-                    {tab === "input" && model ? (
-                      <InputTab model={model} xml={xml} onXml={markXml} />
-                    ) : null}
+                    {tab === "input" && model ? <InputTab model={model} onPatch={pushOps} /> : null}
 
                     {tab === "output" && model ? (
-                      <OutputTab model={model} xml={xml} onXml={markXml} />
+                      <OutputTab model={model} onPatch={pushOps} />
                     ) : null}
 
-                    {tab === "mixer" && model ? (
-                      <MixerTab model={model} xml={xml} onXml={markXml} />
-                    ) : null}
+                    {tab === "mixer" && model ? <MixerTab model={model} onPatch={pushOps} /> : null}
 
-                    {tab === "ifx" && model ? (
-                      <InputFxTab model={model} xml={xml} onXml={markXml} />
-                    ) : null}
+                    {tab === "ifx" && model ? <InputFxTab model={model} onPatch={pushOps} /> : null}
 
                     {tab === "tfx" && model ? (
                       <>
@@ -705,18 +859,13 @@ export function App() {
                               min={0}
                               max={3}
                               value={num(model.tfxSetup, "A")}
-                              onChange={(e) => {
-                                const start = xml.indexOf("<tfx");
-                                if (start < 0) return;
-                                markXml(
-                                  patchSectionTags(
-                                    xml,
-                                    "SETUP",
-                                    { A: String(Number(e.target.value) || 0) },
-                                    start,
-                                  ),
-                                );
-                              }}
+                              onChange={(e) =>
+                                pushOps({
+                                  type: "tfx",
+                                  section: "SETUP",
+                                  tags: { A: String(Number(e.target.value) || 0) },
+                                })
+                              }
                             />
                           </div>
                         </div>
@@ -763,8 +912,8 @@ export function App() {
                         <button
                           type="button"
                           className="btn primary"
-                          disabled={!copyTargets.size || !backupAck}
-                          onClick={applyCopy}
+                          disabled={!copyTargets.size || !backupAck || saving}
+                          onClick={() => void applyCopy()}
                         >
                           Apply copy
                         </button>
@@ -775,16 +924,14 @@ export function App() {
               </div>
             ) : (
               <div className="editor-body">
-                {!sysXml ? (
+                {!sysBaseXml ? (
                   <p>SYSTEM1/2.RC0 not found in this folder.</p>
                 ) : (
                   <SystemTab
-                    xml={sysXml}
+                    baseXml={sysBaseXml}
+                    ops={sysOps}
                     side={sysSide}
-                    onXml={(next) => {
-                      setSysXml(next);
-                      setSysDirty(true);
-                    }}
+                    onPatch={pushSysOps}
                   />
                 )}
               </div>

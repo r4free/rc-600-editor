@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   INPUT_DYNAMICS_GROUPS,
   INPUT_EQ_CHANNELS,
@@ -14,8 +13,10 @@ import {
   visibleInputEqChannels,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchMemSection } from "@rc600/rc0/memory";
+import type { PatchOp } from "@rc600/rc0/ops";
+import { useState } from "react";
 import { Icon, type IconName } from "./Icon";
+import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
 type InputSub = "setup" | "eq" | "dynamics";
@@ -33,20 +34,15 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export type SectionPatcher = (xml: string, section: string, tags: TagMap) => string;
-
 export function InputTab({
   model,
-  xml,
-  onXml,
-  patchSection = patchMemSection,
+  onPatch,
+  scope = "mem",
   preference,
 }: {
   model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-  patchSection?: SectionPatcher;
-  /** When set (System editor), Preference MEMORY/SYSTEM is shown under Setup. */
+  onPatch: PatchHandler;
+  scope?: "mem" | "sys";
   preference?: { tags: TagMap; onChange: (tag: string, value: number) => void };
 }) {
   const [sub, setSub] = useState<InputSub>("setup");
@@ -55,7 +51,14 @@ export function InputTab({
   const eqSection = eqChannels.some((c) => c.section === eqCh) ? eqCh : eqChannels[0]?.section ?? "EQ_MIC1";
   const eqTags = model.eq[eqSection] ?? {};
 
-  const patchInput = (partial: TagMap) => onXml(patchSection(xml, "INPUT", partial));
+  const sectionOp = (section: string, tags: TagMap): PatchOp => ({
+    type: "section",
+    section,
+    tags,
+    scope,
+  });
+
+  const patchInput = (partial: TagMap) => onPatch(sectionOp("INPUT", partial));
 
   function setSetup(tag: string, value: number) {
     const partial: TagMap = { [tag]: String(value) };
@@ -67,12 +70,12 @@ export function InputTab({
           partial[to] = String(num(model.input, from));
         }
       }
-      let next = patchSection(xml, "INPUT", partial);
+      const ops: PatchOp[] = [sectionOp("INPUT", partial)];
       if (primary && secondary) {
-        next = patchSection(next, secondary.section, model.eq[primary.section] ?? {});
+        ops.push(sectionOp(secondary.section, model.eq[primary.section] ?? {}));
       }
-      next = patchSection(next, "MIXER", mixerCopyForInputLink(model.mixer, tag));
-      onXml(next);
+      ops.push(sectionOp("MIXER", mixerCopyForInputLink(model.mixer, tag)));
+      onPatch(ops);
       return;
     }
     patchInput(partial);
@@ -80,13 +83,13 @@ export function InputTab({
 
   function setEq(tag: string, value: number) {
     const partial = { [tag]: String(value) };
-    let next = patchSection(xml, eqSection, partial);
+    const ops: PatchOp[] = [sectionOp(eqSection, partial)];
     const partner = inputEqLinkPartner(eqSection);
     const ch = INPUT_EQ_CHANNELS.find((c) => c.section === eqSection);
     if (partner && ch && inputStereoLinked(model.input, ch.linkTag)) {
-      next = patchSection(next, partner, partial);
+      ops.push(sectionOp(partner, partial));
     }
-    onXml(next);
+    onPatch(ops);
   }
 
   function setDynamics(tag: string, value: number) {

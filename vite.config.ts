@@ -14,6 +14,7 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "dist/web"),
     emptyOutDir: true,
+    sourcemap: false,
   },
   server: {
     port: 5190,
@@ -22,6 +23,12 @@ export default defineConfig({
     allowedHosts: ["rc.test", "localhost"],
     headers: {
       "Permissions-Policy": "midi=(self)",
+    },
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:5191",
+        changeOrigin: true,
+      },
     },
   },
 });

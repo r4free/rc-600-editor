@@ -2,13 +2,13 @@ import { useState } from "react";
 import {
   ctlFunctionDef,
   expFunctionDef,
+  PREF_CTL_GROUP,
+  PREF_ALL_CLEAR,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchMemSection } from "@rc600/rc0/memory";
 import { Icon, type IconName } from "./Icon";
+import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
-import type { SectionPatcher } from "./InputTab";
-import { PREF_CTL_GROUP, PREF_ALL_CLEAR } from "@rc600/catalog/params";
 
 type CtlSub = "mode1" | "mode2" | "mode3" | "ext" | "pref";
 
@@ -36,15 +36,13 @@ function patchPedalFunction(tags: TagMap, nextFn: number): Record<string, string
 
 export function ControlTab({
   model,
-  xml,
-  onXml,
-  patchSection = patchMemSection,
+  onPatch,
+  scope = "mem",
   preference,
 }: {
   model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-  patchSection?: SectionPatcher;
+  onPatch: PatchHandler;
+  scope?: "mem" | "sys";
   preference?: { tags: TagMap; onChange: (tag: string, value: number) => void };
 }) {
   const subs = preference
@@ -117,13 +115,12 @@ export function ControlTab({
                   def={ctlFunctionDef("A", `Pedal ${pedal}`, value)}
                   value={value}
                   onChange={(v) =>
-                    onXml(
-                      patchSection(
-                        xml,
-                        `ICTL${modeNo}_PEDAL${pedal}`,
-                        patchPedalFunction(tags, v),
-                      ),
-                    )
+                    onPatch({
+                      type: "section",
+                      section: `ICTL${modeNo}_PEDAL${pedal}`,
+                      tags: patchPedalFunction(tags, v),
+                      scope,
+                    })
                   }
                 />
               );
@@ -133,7 +130,7 @@ export function ControlTab({
       ) : null}
 
       {sub === "ext" ? (
-        <ExtCtrlEditor model={model} xml={xml} onXml={onXml} patchSection={patchSection} system={Boolean(preference)} />
+        <ExtCtrlEditor model={model} onPatch={onPatch} scope={scope} system={Boolean(preference)} />
       ) : null}
     </div>
   );
@@ -141,15 +138,13 @@ export function ControlTab({
 
 function ExtCtrlEditor({
   model,
-  xml,
-  onXml,
-  patchSection,
+  onPatch,
+  scope,
   system,
 }: {
   model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-  patchSection: SectionPatcher;
+  onPatch: PatchHandler;
+  scope: "mem" | "sys";
   system?: boolean;
 }) {
   return (
@@ -165,30 +160,20 @@ function ExtCtrlEditor({
         const hold = num(tags, "B", 0);
         const click = num(tags, "C", 0);
         const patch = (partial: Record<string, string>) =>
-          onXml(patchSection(xml, `ECTL_CTL${n}`, partial));
+          onPatch({ type: "section", section: `ECTL_CTL${n}`, tags: partial, scope });
         return (
           <section key={n}>
             <h3 className="section-title">CTL {n}</h3>
             <div className="param-columns">
               <ParamControl
                 id={`ectl-ctl${n}-a`}
-                def={ctlFunctionDef(
-                  "A",
-                  "Push",
-                  push,
-                  "Functions when the switch is pressed.",
-                )}
+                def={ctlFunctionDef("A", "Push", push, "Functions when the switch is pressed.")}
                 value={push}
                 onChange={(v) => patch({ A: String(v) })}
               />
               <ParamControl
                 id={`ectl-ctl${n}-b`}
-                def={ctlFunctionDef(
-                  "B",
-                  "Hold",
-                  hold,
-                  "Functions when the switch is held down.",
-                )}
+                def={ctlFunctionDef("B", "Hold", hold, "Functions when the switch is held down.")}
                 value={hold}
                 onChange={(v) => patch({ B: String(v) })}
               />
@@ -213,7 +198,7 @@ function ExtCtrlEditor({
         const min = num(tags, "C", 0);
         const max = num(tags, "D", 100);
         const patch = (partial: Record<string, string>) =>
-          onXml(patchSection(xml, `ECTL_EXP${n}`, partial));
+          onPatch({ type: "section", section: `ECTL_EXP${n}`, tags: partial, scope });
         return (
           <section key={n}>
             <h3 className="section-title">EXP {n}</h3>

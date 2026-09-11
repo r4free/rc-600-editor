@@ -10,9 +10,7 @@ import {
   extractCount,
   findSection,
   getTagContent,
-  setTagContent,
   activeSide,
-  incrementCount,
   parseHexCount,
 } from "./xml-ops.js";
 
@@ -364,96 +362,6 @@ export function systemAsMemoryModel(xml: string): MemoryModel {
   return parseMemory(xml, 0);
 }
 
-/** Patch a top-level section in SYSTEM*.RC0 (no `<mem>` wrapper). */
-export function patchSysSection(xml: string, section: string, tags: TagMap): string {
-  return patchSectionTags(xml, section, tags);
-}
-
-/** Patch tags inside a named section under mem (or root for system). */
-export function patchSectionTags(
-  xml: string,
-  sectionName: string,
-  tags: TagMap,
-  parentFrom = 0,
-  parentTo = xml.length,
-): string {
-  const sec = findSection(xml, sectionName, parentFrom, parentTo);
-  if (!sec) return xml;
-  let next = xml;
-  // After each replace, re-find section because offsets shift.
-  for (const [tag, value] of Object.entries(tags)) {
-    const again = findSection(next, sectionName, parentFrom, next.length);
-    if (!again) break;
-    const patched = setTagContent(next, tag, value, again[0], again[1]);
-    if (patched) next = patched;
-  }
-  return next;
-}
-
-export function patchMemoryName(xml: string, name: string): string {
-  const mem = findSection(xml, "mem");
-  if (!mem) return xml;
-  return patchSectionTags(xml, "NAME", encodeNameChars(name), mem[0], mem[1]);
-}
-
-export function patchTrack(
-  xml: string,
-  trackNumber: number,
-  tags: TagMap,
-): string {
-  const mem = findSection(xml, "mem");
-  if (!mem) return xml;
-  return patchSectionTags(xml, `TRACK${trackNumber}`, tags, mem[0], mem[1]);
-}
-
-export function patchAssign(xml: string, assignNumber: number, tags: TagMap): string {
-  const mem = findSection(xml, "mem");
-  if (!mem) return xml;
-  return patchSectionTags(xml, `ASSIGN${assignNumber}`, tags, mem[0], mem[1]);
-}
-
-export function patchMemSection(xml: string, section: string, tags: TagMap): string {
-  const mem = findSection(xml, "mem");
-  if (!mem) return xml;
-  return patchSectionTags(xml, section, tags, mem[0], mem[1]);
-}
-
-/** Patch a named section inside `<ifx>` (SETUP, bank A–D, or slot AA–DD). */
-export function patchIfxSection(xml: string, section: string, tags: TagMap): string {
-  return patchFxFamilySection(xml, "ifx", section, tags);
-}
-
-/** Patch a named section inside `<tfx>` (SETUP, bank A–D, or slot AA–DD). */
-export function patchTfxSection(xml: string, section: string, tags: TagMap): string {
-  return patchFxFamilySection(xml, "tfx", section, tags);
-}
-
-function patchFxFamilySection(
-  xml: string,
-  kind: "ifx" | "tfx",
-  section: string,
-  tags: TagMap,
-): string {
-  let next = xml;
-  for (const [tag, value] of Object.entries(tags)) {
-    const parent = findSection(next, kind);
-    if (!parent) break;
-    const sec =
-      section.length === 1
-        ? findFxBankSection(next, section, parent[0], parent[1])
-        : findSection(next, section, parent[0], parent[1]);
-    if (!sec) break;
-    const from = section.length === 1 ? next.indexOf(">", sec[0]) + 1 : sec[0];
-    const patched = setTagContent(next, tag, value, from, sec[1]);
-    if (patched) next = patched;
-  }
-  return next;
-}
-
-export function prepareSaveXml(xml: string): string {
-  return incrementCount(xml);
-}
-
 export function pickActiveXml(xmlA: string, xmlB: string): { side: "a" | "b"; xml: string } {
   const side = activeSide(extractCount(xmlA), extractCount(xmlB));
   return { side, xml: side === "b" ? xmlB : xmlA };
@@ -463,4 +371,4 @@ export function inactiveSide(side: "a" | "b"): "a" | "b" {
   return side === "a" ? "b" : "a";
 }
 
-export { extractCount, parseHexCount, activeSide, incrementCount };
+export { extractCount, parseHexCount, activeSide };

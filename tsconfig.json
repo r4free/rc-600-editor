@@ -16,5 +16,5 @@
       "@rc600/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "web/src/**/*", "vite.config.ts"]
+  "include": ["src/**/*", "web/src/**/*", "server/**/*", "vite.config.ts"]
 }

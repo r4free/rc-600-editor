@@ -3,23 +3,23 @@ import {
   COLOR_PARAMS,
   MIDI_PARAMS,
   SETUP_GROUPS,
-  SETUP_MAPPED_TAGS,
   USB_PARAMS,
   USB_STORAGE_CONNECT,
   knobFunctionDef,
 } from "@rc600/catalog/params";
 import {
   parseSystem,
-  patchSysSection,
   systemAsMemoryModel,
   type TagMap,
 } from "@rc600/rc0/memory";
+import { applyOpsToModel, type PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
-import { ParamControl, TagMapEditor } from "./ParamControl";
+import { ParamControl } from "./ParamControl";
 import { InputTab } from "./InputTab";
 import { OutputTab } from "./OutputTab";
 import { MixerTab } from "./MixerTab";
 import { ControlTab } from "./ControlTab";
+import type { PatchHandler } from "./LoopTab";
 
 type SysPrimary =
   | "input"
@@ -47,30 +47,47 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Apply section ops onto parseSystem's section map for USB/MIDI/SETUP/COLOR/PREF. */
+function applySysSectionOps(
+  sections: Record<string, TagMap>,
+  ops: PatchOp[],
+): Record<string, TagMap> {
+  const next: Record<string, TagMap> = {};
+  for (const [k, v] of Object.entries(sections)) next[k] = { ...v };
+  for (const op of ops) {
+    if (op.type !== "section" || op.scope !== "sys") continue;
+    next[op.section] = { ...(next[op.section] ?? {}), ...op.tags };
+  }
+  return next;
+}
+
 export function SystemTab({
-  xml,
+  baseXml,
+  ops,
   side,
-  onXml,
+  onPatch,
 }: {
-  xml: string;
+  baseXml: string;
+  ops: PatchOp[];
   side: "1" | "2";
-  onXml: (next: string) => void;
+  onPatch: PatchHandler;
 }) {
   const [primary, setPrimary] = useState<SysPrimary>("input");
-  const model = useMemo(() => systemAsMemoryModel(xml), [xml]);
-  const system = useMemo(() => parseSystem(xml, side), [xml, side]);
-  const pref = system.sections.PREF ?? {};
+  const baseModel = useMemo(() => systemAsMemoryModel(baseXml), [baseXml]);
+  const model = useMemo(() => applyOpsToModel(baseModel, ops), [baseModel, ops]);
+  const baseSystem = useMemo(() => parseSystem(baseXml, side), [baseXml, side]);
+  const sections = useMemo(
+    () => applySysSectionOps(baseSystem.sections, ops),
+    [baseSystem.sections, ops],
+  );
+  const pref = sections.PREF ?? {};
+  const setupTags = sections.SETUP ?? {};
 
   const setPref = (tag: string, value: number) => {
-    onXml(patchSysSection(xml, "PREF", { [tag]: String(value) }));
+    onPatch({ type: "section", section: "PREF", tags: { [tag]: String(value) }, scope: "sys" });
   };
 
   const preference = { tags: pref, onChange: setPref };
-
-  const setupTags = system.sections.SETUP ?? {};
-  const setupOther = Object.fromEntries(
-    Object.entries(setupTags).filter(([tag]) => !SETUP_MAPPED_TAGS.has(tag)),
-  );
 
   return (
     <div className="system-tab">
@@ -91,42 +108,22 @@ export function SystemTab({
       </div>
 
       <p className="hint" style={{ marginTop: 0 }}>
-        Editing SYSTEM{side}.RC0 (active side by count {system.count}). Same Input / Output / Mixer /
-        Ctl layout as Memory; Preference chooses MEMORY vs SYSTEM on the pedal.
+        Editing SYSTEM{side}.RC0 (active side by count {baseSystem.count}). Same Input / Output /
+        Mixer / Ctl layout as Memory; Preference chooses MEMORY vs SYSTEM on the pedal.
       </p>
 
       {primary === "input" ? (
-        <InputTab
-          model={model}
-          xml={xml}
-          onXml={onXml}
-          patchSection={patchSysSection}
-          preference={preference}
-        />
+        <InputTab model={model} onPatch={onPatch} scope="sys" preference={preference} />
       ) : null}
 
       {primary === "output" ? (
-        <OutputTab
-          model={model}
-          xml={xml}
-          onXml={onXml}
-          patchSection={patchSysSection}
-          preference={preference}
-        />
+        <OutputTab model={model} onPatch={onPatch} scope="sys" preference={preference} />
       ) : null}
 
-      {primary === "mixer" ? (
-        <MixerTab model={model} xml={xml} onXml={onXml} patchSection={patchSysSection} />
-      ) : null}
+      {primary === "mixer" ? <MixerTab model={model} onPatch={onPatch} scope="sys" /> : null}
 
       {primary === "ctl" ? (
-        <ControlTab
-          model={model}
-          xml={xml}
-          onXml={onXml}
-          patchSection={patchSysSection}
-          preference={preference}
-        />
+        <ControlTab model={model} onPatch={onPatch} scope="sys" preference={preference} />
       ) : null}
 
       {primary === "usb" ? (
@@ -147,12 +144,17 @@ export function SystemTab({
                   value={
                     storageLocked
                       ? USB_STORAGE_CONNECT
-                      : num(system.sections.USB ?? {}, def.tag, def.default ?? 0)
+                      : num(sections.USB ?? {}, def.tag, def.default ?? 0)
                   }
                   disabled={storageLocked}
                   onChange={(v) => {
                     if (storageLocked) return;
-                    onXml(patchSysSection(xml, "USB", { [def.tag]: String(v) }));
+                    onPatch({
+                      type: "section",
+                      section: "USB",
+                      tags: { [def.tag]: String(v) },
+                      scope: "sys",
+                    });
                   }}
                 />
               );
@@ -170,8 +172,15 @@ export function SystemTab({
                 key={def.tag}
                 id={`midi-${def.tag}`}
                 def={def}
-                value={num(system.sections.MIDI ?? {}, def.tag, def.default ?? 0)}
-                onChange={(v) => onXml(patchSysSection(xml, "MIDI", { [def.tag]: String(v) }))}
+                value={num(sections.MIDI ?? {}, def.tag, def.default ?? 0)}
+                onChange={(v) =>
+                  onPatch({
+                    type: "section",
+                    section: "MIDI",
+                    tags: { [def.tag]: String(v) },
+                    scope: "sys",
+                  })
+                }
               />
             ))}
           </div>
@@ -180,10 +189,7 @@ export function SystemTab({
 
       {primary === "setup" ? (
         <>
-          <p className="hint">
-            System SETUP and LOOP STATUS COLOR (Parameter Guide). Unmapped SETUP tags stay editable
-            below until FX Knob Mode and related fields are confirmed in RC0.
-          </p>
+          <p className="hint">System SETUP and LOOP STATUS COLOR (Parameter Guide).</p>
           <div className="channel-grid">
             {SETUP_GROUPS.filter((g) => g.title !== "Knob Func").map((group) => (
               <section key={group.title} className="channel-card">
@@ -196,7 +202,12 @@ export function SystemTab({
                       def={def}
                       value={num(setupTags, def.tag, def.default ?? 0)}
                       onChange={(v) =>
-                        onXml(patchSysSection(xml, "SETUP", { [def.tag]: String(v) }))
+                        onPatch({
+                          type: "section",
+                          section: "SETUP",
+                          tags: { [def.tag]: String(v) },
+                          scope: "sys",
+                        })
                       }
                     />
                   ))}
@@ -211,9 +222,14 @@ export function SystemTab({
                     key={def.tag}
                     id={`color-${def.tag}`}
                     def={def}
-                    value={num(system.sections.COLOR ?? {}, def.tag, def.default ?? 0)}
+                    value={num(sections.COLOR ?? {}, def.tag, def.default ?? 0)}
                     onChange={(v) =>
-                      onXml(patchSysSection(xml, "COLOR", { [def.tag]: String(v) }))
+                      onPatch({
+                        type: "section",
+                        section: "COLOR",
+                        tags: { [def.tag]: String(v) },
+                        scope: "sys",
+                      })
                     }
                   />
                 ))}
@@ -232,25 +248,17 @@ export function SystemTab({
                   def={knobFunctionDef(def.tag, def.name, raw)}
                   value={raw}
                   onChange={(v) =>
-                    onXml(patchSysSection(xml, "SETUP", { [def.tag]: String(v) }))
+                    onPatch({
+                      type: "section",
+                      section: "SETUP",
+                      tags: { [def.tag]: String(v) },
+                      scope: "sys",
+                    })
                   }
                 />
               );
             })}
           </div>
-          {Object.keys(setupOther).length > 0 ? (
-            <>
-              <h3 className="section-title">Other SETUP tags</h3>
-              <p className="hint">
-                Tags F, G, J, O–V (and any extras) are still present in SYSTEM*.RC0 but not fully
-                mapped yet — edit raw values so nothing is lost.
-              </p>
-              <TagMapEditor
-                tags={setupOther}
-                onChange={(tag, value) => onXml(patchSysSection(xml, "SETUP", { [tag]: value }))}
-              />
-            </>
-          ) : null}
         </>
       ) : null}
     </div>

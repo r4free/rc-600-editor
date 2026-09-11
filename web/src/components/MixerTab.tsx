@@ -8,10 +8,9 @@ import {
   type MixerGroup,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { patchMemSection } from "@rc600/rc0/memory";
 import { Icon, type IconName } from "./Icon";
+import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
-import type { SectionPatcher } from "./InputTab";
 
 type MixerSub = "input" | "output";
 
@@ -29,14 +28,12 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
 
 export function MixerTab({
   model,
-  xml,
-  onXml,
-  patchSection = patchMemSection,
+  onPatch,
+  scope = "mem",
 }: {
   model: MemoryModel;
-  xml: string;
-  onXml: (next: string) => void;
-  patchSection?: SectionPatcher;
+  onPatch: PatchHandler;
+  scope?: "mem" | "sys";
 }) {
   const [sub, setSub] = useState<MixerSub>("input");
   const groups = sub === "input" ? MIXER_INPUT_GROUPS : MIXER_OUTPUT_GROUPS;
@@ -46,7 +43,7 @@ export function MixerTab({
     const partial: TagMap = { [tag]: String(value) };
     const partner = mixerLinkPartner(tag, model.input, model.output);
     if (partner) partial[partner] = String(value);
-    onXml(patchSection(xml, "MIXER", partial));
+    onPatch({ type: "section", section: "MIXER", tags: partial, scope });
   }
 
   return (
