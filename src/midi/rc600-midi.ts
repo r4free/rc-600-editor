@@ -77,13 +77,80 @@ export function isLikelyRc600(name: string): boolean {
   return /rc[\s-]?600/i.test(name);
 }
 
+export type MidiPermissionState = PermissionState | "unknown";
+
+/** Chrome/Edge remember MIDI per origin; query so we can skip the Allow button. */
+export async function queryMidiPermission(sysex = false): Promise<MidiPermissionState> {
+  const permissions = typeof navigator !== "undefined" ? navigator.permissions : undefined;
+  if (!permissions?.query) return "unknown";
+  try {
+    const status = await permissions.query({ name: "midi", sysex } as PermissionDescriptor);
+    return status.state;
+  } catch {
+    try {
+      const status = await permissions.query({ name: "midi" } as PermissionDescriptor);
+      return status.state;
+    } catch {
+      return "unknown";
+    }
+  }
+}
+
+export function shouldReuseMidiAccess(
+  permission: MidiPermissionState,
+  previouslyAllowed: boolean,
+): boolean {
+  return permission === "granted" || (permission === "unknown" && previouslyAllowed);
+}
+
+const MIDI_PREFS_KEY = "rc600.midi.prefs";
+
+export interface MidiSessionPrefs {
+  allowed: boolean;
+  outId: string | null;
+  channel: number;
+}
+
+const DEFAULT_MIDI_PREFS: MidiSessionPrefs = { allowed: false, outId: null, channel: 0 };
+
+export function loadMidiPrefs(): MidiSessionPrefs {
+  if (typeof localStorage === "undefined") return { ...DEFAULT_MIDI_PREFS };
+  try {
+    const raw = localStorage.getItem(MIDI_PREFS_KEY);
+    if (!raw) return { ...DEFAULT_MIDI_PREFS };
+    const parsed = JSON.parse(raw) as Partial<MidiSessionPrefs>;
+    const channel = parsed.channel;
+    return {
+      allowed: parsed.allowed === true,
+      outId: typeof parsed.outId === "string" && parsed.outId ? parsed.outId : null,
+      channel:
+        typeof channel === "number" && Number.isInteger(channel) && channel >= 0 && channel <= 15
+          ? channel
+          : 0,
+    };
+  } catch {
+    return { ...DEFAULT_MIDI_PREFS };
+  }
+}
+
+export function saveMidiPrefs(patch: Partial<MidiSessionPrefs>): MidiSessionPrefs {
+  const next = { ...loadMidiPrefs(), ...patch };
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(MIDI_PREFS_KEY, JSON.stringify(next));
+  }
+  return next;
+}
+
 export class Rc600Midi {
   private access: MIDIAccess | null = null;
   private out: MIDIOutput | null = null;
   channel = 0; // 0-based
+  onStateChange: ((ports: { outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }) => void) | null =
+    null;
 
   async requestAccess(): Promise<{ outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }> {
     this.access = await navigator.requestMIDIAccess({ sysex: false });
+    this.access.onstatechange = () => this.onStateChange?.(this.listPorts());
     return this.listPorts();
   }
 

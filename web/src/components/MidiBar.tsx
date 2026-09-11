@@ -53,7 +53,7 @@ export function MidiBar({
     <div className="midi-bar">
       {!hasAccess ? (
         <button type="button" className="btn primary" disabled={busy} onClick={onRequestAccess}>
-          Allow MIDI
+          {busy ? "MIDI…" : "Allow MIDI"}
         </button>
       ) : (
         <>

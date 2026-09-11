@@ -41,6 +41,10 @@ import {
   Rc600Midi,
   midiEnvironment,
   isLikelyRc600,
+  loadMidiPrefs,
+  queryMidiPermission,
+  saveMidiPrefs,
+  shouldReuseMidiAccess,
   type MidiPortInfo,
 } from "@rc600/midi/rc600-midi";
 
@@ -79,12 +83,13 @@ export function App() {
 
   const midiRef = useRef(new Rc600Midi());
   const env = useMemo(() => midiEnvironment(), []);
+  const midiPrefs = useMemo(() => loadMidiPrefs(), []);
   const [midiAccess, setMidiAccess] = useState(false);
   const [outputs, setOutputs] = useState<MidiPortInfo[]>([]);
-  const [outId, setOutId] = useState<string | null>(null);
+  const [outId, setOutId] = useState<string | null>(midiPrefs.outId);
   const [connected, setConnected] = useState<string | null>(null);
-  const [midiCh, setMidiCh] = useState(0);
-  const [midiBusy, setMidiBusy] = useState(false);
+  const [midiCh, setMidiCh] = useState(midiPrefs.channel);
+  const [midiBusy, setMidiBusy] = useState(() => env.supported && midiPrefs.allowed);
 
   const [sysSide, setSysSide] = useState<"1" | "2">("1");
   const [sysXml, setSysXml] = useState("");
@@ -326,35 +331,117 @@ export function App() {
     setStatus(`Copiado (${copyMode}) para ${copyTargets.size} slots`);
   }
 
-  async function requestMidi() {
-    setMidiBusy(true);
-    try {
-      const ports = await midiRef.current.requestAccess();
+  const applyMidiPorts = useCallback(
+    (ports: { outputs: MidiPortInfo[] }, autoConnect: boolean) => {
       setMidiAccess(true);
       setOutputs(ports.outputs);
-      const preferred = ports.outputs.find((p) => isLikelyRc600(p.name));
-      if (preferred) setOutId(preferred.id);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setMidiBusy(false);
-    }
-  }
+      const prefs = loadMidiPrefs();
+      const preferred =
+        ports.outputs.find((p) => p.id === outId) ??
+        ports.outputs.find((p) => p.id === prefs.outId) ??
+        ports.outputs.find((p) => isLikelyRc600(p.name));
+      const nextOutId = preferred?.id ?? outId;
+      if (nextOutId) setOutId(nextOutId);
+      saveMidiPrefs({ allowed: true, outId: nextOutId ?? prefs.outId, channel: midiCh });
+      if (autoConnect && nextOutId) {
+        midiRef.current.channel = midiCh;
+        if (midiRef.current.connect(nextOutId)) setConnected(midiRef.current.connectedName);
+      }
+    },
+    [midiCh, outId],
+  );
+
+  const requestMidi = useCallback(
+    async (autoConnect = false) => {
+      setMidiBusy(true);
+      try {
+        const ports = await midiRef.current.requestAccess();
+        applyMidiPorts(ports, autoConnect);
+      } catch (e) {
+        saveMidiPrefs({ allowed: false });
+        setMidiAccess(false);
+        setError(String(e));
+      } finally {
+        setMidiBusy(false);
+      }
+    },
+    [applyMidiPorts],
+  );
 
   function refreshMidi() {
     const ports = midiRef.current.listPorts();
-    setOutputs(ports.outputs);
+    applyMidiPorts(ports, Boolean(connected));
   }
 
   function connectMidi() {
     if (!outId) return;
     midiRef.current.channel = midiCh;
-    if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
+    if (midiRef.current.connect(outId)) {
+      setConnected(midiRef.current.connectedName);
+      saveMidiPrefs({ allowed: true, outId, channel: midiCh });
+    }
   }
+
+  const applyMidiPortsRef = useRef(applyMidiPorts);
+  applyMidiPortsRef.current = applyMidiPorts;
+  const requestMidiRef = useRef(requestMidi);
+  requestMidiRef.current = requestMidi;
+  const connectedRef = useRef(connected);
+  connectedRef.current = connected;
 
   useEffect(() => {
     midiRef.current.channel = midiCh;
+    saveMidiPrefs({ channel: midiCh });
   }, [midiCh]);
+
+  useEffect(() => {
+    const midi = midiRef.current;
+    midi.onStateChange = (ports) => {
+      applyMidiPortsRef.current(ports, !connectedRef.current);
+    };
+    return () => {
+      midi.onStateChange = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!env.supported) return;
+    let cancelled = false;
+    let status: PermissionStatus | undefined;
+    const onPermissionChange = () => {
+      if (status?.state === "granted") void requestMidiRef.current(true);
+    };
+
+    async function restoreMidi() {
+      const permission = await queryMidiPermission();
+      if (cancelled) return;
+      if (!shouldReuseMidiAccess(permission, loadMidiPrefs().allowed)) {
+        setMidiBusy(false);
+        return;
+      }
+      await requestMidiRef.current(true);
+    }
+
+    void restoreMidi();
+
+    void (async () => {
+      try {
+        status = await navigator.permissions.query({
+          name: "midi",
+          sysex: false,
+        } as PermissionDescriptor);
+        if (cancelled) return;
+        status.addEventListener("change", onPermissionChange);
+      } catch {
+        /* Permissions API for MIDI is optional */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      status?.removeEventListener("change", onPermissionChange);
+    };
+  }, [env.supported]);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "name", label: "NAME" },
@@ -842,8 +929,11 @@ export function App() {
         connectedName={connected}
         busy={midiBusy}
         hasAccess={midiAccess}
-        onRequestAccess={requestMidi}
-        onSelectOut={setOutId}
+        onRequestAccess={() => void requestMidi(true)}
+        onSelectOut={(id) => {
+          setOutId(id);
+          saveMidiPrefs({ outId: id || null });
+        }}
         onConnect={connectMidi}
         onDisconnect={() => {
           midiRef.current.disconnect();

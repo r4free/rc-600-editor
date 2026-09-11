@@ -1,6 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { isLikelyRc600, midiEnvironment } from "./rc600-midi.js";
+import {
+  isLikelyRc600,
+  loadMidiPrefs,
+  midiEnvironment,
+  queryMidiPermission,
+  saveMidiPrefs,
+  shouldReuseMidiAccess,
+} from "./rc600-midi.js";
 
 describe("rc600 midi helpers", () => {
   it("detects RC-600 port names", () => {
@@ -12,5 +19,49 @@ describe("rc600 midi helpers", () => {
   it("reports environment in node as unavailable or insecure", () => {
     const env = midiEnvironment();
     assert.ok(env.blockReason === "unavailable" || env.blockReason === "insecure" || env.blockReason === "ok");
+  });
+
+  it("reuses MIDI access after the origin already allowed it", () => {
+    assert.equal(shouldReuseMidiAccess("granted", false), true);
+    assert.equal(shouldReuseMidiAccess("granted", true), true);
+    assert.equal(shouldReuseMidiAccess("unknown", true), true);
+    assert.equal(shouldReuseMidiAccess("unknown", false), false);
+    assert.equal(shouldReuseMidiAccess("prompt", true), false);
+    assert.equal(shouldReuseMidiAccess("denied", true), false);
+  });
+
+  it("reports unknown MIDI permission in node", async () => {
+    assert.equal(await queryMidiPermission(), "unknown");
+  });
+
+  it("persists MIDI session prefs in localStorage", () => {
+    const store = new Map<string, string>();
+    const previous = globalThis.localStorage;
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+        clear: () => store.clear(),
+        key: () => null,
+        length: 0,
+      },
+    });
+    try {
+      assert.deepEqual(loadMidiPrefs(), { allowed: false, outId: null, channel: 0 });
+      saveMidiPrefs({ allowed: true, outId: "out-1", channel: 3 });
+      assert.deepEqual(loadMidiPrefs(), { allowed: true, outId: "out-1", channel: 3 });
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(globalThis, "localStorage");
+      } else {
+        Object.defineProperty(globalThis, "localStorage", { configurable: true, value: previous });
+      }
+    }
   });
 });
