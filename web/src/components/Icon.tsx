@@ -49,6 +49,7 @@ const ICONS = {
   loop: "mdi:repeat",
   record: "mdi:record-circle",
   folderOpen: "mdi:folder-open-outline",
+  eject: "mdi:eject",
   archive: "mdi:folder-zip-outline",
   restore: "mdi:restore",
   note: "mdi:music-note",

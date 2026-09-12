@@ -90,7 +90,33 @@ export type DirectoryHandleLike = {
     getFile: () => Promise<File>;
     createWritable: () => Promise<{ write: (d: string) => Promise<void>; close: () => Promise<void> }>;
   }>;
+  queryPermission?: (descriptor?: { mode?: "read" | "readwrite" }) => Promise<PermissionState>;
+  requestPermission?: (descriptor?: { mode?: "read" | "readwrite" }) => Promise<PermissionState>;
 };
+
+export async function queryDirectoryPermission(
+  handle: DirectoryHandleLike,
+  mode: "read" | "readwrite" = "readwrite",
+): Promise<PermissionState | "unknown"> {
+  if (typeof handle.queryPermission !== "function") return "unknown";
+  try {
+    return await handle.queryPermission({ mode });
+  } catch {
+    return "unknown";
+  }
+}
+
+export async function requestDirectoryPermission(
+  handle: DirectoryHandleLike,
+  mode: "read" | "readwrite" = "readwrite",
+): Promise<PermissionState | "unknown"> {
+  if (typeof handle.requestPermission !== "function") return "unknown";
+  try {
+    return await handle.requestPermission({ mode });
+  } catch {
+    return "unknown";
+  }
+}
 
 async function walkDir(
   dir: DirectoryHandleLike,

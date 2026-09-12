@@ -17,11 +17,20 @@ import {
   licensePublic,
   requireLicenseEnabled,
 } from "./licenses.js";
+import { ejectRc600Usb, isLocalUsbHost } from "./usb-eject.js";
 
 const app = new Hono();
 
 app.get("/api/session", (c) => {
   return c.json(readSessionInfo(c));
+});
+
+app.get("/api/health", (c) => {
+  return c.json({
+    ok: true,
+    mode: requireLicenseEnabled() ? "license" : "open",
+    hasDist: existsSync(resolve(process.cwd(), "dist/web")),
+  });
 });
 
 /** Activate a license key (only meaningful when RC600_REQUIRE_LICENSE is on). */
@@ -61,6 +70,30 @@ app.post("/api/lock", (c) => {
   return c.json(readSessionInfo(c));
 });
 
+app.get("/api/usb", (c) => {
+  return c.json({ eject: isLocalUsbHost(c.req.header("host")) });
+});
+
+/** Eject the BOSS RC-600 mass-storage volume so the pedal can leave USB Storage and power off. Local editor only. */
+app.post("/api/usb/eject", async (c) => {
+  if (!isLocalUsbHost(c.req.header("host"))) {
+    return c.json(
+      {
+        error:
+          "USB eject only runs on the local editor. Release the folder here, then eject BOSS RC-600 from the OS.",
+      },
+      403,
+    );
+  }
+  try {
+    const result = await ejectRc600Usb();
+    return c.json(result, result.ok ? 200 : 404);
+  } catch (e) {
+    console.error("usb eject failed", e);
+    return c.json({ error: "Eject failed" }, 500);
+  }
+});
+
 app.post("/api/assemble", requireAccess, async (c) => {
   let body: AssembleRequest;
   try {
@@ -97,8 +130,15 @@ app.post("/api/assemble", requireAccess, async (c) => {
 
 const distWeb = resolve(process.cwd(), "dist/web");
 if (existsSync(distWeb)) {
-  app.use("/*", serveStatic({ root: distWeb }));
-  app.get("*", serveStatic({ root: distWeb, path: "index.html" }));
+  // Never let the SPA catch /api/* — assemble must hit the JSON handlers above.
+  app.use("*", async (c, next) => {
+    if (c.req.path.startsWith("/api")) return next();
+    return serveStatic({ root: distWeb })(c, next);
+  });
+  app.get("*", async (c, next) => {
+    if (c.req.path.startsWith("/api")) return next();
+    return serveStatic({ root: distWeb, path: "index.html" })(c, next);
+  });
 }
 
 const port = Number(process.env.PORT || 5191);

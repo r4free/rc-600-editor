@@ -11,11 +11,14 @@ import {
 import { applyOpsToModel, normalizeOps, type PatchOp } from "@rc600/rc0/ops";
 import {
   type DirectoryHandleLike,
+  filesFromDirectoryHandle,
   filesFromFileList,
   filesFromZip,
   hasSystem,
   listMemorySlots,
   pickRolandDirectory,
+  queryDirectoryPermission,
+  requestDirectoryPermission,
   slotFileName,
   systemFileName,
   writeFileToDirectory,
@@ -23,7 +26,9 @@ import {
 } from "@rc600/files/roland";
 import {
   assembleRemote,
+  ejectUsbStorage,
   fetchSession,
+  fetchUsbStatus,
   lockSession,
   type SessionInfo,
 } from "./api";
@@ -49,6 +54,14 @@ import {
   shouldReuseMidiAccess,
   type MidiPortInfo,
 } from "@rc600/midi/rc600-midi";
+import {
+  clearFolderMeta,
+  clearRolandHandle,
+  loadFolderMeta,
+  loadRolandHandle,
+  saveFolderMeta,
+  saveRolandHandle,
+} from "@rc600/files/folder-store";
 
 type Workspace = "memory" | "system";
 
@@ -89,6 +102,11 @@ export function App() {
   const [files, setFiles] = useState<Map<string, string>>(new Map());
   const [rootLabel, setRootLabel] = useState<string | null>(null);
   const dirHandleRef = useRef<DirectoryHandleLike | null>(null);
+  const [hasDirHandle, setHasDirHandle] = useState(false);
+  const [folderReady, setFolderReady] = useState(false);
+  const [pendingHandle, setPendingHandle] = useState<DirectoryHandleLike | null>(null);
+  const [usbEjectLocal, setUsbEjectLocal] = useState(false);
+  const [ejecting, setEjecting] = useState(false);
   const [backupAck, setBackupAck] = useState(false);
   const [slot, setSlot] = useState<number | null>(null);
   const [activeSide, setActiveSide] = useState<"a" | "b">("a");
@@ -122,6 +140,16 @@ export function App() {
     let cancelled = false;
     void fetchSession().then((info) => {
       if (!cancelled) setSession(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchUsbStatus().then((info) => {
+      if (!cancelled) setUsbEjectLocal(info.eject);
     });
     return () => {
       cancelled = true;
@@ -205,6 +233,92 @@ export function App() {
     setSysDirty(true);
   }, []);
 
+  const applyRolandFiles = useCallback(
+    (
+      map: Map<string, string>,
+      label: string,
+      opts?: { backupAck?: boolean; preferredSlot?: number | null },
+    ) => {
+      setFiles(map);
+      setRootLabel(label);
+      setBackupAck(opts?.backupAck ?? false);
+      setPendingHandle(null);
+      setStatus(`${map.size} files · ${label}`);
+      const slotsNow = listMemorySlots(map);
+      const preferred = opts?.preferredSlot;
+      const first = preferred && slotsNow.includes(preferred) ? preferred : slotsNow[0];
+      if (first) loadSlot(first, map);
+      if (hasSystem(map)) loadSystem(map);
+    },
+    [loadSlot, loadSystem],
+  );
+  const applyRolandFilesRef = useRef(applyRolandFiles);
+  applyRolandFilesRef.current = applyRolandFiles;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function restoreFolder() {
+      try {
+        const handle = await loadRolandHandle();
+        if (cancelled) return;
+        if (!handle) {
+          setFolderReady(true);
+          return;
+        }
+        const perm = await queryDirectoryPermission(handle);
+        if (cancelled) return;
+        if (perm === "prompt") {
+          setPendingHandle(handle);
+          setRootLabel(loadFolderMeta().rootLabel);
+          setFolderReady(true);
+          return;
+        }
+        if (perm === "denied") {
+          await clearRolandHandle();
+          clearFolderMeta();
+          setFolderReady(true);
+          return;
+        }
+        try {
+          const result = await filesFromDirectoryHandle(handle);
+          if (cancelled) return;
+          const meta = loadFolderMeta();
+          dirHandleRef.current = result.handle;
+          setHasDirHandle(true);
+          applyRolandFilesRef.current(result.files.files, result.files.rootLabel, {
+            backupAck: meta.backupAck,
+            preferredSlot: meta.lastSlot,
+          });
+          saveFolderMeta({ rootLabel: result.files.rootLabel });
+        } catch {
+          if (cancelled) return;
+          setPendingHandle(handle);
+          setRootLabel(loadFolderMeta().rootLabel);
+        }
+      } catch {
+        /* IndexedDB restore is best-effort */
+      } finally {
+        if (!cancelled) setFolderReady(true);
+      }
+    }
+    void restoreFolder();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function attachDirectoryHandle(handle: DirectoryHandleLike, label: string | null) {
+    dirHandleRef.current = handle;
+    setHasDirHandle(true);
+    await saveRolandHandle(handle);
+    saveFolderMeta({ rootLabel: label });
+  }
+
+  function dropLiveHandle() {
+    dirHandleRef.current = null;
+    setHasDirHandle(false);
+  }
+
   async function openDirectory() {
     setError(null);
     try {
@@ -213,14 +327,9 @@ export function App() {
         setError("File System Access API is unavailable — use Files or ZIP.");
         return;
       }
-      dirHandleRef.current = result.handle;
-      setFiles(result.files.files);
-      setRootLabel(result.files.rootLabel);
-      setBackupAck(false);
-      setStatus(`${result.files.files.size} files · ${result.files.rootLabel}`);
-      const first = listMemorySlots(result.files.files)[0];
-      if (first) loadSlot(first, result.files.files);
-      if (hasSystem(result.files.files)) loadSystem(result.files.files);
+      await attachDirectoryHandle(result.handle, result.files.rootLabel);
+      saveFolderMeta({ backupAck: false });
+      applyRolandFiles(result.files.files, result.files.rootLabel, { backupAck: false });
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       setError(String(e));
@@ -229,33 +338,21 @@ export function App() {
 
   async function openFiles(list: FileList | null) {
     if (!list?.length) return;
-    dirHandleRef.current = null;
+    dropLiveHandle();
     const rolled = await filesFromFileList(list);
-    setFiles(rolled.files);
-    setRootLabel(rolled.rootLabel);
-    setBackupAck(false);
-    setStatus(`${rolled.files.size} files`);
-    const first = listMemorySlots(rolled.files)[0];
-    if (first) loadSlot(first, rolled.files);
-    if (hasSystem(rolled.files)) loadSystem(rolled.files);
+    applyRolandFiles(rolled.files, rolled.rootLabel, { backupAck: false });
   }
 
   async function openZip(file: File | null) {
     if (!file) return;
-    dirHandleRef.current = null;
+    dropLiveHandle();
     const rolled = await filesFromZip(await file.arrayBuffer());
-    setFiles(rolled.files);
-    setRootLabel(rolled.rootLabel);
-    setBackupAck(false);
-    setStatus(`${rolled.files.size} files (ZIP)`);
-    const first = listMemorySlots(rolled.files)[0];
-    if (first) loadSlot(first, rolled.files);
-    if (hasSystem(rolled.files)) loadSystem(rolled.files);
+    applyRolandFiles(rolled.files, rolled.rootLabel, { backupAck: false });
   }
 
   async function loadDemoFixtures() {
     setError(null);
-    dirHandleRef.current = null;
+    dropLiveHandle();
     const names = [
       "MEMORY001A.RC0",
       "MEMORY001B.RC0",
@@ -273,25 +370,78 @@ export function App() {
           map.set(`DATA/${name}`, await res.text());
         }),
       );
-      setFiles(map);
-      setRootLabel("fixtures (demo)");
-      setBackupAck(false);
-      setStatus(`${map.size} demo files`);
-      loadSlot(1, map);
-      loadSystem(map);
+      applyRolandFiles(map, "fixtures (demo)", { backupAck: false, preferredSlot: 1 });
     } catch (e) {
       setError(String(e));
     }
   }
 
+  async function reconnectLastFolder() {
+    const handle = pendingHandle;
+    if (!handle) return;
+    setError(null);
+    const perm = await requestDirectoryPermission(handle);
+    if (perm !== "granted" && perm !== "unknown") {
+      setError("Folder access was not granted. Choose the ROLAND folder again.");
+      return;
+    }
+    try {
+      const result = await filesFromDirectoryHandle(handle);
+      const meta = loadFolderMeta();
+      await attachDirectoryHandle(result.handle, result.files.rootLabel);
+      applyRolandFiles(result.files.files, result.files.rootLabel, {
+        backupAck: meta.backupAck,
+        preferredSlot: meta.lastSlot,
+      });
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function forgetSavedFolder() {
+    setPendingHandle(null);
+    dropLiveHandle();
+    await clearRolandHandle();
+    clearFolderMeta();
+    if (files.size === 0) setRootLabel(null);
+  }
+
+  async function ejectUsb() {
+    if (dirty || sysDirty) {
+      setError("Save memory/system first, then eject USB so the RC-600 can power off.");
+      return;
+    }
+    setEjecting(true);
+    setError(null);
+    dropLiveHandle();
+    setFiles(new Map());
+    setSlot(null);
+    setBaseXml("");
+    setOps([]);
+    setSysBaseXml("");
+    setSysOps([]);
+    setDirty(false);
+    setSysDirty(false);
+    setPendingHandle(await loadRolandHandle());
+    try {
+      if (usbEjectLocal) {
+        const result = await ejectUsbStorage();
+        setStatus(result.message);
+        if (!result.ok) setError(result.message);
+      } else {
+        setStatus(
+          "Folder released. Eject BOSS RC-600 in File Explorer, wait for DISCONNECTING…, then power off.",
+        );
+      }
+    } finally {
+      setEjecting(false);
+    }
+  }
+
   async function saveCurrent() {
     if (!slot || !baseXml) return;
-    if (!sessionOk) {
-      setError(
-        requireLicense
-          ? "Enter a valid license key before saving."
-          : "Cannot reach the assemble API.",
-      );
+    if (requireLicense && !sessionOk) {
+      setError("Enter a valid license key before saving.");
       return;
     }
     if (!backupAck) {
@@ -332,12 +482,8 @@ export function App() {
 
   async function saveSystem() {
     if (!sysBaseXml) return;
-    if (!sessionOk) {
-      setError(
-        requireLicense
-          ? "Enter a valid license key before saving."
-          : "Cannot reach the assemble API.",
-      );
+    if (requireLicense && !sessionOk) {
+      setError("Enter a valid license key before saving.");
       return;
     }
     if (!backupAck) {
@@ -396,12 +542,8 @@ export function App() {
 
   async function applyCopy() {
     if (!slot || !baseXml || copyTargets.size === 0) return;
-    if (!sessionOk) {
-      setError(
-        requireLicense
-          ? "Enter a valid license key before copying."
-          : "Cannot reach the assemble API.",
-      );
+    if (requireLicense && !sessionOk) {
+      setError("Enter a valid license key before copying.");
       return;
     }
     if (!backupAck) {
@@ -571,6 +713,16 @@ export function App() {
     };
   }, [env.supported]);
 
+  useEffect(() => {
+    if (!hasDirHandle || slot == null) return;
+    saveFolderMeta({ lastSlot: slot });
+  }, [hasDirHandle, slot]);
+
+  useEffect(() => {
+    if (!hasDirHandle) return;
+    saveFolderMeta({ backupAck });
+  }, [hasDirHandle, backupAck]);
+
   const tabs: { id: TabId; label: string }[] = [
     { id: "info", label: "Info" },
     { id: "loop", label: "Loop" },
@@ -657,6 +809,18 @@ export function App() {
           <button type="button" className="btn" disabled={!files.size} onClick={downloadZip}>
             Download ZIP
           </button>
+          {hasDirHandle || usbEjectLocal || pendingHandle ? (
+            <button
+              type="button"
+              className="btn"
+              disabled={ejecting}
+              onClick={() => void ejectUsb()}
+              title="Eject USB Storage so the RC-600 can leave CONNECTING and you can power off"
+            >
+              <Icon name="eject" size={14} />
+              {ejecting ? "Ejecting…" : "Eject USB"}
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn warn"
@@ -715,21 +879,62 @@ export function App() {
 
       {files.size === 0 ? (
         <div className="empty-state editor-panel">
-          <h2>Open the ROLAND folder</h2>
-          <p>
-            Put the RC-600 in USB Storage (MENU → USB → STORAGE ON) or choose a backup on disk.
-            Prefer working on a <strong>copy</strong>.
-          </p>
-          <p>Chrome/Edge: Open folder. Firefox: ZIP or file picker.</p>
-          <div className="row-actions" style={{ justifyContent: "center" }}>
-            <button type="button" className="btn primary" onClick={openDirectory}>
-              <Icon name="folderOpen" size={14} />
-              Open ROLAND folder
-            </button>
-            <button type="button" className="btn" onClick={loadDemoFixtures}>
-              Load demo fixtures
-            </button>
-          </div>
+          {!folderReady ? (
+            <>
+              <h2>Opening last folder…</h2>
+              <p>Chrome/Edge can reopen the ROLAND folder you already allowed.</p>
+            </>
+          ) : pendingHandle ? (
+            <>
+              <h2>Reconnect the ROLAND folder</h2>
+              <p>
+                Last folder: <strong>{rootLabel ?? "ROLAND"}</strong>. One click restores it — no
+                picker. Put the RC-600 in USB Storage first if you are writing to the pedal.
+              </p>
+              <div className="row-actions" style={{ justifyContent: "center" }}>
+                <button type="button" className="btn primary" onClick={() => void reconnectLastFolder()}>
+                  <Icon name="restore" size={14} />
+                  Reconnect folder
+                </button>
+                <button type="button" className="btn" onClick={() => void openDirectory()}>
+                  <Icon name="folderOpen" size={14} />
+                  Choose a different folder
+                </button>
+                <button type="button" className="btn ghost" onClick={() => void forgetSavedFolder()}>
+                  Forget saved folder
+                </button>
+              </div>
+              {usbEjectLocal ? (
+                <p className="hint">
+                  When you are done, Eject USB tells the RC-600 to disconnect so you can power off.
+                </p>
+              ) : (
+                <p className="hint">
+                  When you are done, Eject USB releases the folder so you can eject BOSS RC-600 in
+                  File Explorer and power off.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h2>Open the ROLAND folder</h2>
+              <p>
+                Put the RC-600 in USB Storage (MENU → USB → STORAGE ON) or choose a backup on disk.
+                Prefer working on a <strong>copy</strong>. Chrome/Edge remember the folder after the
+                first pick.
+              </p>
+              <p>Chrome/Edge: Open folder. Firefox: ZIP or file picker.</p>
+              <div className="row-actions" style={{ justifyContent: "center" }}>
+                <button type="button" className="btn primary" onClick={() => void openDirectory()}>
+                  <Icon name="folderOpen" size={14} />
+                  Open ROLAND folder
+                </button>
+                <button type="button" className="btn" onClick={() => void loadDemoFixtures()}>
+                  Load demo fixtures
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="main">
@@ -782,6 +987,26 @@ export function App() {
                   <div className="sidebar-head">
                     <span>Memories ({slots.length})</span>
                   </div>
+                  <select
+                    className="mem-select"
+                    aria-label="Memories"
+                    value={slot ?? ""}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      if (Number.isFinite(next) && next > 0) loadSlot(next);
+                    }}
+                  >
+                    {slot == null ? (
+                      <option value="" disabled>
+                        Select a memory
+                      </option>
+                    ) : null}
+                    {summaries.map((s) => (
+                      <option key={s.slot} value={s.slot}>
+                        {String(s.slot).padStart(2, "0")} {s.name || "—"} {s.active.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
                   <div className="mem-list">
                     {summaries.map((s) => (
                       <button

@@ -59,7 +59,22 @@ export async function fetchSession(): Promise<SessionInfo> {
       // Prefer staying open so a downed API does not trap users on a license screen.
       return { ok: true, mode: "open", requireLicense: false, license: null };
     }
-    return (await res.json()) as SessionInfo;
+    const data = (await res.json()) as Partial<SessionInfo> & { ok?: boolean };
+    // Public mode (default): never block the editor on a stale unlock cookie / old API shape.
+    if (data.requireLicense !== true) {
+      return {
+        ok: true,
+        mode: "open",
+        requireLicense: false,
+        license: data.license ?? null,
+      };
+    }
+    return {
+      ok: Boolean(data.ok),
+      mode: "license",
+      requireLicense: true,
+      license: data.license ?? null,
+    };
   } catch {
     return { ok: true, mode: "open", requireLicense: false, license: null };
   }
@@ -95,15 +110,73 @@ export async function lockSession(): Promise<SessionInfo | null> {
   }
 }
 
+export type UsbStatus = { eject: boolean };
+
+export async function fetchUsbStatus(): Promise<UsbStatus> {
+  try {
+    const res = await fetch("/api/usb", { credentials: "include" });
+    if (!res.ok) return { eject: false };
+    const data = (await res.json()) as { eject?: boolean };
+    return { eject: data.eject === true };
+  } catch {
+    return { eject: false };
+  }
+}
+
+export async function ejectUsbStorage(): Promise<{
+  ok: boolean;
+  ejected?: string[];
+  message: string;
+}> {
+  try {
+    const res = await fetch("/api/usb/eject", { method: "POST", credentials: "include" });
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      ejected?: string[];
+      message?: string;
+      error?: string;
+    };
+    if (!res.ok) {
+      return { ok: false, message: data.error || data.message || "Eject failed" };
+    }
+    return {
+      ok: data.ok !== false,
+      ejected: data.ejected,
+      message: data.message || "USB ejected.",
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "Cannot reach the eject API. Eject BOSS RC-600 from File Explorer, then power off.",
+    };
+  }
+}
+
 export async function assembleRemote(req: AssembleRequest): Promise<AssembleResponse> {
-  const res = await fetch("/api/assemble", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
+  let res: Response;
+  try {
+    res = await fetch("/api/assemble", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+  } catch {
+    throw new Error(
+      "Cannot reach /api/assemble. On Render the Start Command must be `npm start` (API + dist/web). In local dev run `npm run dev` so Vite proxies /api.",
+    );
+  }
   if (res.status === 401) {
-    throw new Error("License required or expired — enter a valid license key to save.");
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(
+      data.error || "License required or expired — enter a valid license key to save.",
+    );
+  }
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      `Assemble API returned ${res.status} (not JSON). The server is probably only serving the static site — check that npm start is running server/index.ts.`,
+    );
   }
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
