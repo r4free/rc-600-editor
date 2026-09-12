@@ -90,7 +90,14 @@ app.post("/api/usb/eject", async (c) => {
     return c.json(result, result.ok ? 200 : 404);
   } catch (e) {
     console.error("usb eject failed", e);
-    return c.json({ error: "Eject failed" }, 500);
+    return c.json(
+      {
+        ok: false,
+        error:
+          "Could not eject the BOSS RC-600 drive. Eject it from File Explorer, wait for DISCONNECTING…, then power off.",
+      },
+      500,
+    );
   }
 });
 

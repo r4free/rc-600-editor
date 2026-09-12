@@ -310,7 +310,11 @@ export function App() {
   async function attachDirectoryHandle(handle: DirectoryHandleLike, label: string | null) {
     dirHandleRef.current = handle;
     setHasDirHandle(true);
-    await saveRolandHandle(handle);
+    try {
+      await saveRolandHandle(handle);
+    } catch {
+      /* IndexedDB persist is best-effort */
+    }
     saveFolderMeta({ rootLabel: label });
   }
 

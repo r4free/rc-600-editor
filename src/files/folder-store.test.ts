@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   FOLDER_META_KEY,
   clearFolderMeta,
+  ensureHandleStore,
+  hasHandleStore,
   loadFolderMeta,
   saveFolderMeta,
 } from "./folder-store.js";
@@ -59,6 +61,32 @@ describe("folder meta", () => {
       );
       assert.equal(loadFolderMeta().lastSlot, null);
       assert.equal(loadFolderMeta().backupAck, true);
+    });
+  });
+});
+
+describe("handle object store", () => {
+  it("detects a missing handles store on an older empty database", () => {
+    const empty = { contains: (name: string) => name === "meta" };
+    assert.equal(hasHandleStore(empty), false);
+    const created: string[] = [];
+    ensureHandleStore({
+      objectStoreNames: empty,
+      createObjectStore: (name) => {
+        created.push(name);
+      },
+    });
+    assert.deepEqual(created, ["handles"]);
+  });
+
+  it("does not recreate the handles store when it already exists", () => {
+    const present = { contains: (name: string) => name === "handles" };
+    assert.equal(hasHandleStore(present), true);
+    ensureHandleStore({
+      objectStoreNames: present,
+      createObjectStore: () => {
+        throw new Error("should not create");
+      },
     });
   });
 });

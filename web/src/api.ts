@@ -128,8 +128,14 @@ export async function ejectUsbStorage(): Promise<{
   ejected?: string[];
   message: string;
 }> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const res = await fetch("/api/usb/eject", { method: "POST", credentials: "include" });
+    const res = await fetch("/api/usb/eject", {
+      method: "POST",
+      credentials: "include",
+      signal: ctrl.signal,
+    });
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
       ejected?: string[];
@@ -144,11 +150,20 @@ export async function ejectUsbStorage(): Promise<{
       ejected: data.ejected,
       message: data.message || "USB ejected.",
     };
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      return {
+        ok: false,
+        message:
+          "Eject is taking too long. Eject BOSS RC-600 from File Explorer, wait for DISCONNECTING…, then power off.",
+      };
+    }
     return {
       ok: false,
       message: "Cannot reach the eject API. Eject BOSS RC-600 from File Explorer, then power off.",
     };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

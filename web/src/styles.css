@@ -25,6 +25,7 @@ html,
 body,
 #root {
   margin: 0;
+  height: 100%;
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
@@ -46,9 +47,10 @@ textarea {
 }
 
 .app {
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
   max-width: 1440px;
   margin: 0 auto;
   padding: 0.75rem 1rem 1rem;
@@ -64,6 +66,7 @@ textarea {
   background: var(--bg-panel);
   border: 1px solid var(--line);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -230,15 +233,17 @@ textarea {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .memory-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  align-items: start;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -247,8 +252,8 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  width: 100%;
-  max-height: 60vh;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sidebar-head {
@@ -275,18 +280,35 @@ textarea {
 
 .mem-list {
   overflow: auto;
-  flex: 0 1 auto;
+  flex: 1;
   min-height: 0;
   padding: 0.4rem;
 }
 
 @media (max-width: 900px) {
+  .app {
+    height: auto;
+    min-height: 100%;
+  }
+
+  .main {
+    overflow: visible;
+    flex: 1 1 auto;
+  }
+
+  .main .editor-panel {
+    height: auto;
+    overflow: visible;
+  }
+
   .memory-layout {
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .sidebar {
-    max-height: none;
+    height: auto;
+    overflow: visible;
     border-right: none;
     border-bottom: 1px solid var(--line);
   }
@@ -346,6 +368,8 @@ textarea {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .editor-panel {
@@ -355,6 +379,11 @@ textarea {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+}
+
+.main .editor-panel {
+  height: 100%;
+  overflow: hidden;
 }
 
 .tabs {
@@ -811,6 +840,7 @@ textarea {
   padding: 0.55rem 0.75rem;
   background: var(--bg-panel);
   border: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .midi-bar select {
@@ -837,6 +867,7 @@ textarea {
   padding: 2rem 1rem;
   text-align: center;
   color: var(--muted);
+  flex: 1;
 }
 
 .empty-state h2 {

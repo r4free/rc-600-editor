@@ -4,19 +4,13 @@ import { existsSync, readdirSync } from "node:fs";
 
 const execFileAsync = promisify(execFile);
 
-const WIN_EJECT_PS = [
-  "$ErrorActionPreference = 'Stop'",
-  "$drives = @(Get-CimInstance -ClassName Win32_LogicalDisk -Filter 'DriveType=2' |",
-  "  Where-Object { Test-Path -LiteralPath ($_.DeviceID + '\\ROLAND\\DATA') })",
-  "if ($drives.Count -eq 0) { Write-Output 'NONE'; exit 0 }",
-  "$shell = New-Object -ComObject Shell.Application",
-  "$computer = $shell.NameSpace(17)",
-  "foreach ($d in $drives) {",
-  "  $item = $computer.ParseName($d.DeviceID)",
-  "  if ($item) { $item.InvokeVerb('Eject') }",
-  "  Write-Output $d.DeviceID",
-  "}",
-].join("; ");
+const WIN_EJECT_PS =
+  "$ErrorActionPreference = 'Stop'; " +
+  "$drives = @(Get-CimInstance -ClassName Win32_LogicalDisk -Filter 'DriveType=2' | Where-Object { Test-Path -LiteralPath ($_.DeviceID + '\\ROLAND\\DATA') }); " +
+  "if ($drives.Count -eq 0) { Write-Output 'NONE'; exit 0 }; " +
+  "$shell = New-Object -ComObject Shell.Application; " +
+  "$computer = $shell.NameSpace(17); " +
+  "foreach ($d in $drives) { $item = $computer.ParseName($d.DeviceID); if ($item) { $item.InvokeVerb('Eject') }; Write-Output $d.DeviceID }";
 
 export function isLocalUsbHost(
   hostHeader: string | undefined,
@@ -54,14 +48,11 @@ export async function ejectRc600Usb(
   run: typeof execFileAsync = execFileAsync,
 ): Promise<{ ok: boolean; ejected: string[]; message: string }> {
   if (platform === "win32") {
-    const { stdout } = await run("powershell.exe", [
-      "-NoProfile",
-      "-NonInteractive",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-Command",
-      WIN_EJECT_PS,
-    ]);
+    const { stdout } = await run(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", WIN_EJECT_PS],
+      { windowsHide: true, timeout: 20000 },
+    );
     const ejected = parseEjectStdout(String(stdout ?? ""));
     if (ejected.length === 0) {
       return {
@@ -90,7 +81,7 @@ export async function ejectRc600Usb(
     }
     const ejected: string[] = [];
     for (const vol of volumes) {
-      await run("diskutil", ["eject", vol]);
+      await run("diskutil", ["eject", vol], { timeout: 20000 });
       ejected.push(vol);
     }
     return {
