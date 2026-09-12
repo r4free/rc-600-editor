@@ -71,6 +71,19 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function DevNotice() {
+  return (
+    <div className="dev-notice" role="status">
+      <Icon name="alert" size={14} />
+      <p>
+        <strong>Early development — not fully tested yet.</strong> This project is still in
+        progress. The UI is English-only. Always back up your ROLAND folder before saving to the
+        looper.
+      </p>
+    </div>
+  );
+}
+
 export function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [files, setFiles] = useState<Map<string, string>>(new Map());
@@ -574,6 +587,7 @@ export function App() {
   if (session === null) {
     return (
       <div className="app">
+        <DevNotice />
         <div className="empty-state editor-panel">
           <p>Checking session…</p>
         </div>
@@ -584,6 +598,7 @@ export function App() {
   if (requireLicense && !sessionOk) {
     return (
       <div className="app">
+        <DevNotice />
         <header className="topbar">
           <div className="topbar-start">
             <div className="brand">
@@ -600,6 +615,7 @@ export function App() {
 
   return (
     <div className="app">
+      <DevNotice />
       <header className="topbar">
         <div className="topbar-start">
           <div className="brand">

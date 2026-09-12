@@ -32,7 +32,16 @@ RC600_REQUIRE_LICENSE=1 RC600_SESSION_SECRET=… npm start
 
 Com a flag ligada, a UI pede a key e a sessão respeita a data de expiração.
 
-## Produção
+## Produção (Render)
+
+No dashboard do Web Service:
+
+- **Root Directory:** (vazio — raiz do repo)
+- **Build Command:** `npm install && npm run build`
+- **Start Command:** `npm start`  
+  (= `tsx server/index.ts` — **não** use `src/server/...`)
+
+Ou use o [`render.yaml`](render.yaml) do repo.
 
 ```bash
 npm run build
@@ -40,7 +49,7 @@ RC600_SESSION_SECRET=… npm start
 # opcional: RC600_REQUIRE_LICENSE=1
 ```
 
-O processo em `:5191` serve `dist/web` e `/api`. Web MIDI precisa de HTTPS (ou localhost).
+O processo escuta `0.0.0.0:$PORT` e serve `dist/web` + `/api`. Web MIDI precisa de HTTPS (ou localhost).
 
 Copiar só a pasta estática **não** basta: Save/Copy exigem a API.
 

@@ -102,10 +102,11 @@ if (existsSync(distWeb)) {
 }
 
 const port = Number(process.env.PORT || 5191);
+const hostname = process.env.HOST || "0.0.0.0";
 
-serve({ fetch: app.fetch, port, hostname: "127.0.0.1" }, (info) => {
+serve({ fetch: app.fetch, port, hostname }, (info) => {
   const mode = requireLicenseEnabled() ? "license required" : "public (open)";
-  console.log(`RC-600 API on http://127.0.0.1:${info.port} · ${mode}`);
+  console.log(`RC-600 API on http://${hostname}:${info.port} · ${mode}`);
   if (!existsSync(distWeb)) {
     console.log("(no dist/web — API only; use Vite proxy in dev)");
   }

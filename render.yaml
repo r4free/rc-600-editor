@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: rc600-editor
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RC600_SESSION_SECRET
+        generateValue: true
+      # Leave unset/false for public beta. Set to "1" to require license keys.
+      - key: RC600_REQUIRE_LICENSE
+        value: "0"

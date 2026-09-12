@@ -198,6 +198,34 @@ textarea {
   font-size: 0.78rem;
 }
 
+.dev-notice {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
+  background: color-mix(in srgb, var(--warn) 12%, var(--bg));
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.dev-notice .ui-icon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--warn);
+}
+
+.dev-notice p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.dev-notice strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .main {
   display: grid;
   grid-template-columns: 1fr;
