@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { usePersistedTab } from "../uiTabs";
 import {
   MASTER_FX_PARAMS,
   OUTPUT_EQ_CHANNELS,
   OUTPUT_EQ_PARAMS,
+  OUTPUT_EQ_SECTIONS,
   OUTPUT_INPUT_THRU,
   OUTPUT_PHONES_RHYTHM,
   OUTPUT_RHYTHM_OUT,
@@ -34,8 +35,10 @@ import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
-type OutputSub = "setup" | "routing" | "eq" | "mfx";
-type RoutingSub = "track" | "input" | "phones";
+const OUTPUT_SUBS = ["setup", "routing", "eq", "mfx"] as const;
+type OutputSub = (typeof OUTPUT_SUBS)[number];
+const ROUTING_SUBS_IDS = ["track", "input", "phones"] as const;
+type RoutingSub = (typeof ROUTING_SUBS_IDS)[number];
 
 const SUBS: { id: OutputSub; label: string; icon: IconName }[] = [
   { id: "setup", label: "Setup", icon: "system" },
@@ -74,9 +77,17 @@ export function OutputTab({
   scope?: "mem" | "sys";
   preference?: { tags: TagMap; onChange: (tag: string, value: number) => void };
 }) {
-  const [sub, setSub] = useState<OutputSub>("setup");
-  const [routingSub, setRoutingSub] = useState<RoutingSub>("track");
-  const [eqCh, setEqCh] = useState<OutputEqSection>("EQ_MAINOUTL");
+  const [sub, setSub] = usePersistedTab<OutputSub>(`output.${scope}`, "setup", OUTPUT_SUBS);
+  const [routingSub, setRoutingSub] = usePersistedTab<RoutingSub>(
+    `outputRouting.${scope}`,
+    "track",
+    ROUTING_SUBS_IDS,
+  );
+  const [eqCh, setEqCh] = usePersistedTab<OutputEqSection>(
+    `outputEq.${scope}`,
+    "EQ_MAINOUTL",
+    OUTPUT_EQ_SECTIONS,
+  );
   const eqChannels = visibleOutputEqChannels(model.output);
   const eqSection = eqChannels.some((c) => c.section === eqCh)
     ? eqCh

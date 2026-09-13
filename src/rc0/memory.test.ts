@@ -202,6 +202,17 @@ describe("assemble (server writer)", () => {
     assert.equal(parseHexCount(extractCount(out)), before + 1);
   });
 
+  it("writes Rhythm Kit (RHYTHM D) into the memory XML", () => {
+    const xml = fix("MEMORY001A.RC0");
+    assert.equal(parseMemory(xml, 1).rhythm.D, "0");
+    const { xml: out } = assemble({
+      kind: "patch",
+      xml,
+      ops: [{ type: "section", section: "RHYTHM", tags: { D: "15" } }],
+    });
+    assert.equal(parseMemory(out, 1).rhythm.D, "15");
+  });
+
   it("copies assigns between memories", () => {
     const source = fix("MEMORY001A.RC0");
     const target = fix("MEMORY002A.RC0");

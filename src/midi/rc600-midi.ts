@@ -274,8 +274,8 @@ export class Rc600Midi {
     this.send([0xc0 | (this.channel & 0x0f), pc]);
   }
 
-  controlChange(cc: number, value: number): void {
-    this.send([0xb0 | (this.channel & 0x0f), cc & 0x7f, value & 0x7f]);
+  controlChange(cc: number, value: number, allRc600 = false): void {
+    this.send([0xb0 | (this.channel & 0x0f), cc & 0x7f, value & 0x7f], allRc600);
   }
 
   start(): void {

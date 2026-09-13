@@ -50,6 +50,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
         className={`info-tip-btn${open ? " open" : ""}`}
         aria-expanded={open}
         aria-label={`About ${label}`}
+        title={text}
         onClick={() => setOpen((v) => !v)}
       >
         <Icon name="info" size={14} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePersistedTab } from "../uiTabs";
 import {
   ctlFunctionDef,
   expFunctionDef,
@@ -10,7 +10,8 @@ import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
-type CtlSub = "mode1" | "mode2" | "mode3" | "ext" | "pref";
+const CTL_SUBS_WITH_PREF = ["mode1", "mode2", "mode3", "ext", "pref"] as const;
+type CtlSub = (typeof CTL_SUBS_WITH_PREF)[number];
 
 const SUBS: { id: CtlSub; label: string; icon: IconName }[] = [
   { id: "mode1", label: "Mode 1", icon: "controls" },
@@ -48,8 +49,9 @@ export function ControlTab({
   const subs = preference
     ? [...SUBS, { id: "pref" as const, label: "Preference", icon: "system" as IconName }]
     : SUBS;
-  const [sub, setSub] = useState<CtlSub>("mode1");
-  const modeNo = sub === "mode1" ? 1 : sub === "mode2" ? 2 : sub === "mode3" ? 3 : 0;
+  const [sub, setSub] = usePersistedTab<CtlSub>(`ctl.${scope}`, "mode1", CTL_SUBS_WITH_PREF);
+  const visibleSub = !preference && sub === "pref" ? "mode1" : sub;
+  const modeNo = visibleSub === "mode1" ? 1 : visibleSub === "mode2" ? 2 : visibleSub === "mode3" ? 3 : 0;
 
   return (
     <div className="ctl-tab">
@@ -59,8 +61,8 @@ export function ControlTab({
             key={t.id}
             type="button"
             role="tab"
-            aria-selected={sub === t.id}
-            className={`tab ${sub === t.id ? "active" : ""}`}
+            aria-selected={visibleSub === t.id}
+            className={`tab ${visibleSub === t.id ? "active" : ""}`}
             onClick={() => setSub(t.id)}
           >
             <Icon name={t.icon} size={14} />
@@ -69,7 +71,7 @@ export function ControlTab({
         ))}
       </div>
 
-      {sub === "pref" && preference ? (
+      {visibleSub === "pref" && preference ? (
         <>
           <p className="hint">
             MEMORY uses the Ctl Func settings stored in each memory. SYSTEM uses these global
@@ -129,7 +131,7 @@ export function ControlTab({
         </>
       ) : null}
 
-      {sub === "ext" ? (
+      {visibleSub === "ext" ? (
         <ExtCtrlEditor model={model} onPatch={onPatch} scope={scope} system={Boolean(preference)} />
       ) : null}
     </div>

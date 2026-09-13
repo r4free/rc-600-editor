@@ -2,6 +2,7 @@ import {
   INPUT_DYNAMICS_GROUPS,
   INPUT_EQ_CHANNELS,
   INPUT_EQ_PARAMS,
+  INPUT_EQ_SECTIONS,
   INPUT_MIC_DYNAMICS_LINK,
   INPUT_SETUP_GROUPS,
   PREF_INPUT_GROUP,
@@ -14,12 +15,13 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
-import { useState } from "react";
 import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
+import { usePersistedTab } from "../uiTabs";
 
-type InputSub = "setup" | "eq" | "dynamics";
+const INPUT_SUBS = ["setup", "eq", "dynamics"] as const;
+type InputSub = (typeof INPUT_SUBS)[number];
 
 const SUBS: { id: InputSub; label: string; icon: IconName }[] = [
   { id: "setup", label: "Setup", icon: "system" },
@@ -45,8 +47,12 @@ export function InputTab({
   scope?: "mem" | "sys";
   preference?: { tags: TagMap; onChange: (tag: string, value: number) => void };
 }) {
-  const [sub, setSub] = useState<InputSub>("setup");
-  const [eqCh, setEqCh] = useState<InputEqSection>("EQ_MIC1");
+  const [sub, setSub] = usePersistedTab<InputSub>(`input.${scope}`, "setup", INPUT_SUBS);
+  const [eqCh, setEqCh] = usePersistedTab<InputEqSection>(
+    `inputEq.${scope}`,
+    "EQ_MIC1",
+    INPUT_EQ_SECTIONS,
+  );
   const eqChannels = visibleInputEqChannels(model.input);
   const eqSection = eqChannels.some((c) => c.section === eqCh) ? eqCh : eqChannels[0]?.section ?? "EQ_MIC1";
   const eqTags = model.eq[eqSection] ?? {};

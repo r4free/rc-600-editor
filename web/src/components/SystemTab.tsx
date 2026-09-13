@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { usePersistedTab } from "../uiTabs";
 import {
   COLOR_PARAMS,
   MIDI_PARAMS,
@@ -21,14 +22,8 @@ import { MixerTab } from "./MixerTab";
 import { ControlTab } from "./ControlTab";
 import type { PatchHandler } from "./LoopTab";
 
-type SysPrimary =
-  | "input"
-  | "output"
-  | "mixer"
-  | "ctl"
-  | "usb"
-  | "midi"
-  | "setup";
+const SYS_TABS = ["input", "output", "mixer", "ctl", "usb", "midi", "setup"] as const;
+type SysPrimary = (typeof SYS_TABS)[number];
 
 const PRIMARY: { id: SysPrimary; label: string; icon: IconName }[] = [
   { id: "input", label: "Input", icon: "mic" },
@@ -72,7 +67,7 @@ export function SystemTab({
   side: "1" | "2";
   onPatch: PatchHandler;
 }) {
-  const [primary, setPrimary] = useState<SysPrimary>("input");
+  const [primary, setPrimary] = usePersistedTab<SysPrimary>("system", "input", SYS_TABS);
   const baseModel = useMemo(() => systemAsMemoryModel(baseXml), [baseXml]);
   const model = useMemo(() => applyOpsToModel(baseModel, ops), [baseModel, ops]);
   const baseSystem = useMemo(() => parseSystem(baseXml, side), [baseXml, side]);

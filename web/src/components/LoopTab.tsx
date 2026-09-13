@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePersistedTab } from "../uiTabs";
 import {
   PLAY_ALL_START_BITS,
   PLAY_ALL_STOP_BITS,
@@ -14,11 +15,14 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
+import { trackCopyTags } from "../presets/trackCopy";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ParamControl } from "./ParamControl";
 
-type LoopSub = "track" | "rec" | "play" | "rhythm";
+const LOOP_SUBS = ["track", "rec", "play", "rhythm"] as const;
+type LoopSub = (typeof LOOP_SUBS)[number];
+const TRACK_NOS = [1, 2, 3, 4, 5, 6] as const;
 
 const SUBS: { id: LoopSub; label: string; icon: IconName }[] = [
   { id: "track", label: "Tracks", icon: "loop" },
@@ -43,11 +47,33 @@ export function LoopTab({
   model: MemoryModel;
   onPatch: PatchHandler;
 }) {
-  const [sub, setSub] = useState<LoopSub>("track");
-  const [trackNo, setTrackNo] = useState(1);
+  const [sub, setSub] = usePersistedTab<LoopSub>("loop", "track", LOOP_SUBS);
+  const [trackNo, setTrackNo] = usePersistedTab("loopTrack", 1, TRACK_NOS);
+  const [sameTracks, setSameTracks] = useState<Set<number>>(() => new Set());
+
   const track = model.tracks[trackNo - 1] ?? {};
   const recorded = num(track, "V") > 0 || num(track, "X") > 0;
   const inputMask = num(track, "Q", 127);
+
+  useEffect(() => {
+    setSameTracks((prev) => {
+      if (!prev.has(trackNo)) return prev;
+      const next = new Set(prev);
+      next.delete(trackNo);
+      return next;
+    });
+  }, [trackNo]);
+
+  function copyToSelectedTracks() {
+    if (sameTracks.size === 0) return;
+    const tags = trackCopyTags(track);
+    const ops: PatchOp[] = [...sameTracks].map((t) => ({
+      type: "track",
+      track: t,
+      tags,
+    }));
+    onPatch(ops);
+  }
 
   return (
     <div className="loop-tab">
@@ -70,7 +96,7 @@ export function LoopTab({
       {sub === "track" ? (
         <>
           <div className="tabs tabs-sub" role="tablist" aria-label="Track">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+            {TRACK_NOS.map((n) => (
               <button
                 key={n}
                 type="button"
@@ -135,6 +161,41 @@ export function LoopTab({
                 }
               />
             ))}
+          </div>
+
+          <div className="copy-panel track-copy-panel">
+            <h3 className="section-title">Copy Track {trackNo} settings</h3>
+            <p className="hint">
+              Copies editable track settings to other tracks in this memory (not Phrase / WAV). Save
+              memory when you are ready to write.
+            </p>
+
+            <div className="track-copy-targets">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <label key={n}>
+                  <input
+                    type="checkbox"
+                    checked={sameTracks.has(n)}
+                    disabled={n === trackNo}
+                    onChange={(e) => {
+                      const next = new Set(sameTracks);
+                      if (e.target.checked) next.add(n);
+                      else next.delete(n);
+                      setSameTracks(next);
+                    }}
+                  />
+                  Track {n}
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={sameTracks.size === 0}
+              onClick={copyToSelectedTracks}
+            >
+              Copy to selected tracks
+            </button>
           </div>
         </>
       ) : null}

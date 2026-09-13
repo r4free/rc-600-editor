@@ -44,6 +44,7 @@ const ICONS = {
   alert: "mdi:alert-outline",
   keyboard: "mdi:keyboard",
   live: "mdi:circle",
+  dirty: "mdi:circle-medium",
   guitar: "mdi:guitar-electric",
   info: "mdi:information-outline",
   loop: "mdi:repeat",

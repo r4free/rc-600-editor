@@ -66,20 +66,31 @@ import {
   saveRolandHandle,
 } from "@rc600/files/folder-store";
 import { parseRhythmChannel } from "./drumMap";
+import { findRhythmKitAssign, kitIndexToCcValue } from "@rc600/catalog/rhythm-kit-midi";
+import {
+  appendSlotDraft,
+  clearSlotDraft,
+  dirtySlotNumbers,
+  type DraftMap,
+} from "./presets/memoryDrafts";
+import { usePersistedTab } from "./uiTabs";
 
-type Workspace = "memory" | "system" | "play-drum";
+const WORKSPACES = ["memory", "system", "play-drum"] as const;
+type Workspace = (typeof WORKSPACES)[number];
 
-type TabId =
-  | "info"
-  | "loop"
-  | "ctl"
-  | "assigns"
-  | "input"
-  | "output"
-  | "mixer"
-  | "ifx"
-  | "tfx"
-  | "copy";
+const MEMORY_TABS = [
+  "info",
+  "loop",
+  "ctl",
+  "assigns",
+  "input",
+  "output",
+  "mixer",
+  "ifx",
+  "tfx",
+  "copy",
+] as const;
+type TabId = (typeof MEMORY_TABS)[number];
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -115,15 +126,16 @@ export function App() {
   const [slot, setSlot] = useState<number | null>(null);
   const [activeSide, setActiveSide] = useState<"a" | "b">("a");
   const [baseXml, setBaseXml] = useState("");
-  const [ops, setOps] = useState<PatchOp[]>([]);
-  const [dirty, setDirty] = useState(false);
-  const [tab, setTab] = useState<TabId>("loop");
-  const [workspace, setWorkspace] = useState<Workspace>("memory");
+  const [drafts, setDrafts] = useState<DraftMap>(() => new Map());
+  const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS);
+  const [workspace, setWorkspace] = usePersistedTab<Workspace>("workspace", "memory", WORKSPACES);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [discardAllOpen, setDiscardAllOpen] = useState(false);
 
   const midiRef = useRef(new Rc600Midi());
+  const pendingMemoryReloadRef = useRef<number | null>(null);
   const env = useMemo(() => midiEnvironment(), []);
   const midiPrefs = useMemo(() => loadMidiPrefs(), []);
   const [midiAccess, setMidiAccess] = useState(false);
@@ -181,6 +193,14 @@ export function App() {
     });
   }, [files, slots]);
 
+  const ops = useMemo(
+    () => (slot == null ? [] : (drafts.get(slot) ?? [])),
+    [drafts, slot],
+  );
+  const dirty = ops.length > 0;
+  const dirtySlots = useMemo(() => dirtySlotNumbers(drafts), [drafts]);
+  const anyMemoryDirty = dirtySlots.length > 0;
+
   const model: MemoryModel | null = useMemo(() => {
     if (!baseXml || slot == null) return null;
     return applyOpsToModel(parseMemory(baseXml, slot), ops);
@@ -220,8 +240,6 @@ export function App() {
         setBaseXml((a || b)!);
       }
       setSlot(s);
-      setOps([]);
-      setDirty(false);
       setError(null);
     },
     [files],
@@ -240,10 +258,13 @@ export function App() {
     setSysDirty(false);
   }, [files]);
 
-  const pushOps = useCallback((next: PatchOp | PatchOp[]) => {
-    setOps((prev) => [...prev, ...normalizeOps(next)]);
-    setDirty(true);
-  }, []);
+  const pushOps = useCallback(
+    (next: PatchOp | PatchOp[]) => {
+      if (slot == null) return;
+      setDrafts((prev) => appendSlotDraft(prev, slot, normalizeOps(next)));
+    },
+    [slot],
+  );
 
   const pushSysOps = useCallback((next: PatchOp | PatchOp[]) => {
     setSysOps((prev) => [...prev, ...normalizeOps(next)]);
@@ -260,6 +281,7 @@ export function App() {
       setRootLabel(label);
       setBackupAck(opts?.backupAck ?? false);
       setPendingHandle(null);
+      setDrafts(new Map());
       setStatus(`${map.size} files · ${label}`);
       const slotsNow = listMemorySlots(map);
       const preferred = opts?.preferredSlot;
@@ -428,7 +450,7 @@ export function App() {
   }
 
   async function ejectUsb() {
-    if (dirty || sysDirty) {
+    if (anyMemoryDirty || sysDirty) {
       setError("Save memory/system first, then eject USB so the RC-600 can power off.");
       return;
     }
@@ -438,10 +460,9 @@ export function App() {
     setFiles(new Map());
     setSlot(null);
     setBaseXml("");
-    setOps([]);
+    setDrafts(new Map());
     setSysBaseXml("");
     setSysOps([]);
-    setDirty(false);
     setSysDirty(false);
     setPendingHandle(await loadRolandHandle());
     try {
@@ -459,6 +480,29 @@ export function App() {
     }
   }
 
+  async function saveSlotXml(
+    targetSlot: number,
+    xml: string,
+    slotOps: PatchOp[],
+    map: Map<string, string>,
+  ): Promise<{ path: string; saved: string; side: "a" | "b" }> {
+    const aPath = slotFileName(targetSlot, "A");
+    const bPath = slotFileName(targetSlot, "B");
+    const a = map.get(aPath);
+    const b = map.get(bPath);
+    if (!a && !b) throw new Error(`Memory ${targetSlot} not found`);
+    const picked =
+      targetSlot === slot && xml
+        ? { side: activeSide, xml }
+        : a && b
+          ? pickActiveXml(a, b)
+          : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
+    const base = targetSlot === slot ? xml : picked.xml;
+    const { xml: saved } = await assembleRemote({ kind: "patch", xml: base, ops: slotOps });
+    const path = slotFileName(targetSlot, picked.side === "a" ? "A" : "B");
+    return { path, saved, side: picked.side };
+  }
+
   async function saveCurrent() {
     if (!slot || !baseXml) return;
     if (requireLicense && !sessionOk) {
@@ -469,22 +513,27 @@ export function App() {
       setError("Confirm the backup before writing to the looper.");
       return;
     }
+    if (!dirty) return;
     setSaving(true);
     setError(null);
     try {
-      const { xml: saved } = await assembleRemote({ kind: "patch", xml: baseXml, ops });
-      const path = slotFileName(slot, activeSide === "a" ? "A" : "B");
+      const { path, saved } = await saveSlotXml(slot, baseXml, ops, files);
       const next = new Map(files);
       next.set(path, saved);
       setFiles(next);
       setBaseXml(saved);
-      setOps([]);
-      setDirty(false);
+      setDrafts((prev) => clearSlotDraft(prev, slot));
 
       if (dirHandleRef.current) {
         try {
           await writeFileToDirectory(dirHandleRef.current, path, saved);
           setStatus(`Saved ${path}`);
+          pendingMemoryReloadRef.current = slot;
+          if (midiRef.current.connectedName) {
+            midiRef.current.channel = midiCh;
+            midiRef.current.programChange(slot);
+            pendingMemoryReloadRef.current = null;
+          }
         } catch (e) {
           setError(`Folder is open, but write failed: ${e}. Download the ZIP.`);
         }
@@ -499,6 +548,62 @@ export function App() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveAll() {
+    if (dirtySlots.length === 0) return;
+    if (requireLicense && !sessionOk) {
+      setError("Enter a valid license key before saving.");
+      return;
+    }
+    if (!backupAck) {
+      setError("Confirm the backup before writing to the looper.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const next = new Map(files);
+      let savedCount = 0;
+      for (const s of dirtySlots) {
+        const slotOps = drafts.get(s) ?? [];
+        if (slotOps.length === 0) continue;
+        const { path, saved } = await saveSlotXml(s, s === slot ? baseXml : "", slotOps, next);
+        next.set(path, saved);
+        if (dirHandleRef.current) {
+          await writeFileToDirectory(dirHandleRef.current, path, saved);
+        }
+        if (s === slot) setBaseXml(saved);
+        savedCount += 1;
+      }
+      setFiles(next);
+      setDrafts(new Map());
+      setStatus(
+        dirHandleRef.current
+          ? `Saved ${savedCount} memor${savedCount === 1 ? "y" : "ies"}`
+          : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — download ZIP to write`,
+      );
+    } catch (e) {
+      setError(String(e));
+      if (String(e).includes("License required") || String(e).includes("expired")) {
+        void fetchSession().then(setSession);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function discardMemory() {
+    if (slot == null || !dirty) return;
+    setDrafts((prev) => clearSlotDraft(prev, slot));
+    setStatus(`Discarded memory ${String(slot).padStart(2, "0")}`);
+  }
+
+  function discardAll() {
+    const n = dirtySlots.length;
+    setDrafts(new Map());
+    setDiscardAllOpen(false);
+    setStatus(`Discarded ${n} unsaved memor${n === 1 ? "y" : "ies"}`);
   }
 
   async function saveSystem() {
@@ -543,7 +648,7 @@ export function App() {
   }
 
   function downloadZip() {
-    if (dirty || sysDirty) {
+    if (anyMemoryDirty || sysDirty) {
       setError(
         "Unsaved edits are not in the ZIP yet. Save memory/system first (needs the server), then download.",
       );
@@ -580,15 +685,12 @@ export function App() {
       const next = new Map(files);
       const selfPath = slotFileName(slot, activeSide === "a" ? "A" : "B");
       next.set(selfPath, sourceXml);
-      if (dirty) {
-        setBaseXml(sourceXml);
-        setOps([]);
-        setDirty(false);
-        if (dirHandleRef.current) {
-          await writeFileToDirectory(dirHandleRef.current, selfPath, sourceXml);
-        }
+      if (dirty && dirHandleRef.current) {
+        await writeFileToDirectory(dirHandleRef.current, selfPath, sourceXml);
       }
+      if (dirty) setBaseXml(sourceXml);
 
+      const clearedTargets: number[] = [];
       for (const target of copyTargets) {
         if (target === slot) continue;
         const aPath = slotFileName(target, "A");
@@ -606,11 +708,19 @@ export function App() {
         });
         const path = slotFileName(target, picked.side === "a" ? "A" : "B");
         next.set(path, patched);
+        clearedTargets.push(target);
         if (dirHandleRef.current) {
           await writeFileToDirectory(dirHandleRef.current, path, patched);
         }
       }
       setFiles(next);
+      if (dirty || clearedTargets.length) {
+        setDrafts((prev) => {
+          let out = dirty ? clearSlotDraft(prev, slot) : prev;
+          for (const t of clearedTargets) out = clearSlotDraft(out, t);
+          return out;
+        });
+      }
       setStatus(`Copied (${copyMode}) to ${copyTargets.size} slots`);
     } catch (e) {
       setError(String(e));
@@ -692,6 +802,23 @@ export function App() {
     midiRef.current.allNotesOff(rhythmCh);
   }, [rhythmCh]);
 
+  const kitAssign = useMemo(() => (model ? findRhythmKitAssign(model.assigns) : null), [model]);
+  const memoryKit = model ? num(model.rhythm, "D", 0) : null;
+
+  const sendRhythmKit = useCallback(
+    (kit: number) => {
+      if (model) pushOps({ type: "section", section: "RHYTHM", tags: { D: String(kit) } });
+      if (!kitAssign) return;
+      if (!midiRef.current.connectedName && outId) {
+        midiRef.current.channel = midiCh;
+        if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
+      }
+      midiRef.current.channel = midiCh;
+      midiRef.current.controlChange(kitAssign.cc, kitIndexToCcValue(kit, kitAssign), true);
+    },
+    [kitAssign, midiCh, model, outId, pushOps],
+  );
+
   const applyMidiPortsRef = useRef(applyMidiPorts);
   applyMidiPortsRef.current = applyMidiPorts;
   const requestMidiRef = useRef(requestMidi);
@@ -707,6 +834,14 @@ export function App() {
   useEffect(() => {
     saveMidiPrefs({ rhythmChannel: rhythmCh });
   }, [rhythmCh]);
+
+  useEffect(() => {
+    const s = pendingMemoryReloadRef.current;
+    if (!connected || s == null) return;
+    midiRef.current.channel = midiCh;
+    midiRef.current.programChange(s);
+    pendingMemoryReloadRef.current = null;
+  }, [connected, midiCh]);
 
   useEffect(() => {
     const midi = midiRef.current;
@@ -874,6 +1009,33 @@ export function App() {
             <Icon name="save" size={14} />
             Save memory
           </button>
+          <button
+            type="button"
+            className="btn warn"
+            disabled={!anyMemoryDirty || saving}
+            onClick={() => void saveAll()}
+          >
+            <Icon name="save" size={14} />
+            Save all
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={!dirty || !slot || saving}
+            onClick={discardMemory}
+          >
+            <Icon name="restore" size={14} />
+            Discard memory
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={!anyMemoryDirty || saving}
+            onClick={() => setDiscardAllOpen(true)}
+          >
+            <Icon name="restore" size={14} />
+            Discard all
+          </button>
           {requireLicense ? (
             <button
               type="button"
@@ -894,7 +1056,7 @@ export function App() {
               : session.mode === "open"
                 ? " · public"
                 : ""}
-            {dirty || sysDirty ? " · dirty" : ""}
+            {dirty || sysDirty ? " · dirty" : anyMemoryDirty ? " · unsaved memories" : ""}
             {status ? ` · ${status}` : ""}
           </span>
         </div>
@@ -967,6 +1129,8 @@ export function App() {
                 onPlayNotes={playDrumNotes}
                 onSilence={silenceRhythm}
                 onRequestMidi={() => void requestMidi(true)}
+                onRhythmKit={sendRhythmKit}
+                memoryKit={memoryKit}
               />
             ) : workspace === "system" ? (
               <div className="empty-state">
@@ -1101,6 +1265,8 @@ export function App() {
                 onPlayNotes={playDrumNotes}
                 onSilence={silenceRhythm}
                 onRequestMidi={() => void requestMidi(true)}
+                onRhythmKit={sendRhythmKit}
+                memoryKit={memoryKit}
               />
             ) : workspace === "memory" ? (
               <div className="memory-layout">
@@ -1122,25 +1288,41 @@ export function App() {
                         Select a memory
                       </option>
                     ) : null}
-                    {summaries.map((s) => (
-                      <option key={s.slot} value={s.slot}>
-                        {String(s.slot).padStart(2, "0")} {s.name || "—"} {s.active.toUpperCase()}
-                      </option>
-                    ))}
+                    {summaries.map((s) => {
+                      const unsaved = (drafts.get(s.slot)?.length ?? 0) > 0;
+                      return (
+                        <option key={s.slot} value={s.slot}>
+                          {unsaved ? "• " : ""}
+                          {String(s.slot).padStart(2, "0")} {s.name || "—"} {s.active.toUpperCase()}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div className="mem-list">
-                    {summaries.map((s) => (
-                      <button
-                        key={s.slot}
-                        type="button"
-                        className={`mem-item ${slot === s.slot ? "active" : ""}`}
-                        onClick={() => loadSlot(s.slot)}
-                      >
-                        <span className="slot">{String(s.slot).padStart(2, "0")}</span>
-                        <span className="name">{s.name || "—"}</span>
-                        <span className="meta">{s.active.toUpperCase()}</span>
-                      </button>
-                    ))}
+                    {summaries.map((s) => {
+                      const unsaved = (drafts.get(s.slot)?.length ?? 0) > 0;
+                      return (
+                        <button
+                          key={s.slot}
+                          type="button"
+                          className={`mem-item ${slot === s.slot ? "active" : ""} ${unsaved ? "dirty" : ""}`}
+                          title={unsaved ? "Unsaved changes" : undefined}
+                          aria-label={
+                            unsaved
+                              ? `Memory ${String(s.slot).padStart(2, "0")} ${s.name || ""}, unsaved changes`
+                              : undefined
+                          }
+                          onClick={() => loadSlot(s.slot)}
+                        >
+                          <span className="slot">{String(s.slot).padStart(2, "0")}</span>
+                          <span className="name">{s.name || "—"}</span>
+                          <span className="meta">
+                            {unsaved ? <Icon name="dirty" className="mem-dirty" size={10} /> : null}
+                            {s.active.toUpperCase()}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </aside>
 
@@ -1328,6 +1510,36 @@ export function App() {
         onStop={() => midiRef.current.stop()}
         onCc={(cc, v) => midiRef.current.controlChange(cc, v)}
       />
+
+      {discardAllOpen ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => setDiscardAllOpen(false)}
+        >
+          <div
+            className="modal-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discard-all-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="discard-all-title">Discard all unsaved memory changes?</h2>
+            <p>
+              This clears pending edits on {dirtySlots.length}{" "}
+              {dirtySlots.length === 1 ? "memory" : "memories"}. System settings are not affected.
+            </p>
+            <div className="modal-foot">
+              <button type="button" className="btn ghost" onClick={() => setDiscardAllOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="btn warn" onClick={discardAll}>
+                Discard all
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

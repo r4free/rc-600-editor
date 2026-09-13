@@ -24,8 +24,13 @@ import {
   type DrumPreset,
   type DrumPresetPayload,
 } from "../presets/drumPreset";
+import { RHYTHM_KITS } from "@rc600/catalog/params";
+import {
+  clampKitIndex,
+} from "@rc600/catalog/rhythm-kit-midi";
 import { DrumPresetGallery } from "./DrumPresetGallery";
 import { Icon } from "./Icon";
+import { InfoTip } from "./InfoTip";
 
 const PAD_IDS = Array.from({ length: PAD_SLOT_COUNT }, (_, i) => i);
 const PLAY_DRUM_PREFS_KEY = "rc600.playDrum.prefs";
@@ -34,10 +39,15 @@ const MIN_PAD_GATE_MS = 90;
 
 interface PlayDrumPrefs extends DrumPresetPayload {
   showSettings: boolean;
+  kit: number;
 }
 
 function loadPlayDrumPrefs(): PlayDrumPrefs {
-  const fallback: PlayDrumPrefs = { ...emptyDrumPresetPayload(), showSettings: false };
+  const fallback: PlayDrumPrefs = {
+    ...emptyDrumPresetPayload(),
+    showSettings: false,
+    kit: 0,
+  };
   if (typeof localStorage === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(PLAY_DRUM_PREFS_KEY);
@@ -46,6 +56,7 @@ function loadPlayDrumPrefs(): PlayDrumPrefs {
     return {
       ...parseDrumPresetPayload(parsed),
       showSettings: parsed.showSettings === true,
+      kit: clampKitIndex(Number(parsed.kit)),
     };
   } catch {
     return fallback;
@@ -72,6 +83,8 @@ export function PlayDrumTab({
   onPlayNotes,
   onSilence,
   onRequestMidi,
+  onRhythmKit,
+  memoryKit,
 }: {
   midiLinked: boolean;
   midiOutHint?: string;
@@ -85,6 +98,10 @@ export function PlayDrumTab({
   onPlayNotes: (notes: readonly number[], velocity: number, down: boolean) => void;
   onSilence?: () => void;
   onRequestMidi?: () => void;
+  /** Write Kit on the loaded memory (USB Save). Live MIDI only if that memory already has a Rhythm Kit assign. */
+  onRhythmKit?: (kit: number) => void;
+  /** Kit index from the open memory, if any. */
+  memoryKit?: number | null;
 }) {
   const initial = useMemo(() => loadPlayDrumPrefs(), []);
   const [velocity, setVelocity] = useState(initial.velocity);
@@ -96,6 +113,9 @@ export function PlayDrumTab({
     () => overridesToPadMap(initial.overrides),
   );
   const [showPadSettings, setShowPadSettings] = useState(initial.showSettings);
+  const [kit, setKit] = useState(() =>
+    memoryKit != null ? clampKitIndex(memoryKit) : initial.kit,
+  );
   const [lastMidi, setLastMidi] = useState<string | null>(null);
 
   const heldRef = useRef(new Map<number, number>());
@@ -181,8 +201,20 @@ export function PlayDrumTab({
       velocity,
       overrides: padMapToOverrides(padOverrides),
       showSettings: showPadSettings,
+      kit,
     });
-  }, [drumPadNotes, globalBpm, globalMeter, velocity, padOverrides, showPadSettings]);
+  }, [drumPadNotes, globalBpm, globalMeter, velocity, padOverrides, showPadSettings, kit]);
+
+  useEffect(() => {
+    if (memoryKit != null) setKit(clampKitIndex(memoryKit));
+  }, [memoryKit]);
+
+  const canEditKit = Boolean(usbStorageActive && memoryKit != null);
+  const kitName =
+    memoryKit != null ? (RHYTHM_KITS[clampKitIndex(memoryKit)] ?? "Studio") : "Current memory";
+  const kitInfo = canEditKit
+    ? "Drum kit of this memory (same as Loop → Rhythm → Kit). Click Save memory in the header, then Eject USB. When MIDI is connected, the editor sends Program Change so the pedal reloads this kit. Gallery Save only stores a pad rhythm, not the pedal kit."
+    : "Pads play the drum kit already loaded on the pedal. MIDI cannot switch Kit. Open the ROLAND folder (USB Storage ON) to choose a kit, click Save memory, Eject USB, then Allow MIDI.";
 
   const flushPads = useCallback(
     (silenceChannel: boolean) => {
@@ -259,6 +291,13 @@ export function PlayDrumTab({
     const note = 36;
     emitNotes([note], velocityRef.current, true);
     window.setTimeout(() => emitNotes([note], 0, false), 200);
+  }
+
+  function changeKit(next: number) {
+    if (!canEditKit) return;
+    const kitIndex = clampKitIndex(next);
+    setKit(kitIndex);
+    onRhythmKit?.(kitIndex);
   }
 
   const currentPayload: DrumPresetPayload = useMemo(
@@ -390,6 +429,25 @@ export function PlayDrumTab({
               </option>
             ))}
           </select>
+        </label>
+        <label className="drum-pad-field drum-pad-kit-field">
+          <span>Kit</span>
+          {canEditKit ? (
+            <select
+              value={kit}
+              aria-label="Rhythm kit"
+              onChange={(e) => changeKit(Number(e.target.value))}
+            >
+              {RHYTHM_KITS.map((name, value) => (
+                <option key={name} value={value}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="drum-pad-kit-value">{kitName}</span>
+          )}
+          <InfoTip label="Kit" text={kitInfo} />
         </label>
         <button type="button" className="btn ghost" onClick={sendTestKick}>
           Test Kick

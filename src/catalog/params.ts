@@ -683,6 +683,12 @@ export function assignSourceLabel(v: number): string {
   return ASSIGN_SOURCES.find((s) => s.value === v)?.label ?? String(v);
 }
 
+/** MIDI CC number for an Assign Source, or null when the source is not a CC. */
+export function assignSourceMidiCc(source: number): number | null {
+  const m = /^MIDI CC#(\d+)$/.exec(assignSourceLabel(source));
+  return m ? Number(m[1]) : null;
+}
+
 export function assignSourceInfo(v: number): string | undefined {
   return ASSIGN_SOURCES.find((s) => s.value === v)?.info;
 }

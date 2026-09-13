@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePersistedTab } from "../uiTabs";
 import {
   FX_BANKS,
   IFX_BANK_PARAMS,
@@ -14,7 +14,9 @@ import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
-type IfxPage = "setup" | (typeof FX_BANKS)[number];
+const IFX_PAGES = ["setup", ...FX_BANKS] as const;
+type IfxPage = (typeof IFX_PAGES)[number];
+const IFX_SLOTS = [0, 1, 2, 3] as const;
 
 const PAGES: { id: IfxPage; label: string; icon: IconName }[] = [
   { id: "setup", label: "Setup", icon: "system" },
@@ -36,8 +38,8 @@ function bankIndex(letter: (typeof FX_BANKS)[number]): number {
 }
 
 export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: PatchHandler }) {
-  const [page, setPage] = useState<IfxPage>("setup");
-  const [slot, setSlot] = useState(0);
+  const [page, setPage] = usePersistedTab<IfxPage>("ifx", "setup", IFX_PAGES);
+  const [slot, setSlot] = usePersistedTab("ifxSlot", 0, IFX_SLOTS);
   const bank = page === "setup" ? 0 : bankIndex(page);
   const slotTags = model.ifxSlots[bank]?.[slot] ?? {};
   const insertValue = num(slotTags, "D");
@@ -143,9 +145,9 @@ export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: Pa
             Effect-type parameters (rate, depth, and so on) come in a later pass.
           </p>
           <div className="tabs tabs-sub" role="tablist" aria-label={`Bank ${page} FX`}>
-            {FX_BANKS.map((letter, i) => (
+            {IFX_SLOTS.map((i) => (
               <button
-                key={letter}
+                key={FX_BANKS[i]}
                 type="button"
                 role="tab"
                 aria-selected={slot === i}
@@ -153,7 +155,7 @@ export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: Pa
                 onClick={() => setSlot(i)}
               >
                 <Icon name="chorus" size={14} />
-                FX {letter}
+                FX {FX_BANKS[i]}
               </button>
             ))}
           </div>

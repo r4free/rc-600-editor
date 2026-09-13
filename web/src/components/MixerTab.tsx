@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePersistedTab } from "../uiTabs";
 import {
   MIXER_INPUT_GROUPS,
   MIXER_OUTPUT_GROUPS,
@@ -12,7 +12,8 @@ import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
-type MixerSub = "input" | "output";
+const MIXER_SUBS = ["input", "output"] as const;
+type MixerSub = (typeof MIXER_SUBS)[number];
 
 const SUBS: { id: MixerSub; label: string; icon: IconName }[] = [
   { id: "input", label: "Input", icon: "mic" },
@@ -35,7 +36,7 @@ export function MixerTab({
   onPatch: PatchHandler;
   scope?: "mem" | "sys";
 }) {
-  const [sub, setSub] = useState<MixerSub>("input");
+  const [sub, setSub] = usePersistedTab<MixerSub>(`mixer.${scope}`, "input", MIXER_SUBS);
   const groups = sub === "input" ? MIXER_INPUT_GROUPS : MIXER_OUTPUT_GROUPS;
   const visible = visibleMixerGroups(groups, model.input, model.output);
 
