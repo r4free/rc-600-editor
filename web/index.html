@@ -4,13 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RC-600 Editor</title>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-R7E7K02GHG"></script>
+    <!-- Google tag (gtag.js) — skipped on localhost / *.test -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-R7E7K02GHG');
+      (function () {
+        var host = location.hostname;
+        var local =
+          host === "localhost" ||
+          host === "127.0.0.1" ||
+          host === "[::1]" ||
+          /\.localhost$/.test(host) ||
+          /\.test$/.test(host) ||
+          /\.local$/.test(host);
+        if (local) return;
+        var id = "G-R7E7K02GHG";
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          dataLayer.push(arguments);
+        }
+        var s = document.createElement("script");
+        s.async = true;
+        s.src = "https://www.googletagmanager.com/gtag/js?id=" + id;
+        document.head.appendChild(s);
+        gtag("js", new Date());
+        gtag("config", id);
+      })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
