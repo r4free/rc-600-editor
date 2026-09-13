@@ -26,10 +26,26 @@ import type { PatchHandler } from "./LoopTab";
 
 const TRACK_NOS = [1, 2, 3, 4, 5, 6] as const;
 
+type TrackPlayer = {
+  source: AudioBufferSourceNode;
+  buffer: AudioBuffer;
+  /** Buffer offset (seconds) when this source started. */
+  offsetSec: number;
+  /** ctx.currentTime when this source started. */
+  startedAt: number;
+};
+
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00.0";
+  const m = Math.floor(seconds / 60);
+  const s = seconds - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, "0")}`;
 }
 
 export function AudioTab({
@@ -49,13 +65,21 @@ export function AudioTab({
     Array.from({ length: 6 }, () => null),
   );
   const [waveProbe, setWaveProbe] = useState<WaveAccessProbe | null>(null);
-  const [busyTrack, setBusyTrack] = useState<number | null>(null);
-  const [playingTrack, setPlayingTrack] = useState<number | null>(null);
+  const [busyTracks, setBusyTracks] = useState<Set<number>>(() => new Set());
+  const [playingTracks, setPlayingTracks] = useState<Set<number>>(() => new Set());
+  /** Current playhead per track (seconds). */
+  const [positions, setPositions] = useState<number[]>(() => Array.from({ length: 6 }, () => 0));
+  /** Decoded duration per track (seconds); 0 if unknown. */
+  const [durations, setDurations] = useState<number[]>(() => Array.from({ length: 6 }, () => 0));
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importTrackRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const playersRef = useRef<Map<number, TrackPlayer>>(new Map());
+  const buffersRef = useRef<Map<number, AudioBuffer>>(new Map());
+  const positionsRef = useRef(positions);
+  positionsRef.current = positions;
+  const scrubbingRef = useRef<Set<number>>(new Set());
 
   const folderReady = Boolean(dirHandle);
 
@@ -69,8 +93,6 @@ export function AudioTab({
       const { files, probe } = await listMemoryTrackWavs(dirHandle, model.slot);
       let merged = files;
 
-      // Browser File System Access often cannot list 8.3 names (AFTERL~1.WAV) on USB/FAT.
-      // Fall back to the local API, which reads ROLAND/WAVE via Node.
       if (merged.every((f) => !f) || merged.some((f) => !f)) {
         const serverTracks = await fetchMemoryWaveFiles(model.slot);
         if (serverTracks) {
@@ -109,27 +131,105 @@ export function AudioTab({
     void refreshWavs();
   }, [refreshWavs]);
 
+  // Clear players when switching memory
+  useEffect(() => {
+    stopAllTracks();
+    buffersRef.current.clear();
+    setPositions(Array.from({ length: 6 }, () => 0));
+    setDurations(Array.from({ length: 6 }, () => 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on slot change
+  }, [model.slot]);
+
   useEffect(() => {
     return () => {
-      try {
-        sourceRef.current?.stop();
-      } catch {
-        /* already stopped */
-      }
-      sourceRef.current = null;
+      stopAllTracks();
       void audioCtxRef.current?.close();
       audioCtxRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function stopPlayback() {
+  // Animate playheads
+  useEffect(() => {
+    if (playingTracks.size === 0) return;
+    let raf = 0;
+    const tick = () => {
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      setPositions((prev) => {
+        const next = [...prev];
+        let changed = false;
+        for (const [track, player] of playersRef.current) {
+          if (scrubbingRef.current.has(track)) continue;
+          const pos = Math.min(
+            player.buffer.duration,
+            player.offsetSec + (ctx.currentTime - player.startedAt),
+          );
+          const i = track - 1;
+          if (Math.abs((next[i] ?? 0) - pos) > 0.05) {
+            next[i] = pos;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playingTracks]);
+
+  function markBusy(track: number, on: boolean) {
+    setBusyTracks((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(track);
+      else next.delete(track);
+      return next;
+    });
+  }
+
+  function setPlaying(track: number, on: boolean) {
+    setPlayingTracks((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(track);
+      else next.delete(track);
+      return next;
+    });
+  }
+
+  function stopTrackSource(track: number, keepPosition = false) {
+    const player = playersRef.current.get(track);
+    if (!player) {
+      setPlaying(track, false);
+      return;
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx && !keepPosition) {
+      const pos = Math.min(
+        player.buffer.duration,
+        player.offsetSec + (ctx.currentTime - player.startedAt),
+      );
+      setPositions((prev) => {
+        const next = [...prev];
+        next[track - 1] = pos;
+        return next;
+      });
+    }
     try {
-      sourceRef.current?.stop();
+      player.source.onended = null;
+      player.source.stop();
     } catch {
       /* already stopped */
     }
-    sourceRef.current = null;
-    setPlayingTrack(null);
+    playersRef.current.delete(track);
+    setPlaying(track, false);
+  }
+
+  function stopAllTracks() {
+    for (const track of [...playersRef.current.keys()]) {
+      stopTrackSource(track, true);
+    }
+    setPlayingTracks(new Set());
   }
 
   async function ensureCtx(): Promise<AudioContext> {
@@ -148,14 +248,12 @@ export function AudioTab({
   ): Promise<{ info: TrackWavInfo; bytes: Uint8Array } | null> {
     if (!dirHandle) return null;
 
-    // 1) Browser folder handle (works for canonical {NNN}_{T}.WAV)
     const fromBrowser = await readTrackWav(dirHandle, model.slot, track);
     if (fromBrowser) {
       rememberWavFileName(model.slot, track, fromBrowser.info.fileName);
       return fromBrowser;
     }
 
-    // 2) Local API — Node reads USB/FAT including 8.3 names like AFTERL~1.WAV
     const fromServer = await fetchTrackWaveFile(model.slot, track);
     if (fromServer) {
       const info: TrackWavInfo = {
@@ -175,45 +273,130 @@ export function AudioTab({
     return null;
   }
 
-  async function playTrack(track: number) {
+  async function ensureBuffer(track: number): Promise<AudioBuffer | null> {
+    const cached = buffersRef.current.get(track);
+    if (cached) return cached;
+    const loaded = await loadTrackBytes(track);
+    if (!loaded) return null;
+    const ctx = await ensureCtx();
+    const buffer = (await wavBytesToAudioBuffer(ctx, loaded.bytes)) as AudioBuffer;
+    buffersRef.current.set(track, buffer);
+    setDurations((prev) => {
+      const next = [...prev];
+      next[track - 1] = buffer.duration;
+      return next;
+    });
+    return buffer;
+  }
+
+  function startSource(track: number, buffer: AudioBuffer, offsetSec: number) {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    stopTrackSource(track, true);
+
+    const clipped = Math.max(0, Math.min(offsetSec, Math.max(0, buffer.duration - 0.01)));
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    src.onended = () => {
+      const cur = playersRef.current.get(track);
+      if (cur?.source !== src) return;
+      playersRef.current.delete(track);
+      setPlaying(track, false);
+      setPositions((prev) => {
+        const next = [...prev];
+        next[track - 1] = buffer.duration;
+        return next;
+      });
+    };
+    const startedAt = ctx.currentTime;
+    src.start(0, clipped);
+    playersRef.current.set(track, { source: src, buffer, offsetSec: clipped, startedAt });
+    setPlaying(track, true);
+    setPositions((prev) => {
+      const next = [...prev];
+      next[track - 1] = clipped;
+      return next;
+    });
+  }
+
+  async function playTrack(track: number, fromOffset?: number) {
     if (!dirHandle) return;
     setLocalError(null);
-    stopPlayback();
-    setBusyTrack(track);
+    markBusy(track, true);
     try {
-      const loaded = await loadTrackBytes(track);
-      if (!loaded) {
+      const buffer = await ensureBuffer(track);
+      if (!buffer) {
         setLocalError(
           `Track ${track}: no WAV found under WAVE/${String(model.slot).padStart(3, "0")}_${track}/. Keep the RC-600 in USB Storage and run the local API (npm run dev).`,
         );
         return;
       }
-      const ctx = await ensureCtx();
-      const buffer = await wavBytesToAudioBuffer(ctx, loaded.bytes);
-      const src = ctx.createBufferSource();
-      src.buffer = buffer as AudioBuffer;
-      src.connect(ctx.destination);
-      src.onended = () => {
-        if (sourceRef.current === src) {
-          sourceRef.current = null;
-          setPlayingTrack(null);
-        }
-      };
-      sourceRef.current = src;
-      setPlayingTrack(track);
-      src.start(0);
+      await ensureCtx();
+      const offset = fromOffset ?? positionsRef.current[track - 1] ?? 0;
+      // Restart from start if already at/near the end
+      const startAt = offset >= buffer.duration - 0.05 ? 0 : offset;
+      startSource(track, buffer, startAt);
     } catch (e) {
       setLocalError(String(e));
-      setPlayingTrack(null);
+      setPlaying(track, false);
     } finally {
-      setBusyTrack(null);
+      markBusy(track, false);
+    }
+  }
+
+  async function playAllRecorded() {
+    setLocalError(null);
+    const targets = TRACK_NOS.filter((n) => {
+      const track = model.tracks[n - 1] ?? {};
+      return trackHasPhrase(track) || Boolean(wavInfos[n - 1]);
+    });
+    if (targets.length === 0) {
+      setLocalError("No recorded tracks to play.");
+      return;
+    }
+    await ensureCtx();
+    // Load buffers first, then start together near the same time
+    const ready: Array<{ track: number; buffer: AudioBuffer }> = [];
+    for (const n of targets) {
+      markBusy(n, true);
+      try {
+        const buffer = await ensureBuffer(n);
+        if (buffer) ready.push({ track: n, buffer });
+      } catch (e) {
+        setLocalError(String(e));
+      } finally {
+        markBusy(n, false);
+      }
+    }
+    for (const { track, buffer } of ready) {
+      const offset = positionsRef.current[track - 1] ?? 0;
+      const startAt = offset >= buffer.duration - 0.05 ? 0 : offset;
+      startSource(track, buffer, startAt);
+    }
+  }
+
+  function seekTrack(track: number, seconds: number) {
+    const buffer = buffersRef.current.get(track);
+    const duration =
+      buffer?.duration ||
+      durations[track - 1] ||
+      phraseDurationSeconds(model.tracks[track - 1] ?? {});
+    const clipped = Math.max(0, Math.min(seconds, duration || seconds));
+    setPositions((prev) => {
+      const next = [...prev];
+      next[track - 1] = clipped;
+      return next;
+    });
+    if (playersRef.current.has(track) && buffer) {
+      startSource(track, buffer, clipped);
     }
   }
 
   async function exportTrack(track: number) {
     if (!dirHandle) return;
     setLocalError(null);
-    setBusyTrack(track);
+    markBusy(track, true);
     try {
       const loaded = await loadTrackBytes(track);
       if (!loaded) {
@@ -237,7 +420,7 @@ export function AudioTab({
     } catch (e) {
       setLocalError(String(e));
     } finally {
-      setBusyTrack(null);
+      markBusy(track, false);
     }
   }
 
@@ -256,14 +439,20 @@ export function AudioTab({
       return;
     }
     setLocalError(null);
-    setBusyTrack(track);
-    stopPlayback();
+    markBusy(track, true);
+    stopTrackSource(track, true);
+    buffersRef.current.delete(track);
     try {
       const { wav, frames } = await convertAudioFileToRc600Wav(await file.arrayBuffer());
       const info = await writeTrackWav(dirHandle, model.slot, track, wav);
       setWavInfos((prev) => {
         const next = [...prev];
         next[track - 1] = info;
+        return next;
+      });
+      setPositions((prev) => {
+        const next = [...prev];
+        next[track - 1] = 0;
         return next;
       });
       const tempo = memoryTempo(model);
@@ -275,7 +464,7 @@ export function AudioTab({
     } catch (e) {
       setLocalError(String(e));
     } finally {
-      setBusyTrack(null);
+      markBusy(track, false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -284,8 +473,9 @@ export function AudioTab({
     if (!dirHandle || !canWrite) return;
     if (!window.confirm(`Clear audio on Track ${track}? The WAV file will be deleted.`)) return;
     setLocalError(null);
-    setBusyTrack(track);
-    if (playingTrack === track) stopPlayback();
+    markBusy(track, true);
+    stopTrackSource(track, true);
+    buffersRef.current.delete(track);
     try {
       await clearTrackWav(dirHandle, model.slot, track);
       setWavInfos((prev) => {
@@ -293,13 +483,29 @@ export function AudioTab({
         next[track - 1] = null;
         return next;
       });
+      setPositions((prev) => {
+        const next = [...prev];
+        next[track - 1] = 0;
+        return next;
+      });
+      setDurations((prev) => {
+        const next = [...prev];
+        next[track - 1] = 0;
+        return next;
+      });
       onPatch({ type: "track", track, tags: phraseTagsForClear() });
     } catch (e) {
       setLocalError(String(e));
     } finally {
-      setBusyTrack(null);
+      markBusy(track, false);
     }
   }
+
+  const anyPlaying = playingTracks.size > 0;
+  const anyPlayable = TRACK_NOS.some((n) => {
+    const t = model.tracks[n - 1] ?? {};
+    return trackHasPhrase(t) || Boolean(wavInfos[n - 1]);
+  });
 
   return (
     <div className="audio-tab">
@@ -312,10 +518,9 @@ export function AudioTab({
       />
 
       <p className="hint">
-        Manage phrase audio under WAVE/ for this memory. Import converts any common audio to RC-600
-        format (44.1 kHz, 32-bit float, stereo). Play reads the WAV from the USB drive via the local
-        API (no file picker). Save memory after import or clear so the pedal sees the new phrase
-        length.
+        Manage phrase audio under WAVE/ for this memory. Play several tracks at once and scrub each
+        playhead. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save
+        memory after import or clear so the pedal sees the new phrase length.
       </p>
 
       {!folderReady ? (
@@ -348,16 +553,40 @@ export function AudioTab({
         <p className="error">{localError}</p>
       ) : null}
 
+      {folderReady ? (
+        <div className="audio-transport">
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!anyPlayable}
+            onClick={() => void playAllRecorded()}
+          >
+            <Icon name="play" size={14} /> Play all
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={!anyPlaying}
+            onClick={stopAllTracks}
+          >
+            <Icon name="stop" size={14} /> Stop all
+          </button>
+        </div>
+      ) : null}
+
       <div className="channel-grid channel-grid-wide">
         {TRACK_NOS.map((n) => {
           const track = model.tracks[n - 1] ?? {};
           const recorded = trackHasPhrase(track);
-          const duration = formatDuration(phraseDurationSeconds(track));
+          const rc0Duration = phraseDurationSeconds(track);
+          const bufDuration = durations[n - 1] || 0;
+          const durationSec = bufDuration || rc0Duration;
+          const durationLabel = durationSec > 0 ? formatDuration(durationSec) : "—";
           const wav = wavInfos[n - 1] ?? null;
-          const busy = busyTrack === n;
-          const playing = playingTrack === n;
+          const busy = busyTracks.has(n);
+          const playing = playingTracks.has(n);
+          const pos = positions[n - 1] ?? 0;
           const writeOk = folderReady && canWrite && !busy;
-          // Play when a file is listed OR RC0 says Recorded (may need a one-time file pick on FAT/USB).
           const hasFile = Boolean(wav);
           const playOk = folderReady && !busy && (hasFile || recorded);
           const exportOk = folderReady && !busy && (hasFile || recorded);
@@ -394,7 +623,7 @@ export function AudioTab({
                     <span>Duration</span>
                   </div>
                   <div className="param-control">
-                    <span className="param-val">{recorded ? duration : "—"}</span>
+                    <span className="param-val">{recorded || bufDuration ? durationLabel : "—"}</span>
                   </div>
                 </div>
 
@@ -416,9 +645,37 @@ export function AudioTab({
                 </div>
               </div>
 
+              {(recorded || hasFile) && folderReady ? (
+                <div className="audio-seek">
+                  <label className="audio-seek-label" htmlFor={`audio-seek-${n}`}>
+                    Position
+                  </label>
+                  <input
+                    id={`audio-seek-${n}`}
+                    type="range"
+                    min={0}
+                    max={Math.max(durationSec, 0.1)}
+                    step={0.05}
+                    value={Math.min(pos, Math.max(durationSec, 0.1))}
+                    disabled={!playOk && !playing}
+                    onPointerDown={() => scrubbingRef.current.add(n)}
+                    onPointerUp={() => scrubbingRef.current.delete(n)}
+                    onChange={(e) => seekTrack(n, Number(e.target.value))}
+                  />
+                  <div className="audio-seek-readout">
+                    {formatClock(pos)} / {formatClock(durationSec)}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="audio-track-actions">
                 {playing ? (
-                  <button type="button" className="btn ghost" disabled={busy} onClick={stopPlayback}>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={busy}
+                    onClick={() => stopTrackSource(n)}
+                  >
                     <Icon name="stop" size={14} /> Stop
                   </button>
                 ) : (
@@ -426,7 +683,7 @@ export function AudioTab({
                     type="button"
                     className="btn ghost"
                     disabled={!playOk}
-                    title={playDisabledReason ?? "Play this track"}
+                    title={playDisabledReason ?? "Play this track (other tracks keep playing)"}
                     onClick={() => void playTrack(n)}
                   >
                     <Icon name="play" size={14} /> Play
@@ -444,11 +701,7 @@ export function AudioTab({
                   type="button"
                   className="btn ghost"
                   disabled={!exportOk}
-                  title={
-                    hasFile
-                      ? "Export this track WAV"
-                      : "Export — you may need to pick the WAV file once"
-                  }
+                  title="Export this track WAV"
                   onClick={() => void exportTrack(n)}
                 >
                   <Icon name="download" size={14} /> Export

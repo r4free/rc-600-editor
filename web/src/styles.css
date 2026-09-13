@@ -588,6 +588,35 @@ textarea {
   word-break: break-all;
 }
 
+.audio-transport {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.85rem;
+}
+
+.audio-seek {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.55rem 0 0.35rem;
+}
+
+.audio-seek-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.audio-seek input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.audio-seek-readout {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 .audio-track-actions {
   display: flex;
   flex-wrap: wrap;
