@@ -18,8 +18,12 @@ import {
   requireLicenseEnabled,
 } from "./licenses.js";
 import { ejectRc600Usb, isLocalUsbHost } from "./usb-eject.js";
+import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-presets.js";
 
 const app = new Hono();
+const nativePresetStore = createNativePresetFileStore(
+  resolve(process.cwd(), "web/public/play-drum/presets.json"),
+);
 
 app.get("/api/session", (c) => {
   return c.json(readSessionInfo(c));
@@ -99,6 +103,39 @@ app.post("/api/usb/eject", async (c) => {
       500,
     );
   }
+});
+
+app.get("/api/drum-presets", async (c) => {
+  return c.json({ version: 1, presets: await nativePresetStore.list() });
+});
+
+app.post("/api/drum-presets", async (c) => {
+  if (!isNativePresetWriteAllowed()) {
+    return c.json({ error: "Factory rhythms are read-only in production" }, 403);
+  }
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  try {
+    const saved = await nativePresetStore.upsert(body);
+    return c.json(saved);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not save factory rhythm";
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.delete("/api/drum-presets/:id", async (c) => {
+  if (!isNativePresetWriteAllowed()) {
+    return c.json({ error: "Factory rhythms are read-only in production" }, 403);
+  }
+  const id = c.req.param("id");
+  const ok = await nativePresetStore.remove(id);
+  if (!ok) return c.json({ error: "Rhythm not found" }, 404);
+  return c.json({ ok: true });
 });
 
 app.post("/api/assemble", requireAccess, async (c) => {

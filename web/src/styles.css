@@ -1082,6 +1082,7 @@ textarea {
 }
 
 .drum-pad-field input[type="number"],
+.drum-pad-field input[type="text"],
 .drum-pad-field select {
   width: 4.2rem;
   padding: 0.25rem 0.35rem;
@@ -1100,6 +1101,116 @@ textarea {
 .drum-pad-transport .btn.is-on {
   border-color: var(--accent-dim);
   color: var(--accent);
+}
+
+.drum-preset-gallery {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+}
+
+.drum-preset-gallery-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.85rem;
+}
+
+.drum-preset-filter {
+  min-width: 10rem;
+  flex: 1 1 10rem;
+  max-width: 16rem;
+}
+
+.drum-preset-filter input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.drum-preset-gallery-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.drum-preset-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
+.drum-preset-col h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.drum-preset-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.drum-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.drum-preset-chip {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  cursor: pointer;
+  border-radius: 0.3rem;
+}
+
+.drum-preset-chip.is-on,
+.drum-preset-chip[aria-pressed="true"] {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-dim) 18%, var(--bg));
+}
+
+.drum-preset-chip-meta {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.drum-preset-save-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+}
+
+.drum-preset-name-field input {
+  width: 12rem;
+  min-width: 8rem;
+}
+
+.drum-preset-status {
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .drum-pad-velocity {
@@ -1349,6 +1460,10 @@ textarea {
     margin-left: 0;
     max-width: none;
     width: 100%;
+  }
+
+  .drum-preset-cols {
+    grid-template-columns: 1fr;
   }
 
   .drum-pad-grid {

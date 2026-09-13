@@ -1,0 +1,8989 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "default-kit",
+      "name": "Default Kit",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {}
+      }
+    },
+    {
+      "id": "four-on-the-floor",
+      "name": "Four on the Floor",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "basic-rock",
+      "name": "Basic Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "disco-clap",
+      "name": "Disco Clap",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 124,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "pop-rock",
+      "name": "Pop Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 122,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "hard-rock",
+      "name": "Hard Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "punk",
+      "name": "Punk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 178,
+        "meter": "4/4",
+        "velocity": 118,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "soft-rock",
+      "name": "Soft Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "indie-rock",
+      "name": "Indie Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 132,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "slow-rock",
+      "name": "Slow Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 72,
+        "meter": "4/4",
+        "velocity": 94,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "garage-rock",
+      "name": "Garage Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 148,
+        "meter": "4/4",
+        "velocity": 114,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "stadium-rock",
+      "name": "Stadium Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 112,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "grunge",
+      "name": "Grunge",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 92,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "14": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "britpop",
+      "name": "Britpop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 116,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "new-wave",
+      "name": "New Wave",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 124,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "surf",
+      "name": "Surf Beat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 168,
+        "meter": "4/4",
+        "velocity": 106,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "funk-groove",
+      "name": "Funk Groove",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "tight-funk",
+      "name": "Tight Funk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 114,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "soul-ballad",
+      "name": "Soul Ballad",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 78,
+        "meter": "4/4",
+        "velocity": 92,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "motown",
+      "name": "Motown",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "gospel",
+      "name": "Gospel",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 92,
+        "meter": "4/4",
+        "velocity": 106,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "rnb",
+      "name": "R&B Quiet",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 74,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "house",
+      "name": "House",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 124,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "deep-house",
+      "name": "Deep House",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "techno",
+      "name": "Techno",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 132,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "trance",
+      "name": "Trance",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 138,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "drum-and-bass",
+      "name": "Drum and Bass",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 172,
+        "meter": "4/4",
+        "velocity": 114,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "breakbeat",
+      "name": "Breakbeat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 136,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "dubstep",
+      "name": "Dubstep",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 70,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "electro",
+      "name": "Electro",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "synthwave",
+      "name": "Synthwave",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "industrial",
+      "name": "Industrial",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 110,
+        "meter": "4/4",
+        "velocity": 116,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "uk-garage",
+      "name": "UK Garage",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 130,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "jungle",
+      "name": "Jungle",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 170,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "big-beat",
+      "name": "Big Beat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 126,
+        "meter": "4/4",
+        "velocity": 114,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "trip-hop",
+      "name": "Trip Hop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 86,
+        "meter": "4/4",
+        "velocity": 94,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "chillwave",
+      "name": "Chillwave",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 94,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "tropical-house",
+      "name": "Tropical House",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "boom-bap",
+      "name": "Boom Bap",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 88,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "trap",
+      "name": "Trap",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "lofi-hop",
+      "name": "Lo-Fi Hop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 84,
+        "meter": "4/4",
+        "velocity": 88,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "west-coast",
+      "name": "West Coast",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "trap-bounce",
+      "name": "Trap Bounce",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 150,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "bossa-nova",
+      "name": "Bossa Nova",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 88,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "samba",
+      "name": "Samba",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "reggae",
+      "name": "Reggae",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 76,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "dancehall",
+      "name": "Dancehall",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 98,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "afrobeat",
+      "name": "Afrobeat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 106,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "afrobeats",
+      "name": "Afrobeats",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 105,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "cumbia",
+      "name": "Cumbia",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "reggaeton",
+      "name": "Reggaeton",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "waltz",
+      "name": "Waltz",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 90,
+        "meter": "3/4",
+        "velocity": 92,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "march",
+      "name": "March",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "polka",
+      "name": "Polka",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 132,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "folk",
+      "name": "Folk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "jazz-ride",
+      "name": "Jazz Ride",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "swing",
+      "name": "Swing",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 168,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "shuffle",
+      "name": "Shuffle",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "blues-shuffle",
+      "name": "Blues Shuffle",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 92,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "ballad",
+      "name": "Ballad",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 60,
+        "meter": "4/4",
+        "velocity": 84,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "fusion",
+      "name": "Fusion",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "double-kick",
+      "name": "Double Kick",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 200,
+        "meter": "4/4",
+        "velocity": 120,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "metal",
+      "name": "Metal",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 160,
+        "meter": "4/4",
+        "velocity": 118,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "thrash",
+      "name": "Thrash",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 188,
+        "meter": "4/4",
+        "velocity": 122,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "doom",
+      "name": "Doom",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 52,
+        "meter": "4/4",
+        "velocity": 116,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "country",
+      "name": "Country Train",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "half-time",
+      "name": "Half Time",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 70,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "six-eight-march",
+      "name": "6/8 March",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 112,
+        "meter": "6/8",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "six-eight-shuffle",
+      "name": "6/8 Shuffle",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "6/8",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 12
+          }
+        }
+      }
+    },
+    {
+      "id": "three-four-ballad",
+      "name": "3/4 Ballad",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 72,
+        "meter": "3/4",
+        "velocity": 86,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "kick-only",
+      "name": "Kick Only",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "hats-only",
+      "name": "Hats Only",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "snare-roll",
+      "name": "Snare Roll",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "tom-fill",
+      "name": "Tom Fill",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "9": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "10": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "11": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "click",
+      "name": "Click",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "open-hat-groove",
+      "name": "Open Hat Groove",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 112,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "cowbell-disco",
+      "name": "Cowbell Disco",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 126,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "ride-groove",
+      "name": "Ride Groove",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "rim-groove",
+      "name": "Rim Groove",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "latin-clave",
+      "name": "Latin Clave",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 180,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "conga-loop",
+      "name": "Conga Loop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "6": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "timbale",
+      "name": "Timbale",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 160,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "9": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "bongo-jam",
+      "name": "Bongo Jam",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 124,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "10": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "11": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "cabasa-pulse",
+      "name": "Cabasa Pulse",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          75,
+          69,
+          70,
+          73,
+          56,
+          63,
+          64,
+          60,
+          61,
+          49,
+          80,
+          81,
+          54
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "claves",
+      "name": "Claves",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          75,
+          69,
+          70,
+          73,
+          56,
+          63,
+          64,
+          60,
+          61,
+          49,
+          80,
+          81,
+          54
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "triangle-waltz",
+      "name": "Triangle Waltz",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          75,
+          69,
+          70,
+          73,
+          56,
+          63,
+          64,
+          60,
+          61,
+          49,
+          80,
+          81,
+          54
+        ],
+        "bpm": 84,
+        "meter": "3/4",
+        "velocity": 88,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          },
+          "14": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "tambourine-pop",
+      "name": "Tambourine Pop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          75,
+          69,
+          70,
+          73,
+          56,
+          63,
+          64,
+          60,
+          61,
+          49,
+          80,
+          81,
+          54
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "ambient-pulse",
+      "name": "Ambient Pulse",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 80,
+        "meter": "4/4",
+        "velocity": 78,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "break-fill",
+      "name": "Break Fill",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 134,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "9": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "pop-punk",
+      "name": "Pop Punk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 178,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "post-punk",
+      "name": "Post Punk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 142,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "shoegaze",
+      "name": "Shoegaze",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 88,
+        "meter": "4/4",
+        "velocity": 82,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "emo",
+      "name": "Emo",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 164,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hardcore",
+      "name": "Hardcore",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 208,
+        "meter": "4/4",
+        "velocity": 120,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "alt-rock",
+      "name": "Alt Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "southern-rock",
+      "name": "Southern Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 112,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "blues-rock",
+      "name": "Blues Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 94,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "psych-rock",
+      "name": "Psych Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "stoner",
+      "name": "Stoner",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 72,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "post-rock",
+      "name": "Post Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 78,
+        "meter": "4/4",
+        "velocity": 80,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "slowcore",
+      "name": "Slowcore",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 58,
+        "meter": "4/4",
+        "velocity": 76,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "dream-pop",
+      "name": "Dream Pop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 92,
+        "meter": "4/4",
+        "velocity": 78,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "new-jack",
+      "name": "New Jack Swing",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "acid-house",
+      "name": "Acid House",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "minimal-techno",
+      "name": "Minimal Techno",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "hardstyle",
+      "name": "Hardstyle",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 150,
+        "meter": "4/4",
+        "velocity": 120,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "gabber",
+      "name": "Gabber",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 180,
+        "meter": "4/4",
+        "velocity": 127,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "future-bass",
+      "name": "Future Bass",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 150,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "uk-drill",
+      "name": "UK Drill",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 142,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "grime",
+      "name": "Grime",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "amapiano",
+      "name": "Amapiano",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 112,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "afro-house",
+      "name": "Afro House",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "gqom",
+      "name": "Gqom",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 127,
+        "meter": "4/4",
+        "velocity": 114,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "italo-disco",
+      "name": "Italo Disco",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 124,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "eurodance",
+      "name": "Eurodance",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 138,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "synthpop",
+      "name": "Synthpop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "city-pop",
+      "name": "City Pop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "vaporwave",
+      "name": "Vaporwave",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 80,
+        "meter": "4/4",
+        "velocity": 78,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "downtempo",
+      "name": "Downtempo",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 90,
+        "meter": "4/4",
+        "velocity": 82,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "breaks",
+      "name": "Breaks",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 132,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "liquid-dnb",
+      "name": "Liquid DnB",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 172,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "neurofunk",
+      "name": "Neurofunk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 174,
+        "meter": "4/4",
+        "velocity": 114,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "moombahton",
+      "name": "Moombahton",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "dembow",
+      "name": "Dembow",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "jersey-club",
+      "name": "Jersey Club",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "footwork",
+      "name": "Footwork",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 160,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "idm",
+      "name": "IDM",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 136,
+        "meter": "4/4",
+        "velocity": 92,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 5
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "salsa",
+      "name": "Salsa",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 200,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "merengue",
+      "name": "Merengue",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 152,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "cha-cha",
+      "name": "Cha-Cha",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "mambo",
+      "name": "Mambo",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 184,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "bachata",
+      "name": "Bachata",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 94,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "tango",
+      "name": "Tango",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 66,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "rumba",
+      "name": "Rumba",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "bolero",
+      "name": "Bolero",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 78,
+        "meter": "4/4",
+        "velocity": 80,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "son-cubano",
+      "name": "Son Cubano",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 160,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "samba-reggae",
+      "name": "Samba Reggae",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "baiao",
+      "name": "Baiao",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 110,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "forro",
+      "name": "Forro",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 124,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "axe",
+      "name": "Axe",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "maracatu",
+      "name": "Maracatu",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 88,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "frevo",
+      "name": "Frevo",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 144,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "pagode",
+      "name": "Pagode",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 98,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "mpb",
+      "name": "MPB",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 88,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "ska",
+      "name": "Ska",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 168,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "rocksteady",
+      "name": "Rocksteady",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 88,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "dub",
+      "name": "Dub",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 76,
+        "meter": "4/4",
+        "velocity": 86,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "calypso",
+      "name": "Calypso",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 116,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "soca",
+      "name": "Soca",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 136,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "15": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "zouk",
+      "name": "Zouk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 98,
+        "meter": "4/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "kizomba",
+      "name": "Kizomba",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 94,
+        "meter": "4/4",
+        "velocity": 84,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "highlife",
+      "name": "Highlife",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "soukous",
+      "name": "Soukous",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "bhangra",
+      "name": "Bhangra",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "bollywood",
+      "name": "Bollywood",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 110,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "flamenco",
+      "name": "Flamenco",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 126,
+        "meter": "3/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "jig",
+      "name": "Jig",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 126,
+        "meter": "6/8",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "reel",
+      "name": "Reel",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 112,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "bluegrass",
+      "name": "Bluegrass",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 144,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "honky-tonk",
+      "name": "Honky Tonk",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "two-step",
+      "name": "Two Step",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 126,
+        "meter": "4/4",
+        "velocity": 102,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "zydeco",
+      "name": "Zydeco",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 132,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "cajun",
+      "name": "Cajun",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 98,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "nashville",
+      "name": "Nashville",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 100,
+        "meter": "4/4",
+        "velocity": 92,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "bop",
+      "name": "Bop",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 220,
+        "meter": "4/4",
+        "velocity": 88,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "cool-jazz",
+      "name": "Cool Jazz",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 78,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "latin-jazz",
+      "name": "Latin Jazz",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          75,
+          37,
+          63,
+          64,
+          62,
+          56,
+          65,
+          66,
+          60,
+          61,
+          49,
+          76,
+          77,
+          54
+        ],
+        "bpm": 168,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "second-line",
+      "name": "Second Line",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "new-orleans",
+      "name": "New Orleans",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 96,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "7": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "death-metal",
+      "name": "Death Metal",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 200,
+        "meter": "4/4",
+        "velocity": 124,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "black-metal",
+      "name": "Black Metal",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 186,
+        "meter": "4/4",
+        "velocity": 118,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "power-metal",
+      "name": "Power Metal",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 162,
+        "meter": "4/4",
+        "velocity": 114,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "12": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "nu-metal",
+      "name": "Nu Metal",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 94,
+        "meter": "4/4",
+        "velocity": 112,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "djent",
+      "name": "Djent",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 140,
+        "meter": "4/4",
+        "velocity": 116,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "mazurka",
+      "name": "Mazurka",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 132,
+        "meter": "3/4",
+        "velocity": 90,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 1
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "minuet",
+      "name": "Minuet",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 84,
+        "meter": "3/4",
+        "velocity": 82,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 3
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "tarantella",
+      "name": "Tarantella",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 144,
+        "meter": "6/8",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "compound-rock",
+      "name": "Compound Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 118,
+        "meter": "6/8",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "kick-and-hats",
+      "name": "Kick and Hats",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "backbeat",
+      "name": "Backbeat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 108,
+        "overrides": {
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "offbeat",
+      "name": "Offbeat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "agogo-pulse",
+      "name": "Agogo Pulse",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          75,
+          69,
+          70,
+          63,
+          64,
+          80,
+          81,
+          73,
+          74,
+          67,
+          68,
+          54,
+          76,
+          77,
+          56
+        ],
+        "bpm": 118,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "10": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "11": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "maracas-16",
+      "name": "Maracas",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          75,
+          69,
+          70,
+          63,
+          64,
+          80,
+          81,
+          73,
+          74,
+          67,
+          68,
+          54,
+          76,
+          77,
+          56
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 88,
+        "overrides": {
+          "3": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          }
+        }
+      }
+    },
+    {
+      "id": "guiro-groove",
+      "name": "Guiro Groove",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          75,
+          69,
+          70,
+          63,
+          64,
+          80,
+          81,
+          73,
+          74,
+          67,
+          68,
+          54,
+          76,
+          77,
+          56
+        ],
+        "bpm": 108,
+        "meter": "4/4",
+        "velocity": 92,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "8": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "9": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "woodblock",
+      "name": "Woodblock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          75,
+          69,
+          70,
+          63,
+          64,
+          80,
+          81,
+          73,
+          74,
+          67,
+          68,
+          54,
+          76,
+          77,
+          56
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 96,
+        "overrides": {
+          "13": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "14": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "slow-jam",
+      "name": "Slow Jam",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 68,
+        "meter": "4/4",
+        "velocity": 86,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "party-rock",
+      "name": "Party Rock",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 128,
+        "meter": "4/4",
+        "velocity": 110,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "train-beat",
+      "name": "Train Beat",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 148,
+        "meter": "4/4",
+        "velocity": 104,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "motorik",
+      "name": "Motorik",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 130,
+        "meter": "4/4",
+        "velocity": 94,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "1": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "disco-hats",
+      "name": "Disco Hats",
+      "source": "native",
+      "updatedAt": "2026-09-13T00:00:00.000Z",
+      "payload": {
+        "notes": [
+          36,
+          38,
+          39,
+          37,
+          42,
+          46,
+          44,
+          56,
+          41,
+          43,
+          45,
+          47,
+          49,
+          51,
+          52,
+          53
+        ],
+        "bpm": 120,
+        "meter": "4/4",
+        "velocity": 100,
+        "overrides": {
+          "0": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          },
+          "2": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 2
+          },
+          "4": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 16
+          },
+          "5": {
+            "bpm": null,
+            "meter": null,
+            "hitsPerBar": 4
+          }
+        }
+      }
+    }
+  ]
+}

@@ -4,22 +4,27 @@ import {
   PAD_SLOT_COUNT,
   clampDrumNote,
   clampMidiChannel,
-  defaultPadNotes,
   drumLabelForNote,
 } from "../drumMap";
 import {
   DEFAULT_GLOBAL_BPM,
-  DEFAULT_GLOBAL_METER,
   STEPS_PER_BAR,
   TIME_SIGNATURES,
-  clampBpm,
   clampHitsPerBar,
   evenDistributeHits,
-  isTimeSignature,
   type PadTimingOverride,
   type TimeSignature,
 } from "../drumLoop";
 import { usePadLoopEngine } from "../usePadLoopEngine";
+import {
+  emptyDrumPresetPayload,
+  overridesToPadMap,
+  padMapToOverrides,
+  parseDrumPresetPayload,
+  type DrumPreset,
+  type DrumPresetPayload,
+} from "../presets/drumPreset";
+import { DrumPresetGallery } from "./DrumPresetGallery";
 import { Icon } from "./Icon";
 
 const PAD_IDS = Array.from({ length: PAD_SLOT_COUNT }, (_, i) => i);
@@ -27,52 +32,19 @@ const PLAY_DRUM_PREFS_KEY = "rc600.playDrum.prefs";
 /** RC-600 ignores ~0 ms notes; keep a one-shot gate even on tap. */
 const MIN_PAD_GATE_MS = 90;
 
-interface PlayDrumPrefs {
-  notes: number[];
-  bpm: number;
-  meter: TimeSignature;
-  velocity: number;
-  overrides: Record<string, PadTimingOverride>;
+interface PlayDrumPrefs extends DrumPresetPayload {
   showSettings: boolean;
 }
 
 function loadPlayDrumPrefs(): PlayDrumPrefs {
-  const fallback: PlayDrumPrefs = {
-    notes: defaultPadNotes(),
-    bpm: DEFAULT_GLOBAL_BPM,
-    meter: DEFAULT_GLOBAL_METER,
-    velocity: 100,
-    overrides: {},
-    showSettings: false,
-  };
+  const fallback: PlayDrumPrefs = { ...emptyDrumPresetPayload(), showSettings: false };
   if (typeof localStorage === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(PLAY_DRUM_PREFS_KEY);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<PlayDrumPrefs>;
-    const notes = Array.isArray(parsed.notes)
-      ? PAD_IDS.map((i) => clampDrumNote(Number(parsed.notes?.[i] ?? fallback.notes[i])))
-      : fallback.notes;
-    const overrides: Record<string, PadTimingOverride> = {};
-    if (parsed.overrides && typeof parsed.overrides === "object") {
-      for (const [k, v] of Object.entries(parsed.overrides)) {
-        if (!v || typeof v !== "object") continue;
-        overrides[k] = {
-          bpm: typeof v.bpm === "number" ? clampBpm(v.bpm) : v.bpm ?? null,
-          meter: v.meter && isTimeSignature(v.meter) ? v.meter : null,
-          hitsPerBar: typeof v.hitsPerBar === "number" ? clampHitsPerBar(v.hitsPerBar) : 0,
-        };
-      }
-    }
     return {
-      notes,
-      bpm: typeof parsed.bpm === "number" ? clampBpm(parsed.bpm) : fallback.bpm,
-      meter: parsed.meter && isTimeSignature(parsed.meter) ? parsed.meter : fallback.meter,
-      velocity:
-        typeof parsed.velocity === "number"
-          ? Math.max(1, Math.min(127, Math.round(parsed.velocity)))
-          : fallback.velocity,
-      overrides,
+      ...parseDrumPresetPayload(parsed),
       showSettings: parsed.showSettings === true,
     };
   } catch {
@@ -88,15 +60,6 @@ function savePlayDrumPrefs(patch: Partial<PlayDrumPrefs>): void {
   } catch {
     /* quota / private mode */
   }
-}
-
-function overridesFromPrefs(raw: Record<string, PadTimingOverride>): Record<number, PadTimingOverride> {
-  const out: Record<number, PadTimingOverride> = {};
-  for (const [k, v] of Object.entries(raw)) {
-    const id = Number(k);
-    if (Number.isInteger(id)) out[id] = v;
-  }
-  return out;
 }
 
 export function PlayDrumTab({
@@ -130,7 +93,7 @@ export function PlayDrumTab({
   const [globalMeter, setGlobalMeter] = useState<TimeSignature>(initial.meter);
   const [drumPadNotes, setDrumPadNotes] = useState<number[]>(() => initial.notes);
   const [padOverrides, setPadOverrides] = useState<Record<number, PadTimingOverride>>(
-    () => overridesFromPrefs(initial.overrides),
+    () => overridesToPadMap(initial.overrides),
   );
   const [showPadSettings, setShowPadSettings] = useState(initial.showSettings);
   const [lastMidi, setLastMidi] = useState<string | null>(null);
@@ -139,7 +102,7 @@ export function PlayDrumTab({
   const soundingRef = useRef(new Map<number, number[]>());
   const pointerUnbindRef = useRef(new Map<number, () => void>());
   const downAtRef = useRef(new Map<number, number>());
-  const pendingOffRef = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  const pendingOffRef = useRef(new Map<number, number>());
   const velocityRef = useRef(velocity);
   velocityRef.current = velocity;
 
@@ -216,9 +179,7 @@ export function PlayDrumTab({
       bpm: globalBpm,
       meter: globalMeter,
       velocity,
-      overrides: Object.fromEntries(
-        Object.entries(padOverrides).map(([k, v]) => [k, v]),
-      ),
+      overrides: padMapToOverrides(padOverrides),
       showSettings: showPadSettings,
     });
   }, [drumPadNotes, globalBpm, globalMeter, velocity, padOverrides, showPadSettings]);
@@ -300,6 +261,26 @@ export function PlayDrumTab({
     window.setTimeout(() => emitNotes([note], 0, false), 200);
   }
 
+  const currentPayload: DrumPresetPayload = useMemo(
+    () => ({
+      notes: drumPadNotes,
+      bpm: globalBpm,
+      meter: globalMeter,
+      velocity,
+      overrides: padMapToOverrides(padOverrides),
+    }),
+    [drumPadNotes, globalBpm, globalMeter, velocity, padOverrides],
+  );
+
+  function applyPreset(preset: DrumPreset) {
+    const p = preset.payload;
+    setDrumPadNotes(p.notes);
+    setGlobalBpm(p.bpm);
+    setGlobalMeter(p.meter);
+    setVelocity(p.velocity);
+    setPadOverrides(overridesToPadMap(p.overrides));
+  }
+
   function setHits(padId: number, hits: number) {
     const n = clampHitsPerBar(hits);
     setPadOverrides((prev) => ({
@@ -379,6 +360,12 @@ export function PlayDrumTab({
           </button>
         ) : null}
       </div>
+
+      <DrumPresetGallery
+        payload={currentPayload}
+        onBeforeLoad={() => loop.stopAll()}
+        onLoad={applyPreset}
+      />
 
       <div className="drum-pad-transport" role="group" aria-label="Global loop">
         <label className="drum-pad-field">
