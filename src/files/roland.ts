@@ -88,8 +88,13 @@ export type DirectoryHandleLike = {
   getDirectoryHandle: (name: string, opts?: { create?: boolean }) => Promise<DirectoryHandleLike>;
   getFileHandle: (name: string, opts?: { create?: boolean }) => Promise<{
     getFile: () => Promise<File>;
-    createWritable: () => Promise<{ write: (d: string) => Promise<void>; close: () => Promise<void> }>;
+    createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{
+      write: (d: string | BufferSource | Blob | Uint8Array) => Promise<void>;
+      truncate?: (size: number) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
   }>;
+  removeEntry?: (name: string, opts?: { recursive?: boolean }) => Promise<void>;
   queryPermission?: (descriptor?: { mode?: "read" | "readwrite" }) => Promise<PermissionState>;
   requestPermission?: (descriptor?: { mode?: "read" | "readwrite" }) => Promise<PermissionState>;
 };
@@ -136,20 +141,37 @@ async function walkDir(
   }
 }
 
+async function findChildDirName(
+  dir: DirectoryHandleLike,
+  wantedUpper: string,
+): Promise<string | null> {
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === "file") continue;
+    if (name.toUpperCase() === wantedUpper) return name;
+  }
+  return null;
+}
+
 export async function filesFromDirectoryHandle(dir: DirectoryHandleLike): Promise<{
   files: RolandFiles;
   handle: DirectoryHandleLike;
 }> {
-  // Accept ROLAND itself or a parent containing ROLAND
+  // Prefer a root that contains both DATA and WAVE (true ROLAND folder).
   let root = dir;
   let label = dir.name;
-  try {
-    if (dir.name.toUpperCase() !== "ROLAND" && dir.name.toUpperCase() !== "DATA") {
-      root = await dir.getDirectoryHandle("ROLAND");
-      label = "ROLAND";
+
+  const rolandChild = await findChildDirName(dir, "ROLAND");
+  if (rolandChild && dir.name.toUpperCase() !== "ROLAND" && dir.name.toUpperCase() !== "DATA") {
+    root = await dir.getDirectoryHandle(rolandChild);
+    label = rolandChild;
+  } else if (dir.name.toUpperCase() !== "ROLAND" && dir.name.toUpperCase() !== "DATA") {
+    // Folder may itself be a renamed Roland root (has DATA + WAVE)
+    const dataChild = await findChildDirName(dir, "DATA");
+    const waveChild = await findChildDirName(dir, "WAVE");
+    if (dataChild && waveChild) {
+      root = dir;
+      label = dir.name;
     }
-  } catch {
-    // maybe already DATA or ROLAND contents
   }
 
   const files = new Map<string, string>();
@@ -164,7 +186,7 @@ export async function filesFromDirectoryHandle(dir: DirectoryHandleLike): Promis
 export async function writeFileToDirectory(
   root: DirectoryHandleLike,
   relativePath: string,
-  content: string,
+  content: string | Uint8Array | Blob,
 ): Promise<void> {
   const parts = normalizeRolandPath(relativePath).split("/");
   let dir = root;
@@ -174,11 +196,12 @@ export async function writeFileToDirectory(
     parts.shift();
   }
   for (let i = 0; i < parts.length - 1; i++) {
-    dir = await dir.getDirectoryHandle(parts[i], { create: true });
+    dir = await dir.getDirectoryHandle(parts[i]!, { create: true });
   }
-  const fileName = parts[parts.length - 1];
+  const fileName = parts[parts.length - 1]!;
   const fh = await dir.getFileHandle(fileName, { create: true });
-  const w = await fh.createWritable();
+  const w = await fh.createWritable({ keepExistingData: false });
+  if (typeof w.truncate === "function") await w.truncate(0);
   await w.write(content);
   await w.close();
 }

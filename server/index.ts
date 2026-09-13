@@ -18,11 +18,20 @@ import {
   requireLicenseEnabled,
 } from "./licenses.js";
 import { ejectRc600Usb, isLocalUsbHost } from "./usb-eject.js";
+import {
+  findTrackWaveFile,
+  listMemoryWaveFiles,
+  readWaveFileBytes,
+} from "./wave-files.js";
 import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-presets.js";
+import { createNativeKitFileStore, isNativeKitWriteAllowed } from "./drum-kits.js";
 
 const app = new Hono();
 const nativePresetStore = createNativePresetFileStore(
   resolve(process.cwd(), "web/public/play-drum/presets.json"),
+);
+const nativeKitStore = createNativeKitFileStore(
+  resolve(process.cwd(), "web/public/play-drum/kits.json"),
 );
 
 app.get("/api/session", (c) => {
@@ -76,6 +85,66 @@ app.post("/api/lock", (c) => {
 
 app.get("/api/usb", (c) => {
   return c.json({ eject: isLocalUsbHost(c.req.header("host")) });
+});
+
+/** List WAVE files for a memory slot from the connected RC-600 USB (local editor only). */
+app.get("/api/wave/:slot", async (c) => {
+  if (!isLocalUsbHost(c.req.header("host"))) {
+    return c.json({ error: "WAVE access only runs on the local editor." }, 403);
+  }
+  const slot = Number(c.req.param("slot"));
+  if (!Number.isInteger(slot) || slot < 1 || slot > 99) {
+    return c.json({ error: "Invalid memory slot" }, 400);
+  }
+  try {
+    const tracks = await listMemoryWaveFiles(slot);
+    return c.json({
+      slot,
+      tracks: tracks.map((t) =>
+        t
+          ? { track: t.track, fileName: t.fileName, size: t.size }
+          : null,
+      ),
+    });
+  } catch (e) {
+    console.error("wave list failed", e);
+    return c.json({ error: "Could not list WAVE files" }, 500);
+  }
+});
+
+/** Stream one track WAV from the connected RC-600 USB (local editor only). */
+app.get("/api/wave/:slot/:track/file", async (c) => {
+  if (!isLocalUsbHost(c.req.header("host"))) {
+    return c.json({ error: "WAVE access only runs on the local editor." }, 403);
+  }
+  const slot = Number(c.req.param("slot"));
+  const track = Number(c.req.param("track"));
+  if (!Number.isInteger(slot) || slot < 1 || slot > 99) {
+    return c.json({ error: "Invalid memory slot" }, 400);
+  }
+  if (!Number.isInteger(track) || track < 1 || track > 6) {
+    return c.json({ error: "Invalid track" }, 400);
+  }
+  try {
+    const info = await findTrackWaveFile(slot, track);
+    if (!info) {
+      return c.json({ error: `No WAV under WAVE/${String(slot).padStart(3, "0")}_${track}/` }, 404);
+    }
+    const bytes = readWaveFileBytes(info.absolutePath);
+    return new Response(Buffer.from(bytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "audio/wav",
+        "Content-Length": String(bytes.byteLength),
+        "Content-Disposition": `inline; filename="${info.fileName.replace(/"/g, "")}"`,
+        "X-Wave-File-Name": info.fileName,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (e) {
+    console.error("wave read failed", e);
+    return c.json({ error: "Could not read WAVE file" }, 500);
+  }
 });
 
 /** Eject the BOSS RC-600 mass-storage volume so the pedal can leave USB Storage and power off. Local editor only. */
@@ -135,6 +204,39 @@ app.delete("/api/drum-presets/:id", async (c) => {
   const id = c.req.param("id");
   const ok = await nativePresetStore.remove(id);
   if (!ok) return c.json({ error: "Rhythm not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.get("/api/drum-kits", async (c) => {
+  return c.json({ version: 1, kits: await nativeKitStore.list() });
+});
+
+app.post("/api/drum-kits", async (c) => {
+  if (!isNativeKitWriteAllowed()) {
+    return c.json({ error: "Factory kits are read-only in production" }, 403);
+  }
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  try {
+    const saved = await nativeKitStore.upsert(body);
+    return c.json(saved);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not save factory kit";
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.delete("/api/drum-kits/:id", async (c) => {
+  if (!isNativeKitWriteAllowed()) {
+    return c.json({ error: "Factory kits are read-only in production" }, 403);
+  }
+  const id = c.req.param("id");
+  const ok = await nativeKitStore.remove(id);
+  if (!ok) return c.json({ error: "Kit not found" }, 404);
   return c.json({ ok: true });
 });
 

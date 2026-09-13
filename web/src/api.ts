@@ -167,6 +167,50 @@ export async function ejectUsbStorage(): Promise<{
   }
 }
 
+export type ServerWaveTrackInfo = {
+  track: number;
+  fileName: string;
+  size: number;
+};
+
+/** List WAVE files for a memory via the local API (Node reads the USB drive). */
+export async function fetchMemoryWaveFiles(
+  slot: number,
+): Promise<Array<ServerWaveTrackInfo | null> | null> {
+  try {
+    const res = await fetch(`/api/wave/${slot}`, { credentials: "include" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      tracks?: Array<{ track: number; fileName: string; size: number } | null>;
+    };
+    if (!Array.isArray(data.tracks) || data.tracks.length !== 6) return null;
+    return data.tracks.map((t) =>
+      t ? { track: t.track, fileName: t.fileName, size: t.size } : null,
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Download one track WAV via the local API. */
+export async function fetchTrackWaveFile(
+  slot: number,
+  track: number,
+): Promise<{ fileName: string; bytes: Uint8Array } | null> {
+  try {
+    const res = await fetch(`/api/wave/${slot}/${track}/file`, { credentials: "include" });
+    if (!res.ok) return null;
+    const fileName =
+      res.headers.get("X-Wave-File-Name") ||
+      `MEMORY${String(slot).padStart(3, "0")}_${track}.WAV`;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength === 0) return null;
+    return { fileName, bytes: buf };
+  } catch {
+    return null;
+  }
+}
+
 export async function assembleRemote(req: AssembleRequest): Promise<AssembleResponse> {
   let res: Response;
   try {

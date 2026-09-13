@@ -7,6 +7,7 @@ import {
   parseSystem,
   pickActiveSystem,
   pickActiveXml,
+  memoryFilesAfterSave,
   summarizePair,
 } from "@rc600/rc0/memory";
 import { applyOpsToModel, normalizeOps, type PatchOp } from "@rc600/rc0/ops";
@@ -25,6 +26,7 @@ import {
   writeFileToDirectory,
   zipRoland,
 } from "@rc600/files/roland";
+import { copyMemoryWavFolders } from "@rc600/files/wave";
 import {
   assembleRemote,
   ejectUsbStorage,
@@ -41,6 +43,7 @@ import { InputTab } from "./components/InputTab";
 import { OutputTab } from "./components/OutputTab";
 import { MixerTab } from "./components/MixerTab";
 import { InputFxTab } from "./components/InputFxTab";
+import { AudioTab } from "./components/AudioTab";
 import { SystemTab } from "./components/SystemTab";
 import { PlayDrumTab } from "./components/PlayDrumTab";
 import { LicenseScreen } from "./components/LicenseScreen";
@@ -55,6 +58,12 @@ import {
   queryMidiPermission,
   saveMidiPrefs,
   shouldReuseMidiAccess,
+  shouldReloadSavedMemory,
+  shouldSyncPedalOnMemorySelect,
+  midiSendChannels,
+  initialMidiChannel,
+  USB_MIDI_SETTLE_MS,
+  MEMORY_RELOAD_SETTLE_MS,
   type MidiPortInfo,
 } from "@rc600/midi/rc600-midi";
 import {
@@ -66,7 +75,12 @@ import {
   saveRolandHandle,
 } from "@rc600/files/folder-store";
 import { parseRhythmChannel } from "./drumMap";
-import { findRhythmKitAssign, kitIndexToCcValue } from "@rc600/catalog/rhythm-kit-midi";
+import {
+  findRhythmKitAssign,
+  kitIndexToCcValue,
+  resolveRhythmKitAssign,
+  type RhythmKitMidiAssign,
+} from "@rc600/catalog/rhythm-kit-midi";
 import {
   appendSlotDraft,
   clearSlotDraft,
@@ -81,6 +95,7 @@ type Workspace = (typeof WORKSPACES)[number];
 const MEMORY_TABS = [
   "info",
   "loop",
+  "audio",
   "ctl",
   "assigns",
   "input",
@@ -97,6 +112,23 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
   if (v === undefined) return fallback;
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function sysSectionTag(
+  xml: string,
+  side: "1" | "2",
+  ops: PatchOp[],
+  section: string,
+  tag: string,
+): string | undefined {
+  const sys = parseSystem(xml, side);
+  let raw: string | undefined = sys.sections[section]?.[tag];
+  for (const op of ops) {
+    if (op.type === "section" && op.scope === "sys" && op.section === section && op.tags[tag] != null) {
+      raw = op.tags[tag];
+    }
+  }
+  return raw;
 }
 
 function DevNotice() {
@@ -135,15 +167,21 @@ export function App() {
   const [discardAllOpen, setDiscardAllOpen] = useState(false);
 
   const midiRef = useRef(new Rc600Midi());
-  const pendingMemoryReloadRef = useRef<number | null>(null);
+  const pendingMemoryReloadRef = useRef<{
+    slot: number;
+    kit: number | null;
+    assign: RhythmKitMidiAssign | null;
+  } | null>(null);
+  const usbReleasedAtRef = useRef(0);
+  const ignoreIncomingPcUntilRef = useRef(0);
+  const recallPedalMemoryRef = useRef<(targetSlot: number, xml: string) => void>(() => {});
   const env = useMemo(() => midiEnvironment(), []);
   const midiPrefs = useMemo(() => loadMidiPrefs(), []);
   const [midiAccess, setMidiAccess] = useState(false);
   const [outputs, setOutputs] = useState<MidiPortInfo[]>([]);
   const [outId, setOutId] = useState<string | null>(midiPrefs.outId);
   const [connected, setConnected] = useState<string | null>(null);
-  const [midiCh, setMidiCh] = useState(midiPrefs.channel);
-  const [rhythmCh, setRhythmCh] = useState(midiPrefs.rhythmChannel);
+  const [midiCh, setMidiCh] = useState(() => initialMidiChannel(midiPrefs));
   const [midiBusy, setMidiBusy] = useState(() => env.supported && midiPrefs.allowed);
 
   const [sysSide, setSysSide] = useState<"1" | "2">("1");
@@ -200,6 +238,18 @@ export function App() {
   const dirty = ops.length > 0;
   const dirtySlots = useMemo(() => dirtySlotNumbers(drafts), [drafts]);
   const anyMemoryDirty = dirtySlots.length > 0;
+  const filesRef = useRef(files);
+  filesRef.current = files;
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
+  const baseXmlRef = useRef(baseXml);
+  baseXmlRef.current = baseXml;
+  const slotRef = useRef(slot);
+  slotRef.current = slot;
+  const activeSideRef = useRef(activeSide);
+  activeSideRef.current = activeSide;
+  const backupAckRef = useRef(backupAck);
+  backupAckRef.current = backupAck;
 
   const model: MemoryModel | null = useMemo(() => {
     if (!baseXml || slot == null) return null;
@@ -211,36 +261,47 @@ export function App() {
     return { side: sysSide, count: sysBaseXml.match(/<count>([^<]+)<\/count>/)?.[1] ?? "—" };
   }, [sysBaseXml, sysSide]);
 
-  const systemRhythmCh = useMemo(() => {
+  const systemCtlCh = useMemo(() => {
     if (!sysBaseXml) return null;
-    const sys = parseSystem(sysBaseXml, sysSide);
-    let raw: string | undefined = sys.sections.MIDI?.C;
-    for (const op of sysOps) {
-      if (op.type === "section" && op.scope === "sys" && op.section === "MIDI" && op.tags.C != null) {
-        raw = op.tags.C;
-      }
-    }
-    return parseRhythmChannel(raw) + 1;
+    const raw = sysSectionTag(sysBaseXml, sysSide, sysOps, "MIDI", "A");
+    if (raw == null || raw === "") return null;
+    return parseRhythmChannel(raw);
   }, [sysBaseXml, sysSide, sysOps]);
 
+  const rhythmCh = useMemo(() => {
+    if (!sysBaseXml) return midiCh;
+    return parseRhythmChannel(sysSectionTag(sysBaseXml, sysSide, sysOps, "MIDI", "C"));
+  }, [sysBaseXml, sysSide, sysOps, midiCh]);
+
+  const sendChannels = useMemo(
+    () => midiSendChannels(midiCh, rhythmCh, systemCtlCh ?? midiCh),
+    [midiCh, rhythmCh, systemCtlCh],
+  );
+  const sendChannelsRef = useRef(sendChannels);
+  sendChannelsRef.current = sendChannels;
+
   const loadSlot = useCallback(
-    (s: number, map: Map<string, string> = files) => {
+    (s: number, map: Map<string, string> = files, opts?: { syncPedal?: boolean }) => {
       const a = map.get(slotFileName(s, "A"));
       const b = map.get(slotFileName(s, "B"));
       if (!a && !b) {
         setError(`Memory ${s} not found`);
         return;
       }
+      let xml: string;
       if (a && b) {
         const picked = pickActiveXml(a, b);
         setActiveSide(picked.side);
-        setBaseXml(picked.xml);
+        xml = picked.xml;
+        setBaseXml(xml);
       } else {
         setActiveSide(a ? "a" : "b");
-        setBaseXml((a || b)!);
+        xml = (a || b)!;
+        setBaseXml(xml);
       }
       setSlot(s);
       setError(null);
+      if (opts?.syncPedal) recallPedalMemoryRef.current(s, xml);
     },
     [files],
   );
@@ -457,6 +518,9 @@ export function App() {
     setEjecting(true);
     setError(null);
     dropLiveHandle();
+    usbReleasedAtRef.current = Date.now();
+    midiRef.current.disconnect();
+    setConnected(null);
     setFiles(new Map());
     setSlot(null);
     setBaseXml("");
@@ -466,13 +530,16 @@ export function App() {
     setSysDirty(false);
     setPendingHandle(await loadRolandHandle());
     try {
+      const reloadHint = pendingMemoryReloadRef.current
+        ? " Then Allow MIDI — the editor switches memories and back so the pedal loads the saved kit."
+        : "";
       if (usbEjectLocal) {
         const result = await ejectUsbStorage();
-        setStatus(result.message);
+        setStatus(`${result.message}${reloadHint}`);
         if (!result.ok) setError(result.message);
       } else {
         setStatus(
-          "Folder released. Eject BOSS RC-600 in File Explorer, wait for DISCONNECTING…, then power off.",
+          `Folder released. Eject BOSS RC-600 in File Explorer, wait for DISCONNECTING…, then power off.${reloadHint}`,
         );
       }
     } finally {
@@ -485,22 +552,44 @@ export function App() {
     xml: string,
     slotOps: PatchOp[],
     map: Map<string, string>,
-  ): Promise<{ path: string; saved: string; side: "a" | "b" }> {
+  ): Promise<{ written: { path: string; xml: string }[]; saved: string; side: "a" | "b" }> {
     const aPath = slotFileName(targetSlot, "A");
     const bPath = slotFileName(targetSlot, "B");
     const a = map.get(aPath);
     const b = map.get(bPath);
     if (!a && !b) throw new Error(`Memory ${targetSlot} not found`);
     const picked =
-      targetSlot === slot && xml
-        ? { side: activeSide, xml }
+      targetSlot === slotRef.current && xml
+        ? { side: activeSideRef.current, xml }
         : a && b
           ? pickActiveXml(a, b)
           : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
-    const base = targetSlot === slot ? xml : picked.xml;
+    const base = targetSlot === slotRef.current ? xml : picked.xml;
     const { xml: saved } = await assembleRemote({ kind: "patch", xml: base, ops: slotOps });
-    const path = slotFileName(targetSlot, picked.side === "a" ? "A" : "B");
-    return { path, saved, side: picked.side };
+    const pair = memoryFilesAfterSave(saved);
+    return {
+      saved,
+      side: picked.side,
+      written: [
+        { path: aPath, xml: pair.xmlA },
+        { path: bPath, xml: pair.xmlB },
+      ],
+    };
+  }
+
+  async function commitSlotFiles(
+    written: { path: string; xml: string }[],
+    map: Map<string, string>,
+  ): Promise<Map<string, string>> {
+    const next = new Map(map);
+    for (const file of written) next.set(file.path, file.xml);
+    const handle = dirHandleRef.current;
+    if (handle) {
+      for (const file of written) {
+        await writeFileToDirectory(handle, file.path, file.xml);
+      }
+    }
+    return next;
   }
 
   async function saveCurrent() {
@@ -517,28 +606,23 @@ export function App() {
     setSaving(true);
     setError(null);
     try {
-      const { path, saved } = await saveSlotXml(slot, baseXml, ops, files);
-      const next = new Map(files);
-      next.set(path, saved);
+      const { written, saved } = await saveSlotXml(slot, baseXml, ops, files);
+      const next = await commitSlotFiles(written, files);
       setFiles(next);
       setBaseXml(saved);
       setDrafts((prev) => clearSlotDraft(prev, slot));
 
       if (dirHandleRef.current) {
-        try {
-          await writeFileToDirectory(dirHandleRef.current, path, saved);
-          setStatus(`Saved ${path}`);
-          pendingMemoryReloadRef.current = slot;
-          if (midiRef.current.connectedName) {
-            midiRef.current.channel = midiCh;
-            midiRef.current.programChange(slot);
-            pendingMemoryReloadRef.current = null;
-          }
-        } catch (e) {
-          setError(`Folder is open, but write failed: ${e}. Download the ZIP.`);
-        }
+        pendingMemoryReloadRef.current = {
+          slot,
+          kit: model ? num(model.rhythm, "D", 0) : null,
+          assign: model ? findRhythmKitAssign(model.assigns) : null,
+        };
+        setStatus(
+          `Saved MEMORY${String(slot).padStart(3, "0")}A/B. On the pedal, switch to another memory and back so it loads the new kit. USB Storage cannot change the kit that is already in RAM.`,
+        );
       } else {
-        setStatus(`Updated in memory: ${path} — download ZIP to write`);
+        setStatus(`Updated MEMORY${String(slot).padStart(3, "0")}A/B — download ZIP to write`);
       }
     } catch (e) {
       setError(String(e));
@@ -563,24 +647,28 @@ export function App() {
     setSaving(true);
     setError(null);
     try {
-      const next = new Map(files);
+      let next = new Map(files);
       let savedCount = 0;
       for (const s of dirtySlots) {
         const slotOps = drafts.get(s) ?? [];
         if (slotOps.length === 0) continue;
-        const { path, saved } = await saveSlotXml(s, s === slot ? baseXml : "", slotOps, next);
-        next.set(path, saved);
-        if (dirHandleRef.current) {
-          await writeFileToDirectory(dirHandleRef.current, path, saved);
-        }
+        const { written, saved } = await saveSlotXml(s, s === slot ? baseXml : "", slotOps, next);
+        next = await commitSlotFiles(written, next);
         if (s === slot) setBaseXml(saved);
         savedCount += 1;
       }
       setFiles(next);
       setDrafts(new Map());
+      if (dirHandleRef.current && slot != null && dirtySlots.includes(slot)) {
+        pendingMemoryReloadRef.current = {
+          slot,
+          kit: model ? num(model.rhythm, "D", 0) : null,
+          assign: model ? findRhythmKitAssign(model.assigns) : null,
+        };
+      }
       setStatus(
         dirHandleRef.current
-          ? `Saved ${savedCount} memor${savedCount === 1 ? "y" : "ies"}`
+          ? `Saved ${savedCount} memor${savedCount === 1 ? "y" : "ies"} (A and B). On the pedal, switch memory and back so the new kit loads.`
           : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — download ZIP to write`,
       );
     } catch (e) {
@@ -606,6 +694,27 @@ export function App() {
     setStatus(`Discarded ${n} unsaved memor${n === 1 ? "y" : "ies"}`);
   }
 
+  async function writeSystemXml(opsToApply: PatchOp[]): Promise<string> {
+    if (!sysBaseXml) throw new Error("SYSTEM1/2.RC0 not loaded");
+    const { xml: saved } = await assembleRemote({
+      kind: "patch",
+      xml: sysBaseXml,
+      ops: opsToApply,
+    });
+    const pair = memoryFilesAfterSave(saved);
+    const written = [
+      { path: systemFileName("1"), xml: pair.xmlA },
+      { path: systemFileName("2"), xml: pair.xmlB },
+    ];
+    const next = await commitSlotFiles(written, filesRef.current);
+    setFiles(next);
+    setSysBaseXml(saved);
+    setSysOps([]);
+    setSysDirty(false);
+    setSysSide("1");
+    return saved;
+  }
+
   async function saveSystem() {
     if (!sysBaseXml) return;
     if (requireLicense && !sessionOk) {
@@ -619,24 +728,12 @@ export function App() {
     setSaving(true);
     setError(null);
     try {
-      const { xml: saved } = await assembleRemote({
-        kind: "patch",
-        xml: sysBaseXml,
-        ops: sysOps,
-      });
-      const path = systemFileName(sysSide);
-      const next = new Map(files);
-      next.set(path, saved);
-      setFiles(next);
-      setSysBaseXml(saved);
-      setSysOps([]);
-      setSysDirty(false);
-      if (dirHandleRef.current) {
-        await writeFileToDirectory(dirHandleRef.current, path, saved);
-        setStatus(`Saved ${path}`);
-      } else {
-        setStatus(`System updated — download ZIP`);
-      }
+      await writeSystemXml(sysOps);
+      setStatus(
+        dirHandleRef.current
+          ? "Saved SYSTEM1.RC0 and SYSTEM2.RC0"
+          : "System updated — download ZIP",
+      );
     } catch (e) {
       setError(String(e));
       if (String(e).includes("License required") || String(e).includes("expired")) {
@@ -683,12 +780,16 @@ export function App() {
         ? (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml
         : baseXml;
       const next = new Map(files);
-      const selfPath = slotFileName(slot, activeSide === "a" ? "A" : "B");
-      next.set(selfPath, sourceXml);
-      if (dirty && dirHandleRef.current) {
-        await writeFileToDirectory(dirHandleRef.current, selfPath, sourceXml);
+      if (dirty) {
+        const pair = memoryFilesAfterSave(sourceXml);
+        next.set(slotFileName(slot, "A"), pair.xmlA);
+        next.set(slotFileName(slot, "B"), pair.xmlB);
+        if (dirHandleRef.current) {
+          await writeFileToDirectory(dirHandleRef.current, slotFileName(slot, "A"), pair.xmlA);
+          await writeFileToDirectory(dirHandleRef.current, slotFileName(slot, "B"), pair.xmlB);
+        }
+        setBaseXml(sourceXml);
       }
-      if (dirty) setBaseXml(sourceXml);
 
       const clearedTargets: number[] = [];
       for (const target of copyTargets) {
@@ -706,11 +807,16 @@ export function App() {
           targetXml: picked.xml,
           mode: copyMode,
         });
-        const path = slotFileName(target, picked.side === "a" ? "A" : "B");
-        next.set(path, patched);
+        const pair = memoryFilesAfterSave(patched);
+        next.set(aPath, pair.xmlA);
+        next.set(bPath, pair.xmlB);
         clearedTargets.push(target);
         if (dirHandleRef.current) {
-          await writeFileToDirectory(dirHandleRef.current, path, patched);
+          await writeFileToDirectory(dirHandleRef.current, aPath, pair.xmlA);
+          await writeFileToDirectory(dirHandleRef.current, bPath, pair.xmlB);
+          if (copyMode === "all" && slot != null) {
+            await copyMemoryWavFolders(dirHandleRef.current, slot, target);
+          }
         }
       }
       setFiles(next);
@@ -770,54 +876,82 @@ export function App() {
     [applyMidiPorts],
   );
 
-  function refreshMidi() {
-    const ports = midiRef.current.listPorts();
-    applyMidiPorts(ports, Boolean(connected));
-  }
-
-  function connectMidi() {
-    if (!outId) return;
-    midiRef.current.channel = midiCh;
-    if (midiRef.current.connect(outId)) {
-      setConnected(midiRef.current.connectedName);
-      saveMidiPrefs({ allowed: true, outId, channel: midiCh });
-    }
-  }
-
   const playDrumNotes = useCallback(
     (notes: readonly number[], velocity: number, down: boolean) => {
+      if (dirHandleRef.current) return;
       if (!midiRef.current.connectedName && outId) {
         midiRef.current.channel = midiCh;
+        midiRef.current.listenChannels = sendChannels;
         if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
       }
       for (const note of notes) {
-        if (down) midiRef.current.noteOn(note, velocity, rhythmCh);
-        else midiRef.current.noteOff(note, rhythmCh);
+        for (const ch of sendChannels) {
+          if (down) midiRef.current.noteOn(note, velocity, ch);
+          else midiRef.current.noteOff(note, ch);
+        }
       }
     },
-    [midiCh, outId, rhythmCh],
+    [midiCh, outId, sendChannels],
   );
 
   const silenceRhythm = useCallback(() => {
-    midiRef.current.allNotesOff(rhythmCh);
-  }, [rhythmCh]);
+    for (const ch of sendChannels) midiRef.current.allNotesOff(ch);
+  }, [sendChannels]);
 
-  const kitAssign = useMemo(() => (model ? findRhythmKitAssign(model.assigns) : null), [model]);
-  const memoryKit = model ? num(model.rhythm, "D", 0) : null;
-
-  const sendRhythmKit = useCallback(
-    (kit: number) => {
-      if (model) pushOps({ type: "section", section: "RHYTHM", tags: { D: String(kit) } });
-      if (!kitAssign) return;
-      if (!midiRef.current.connectedName && outId) {
-        midiRef.current.channel = midiCh;
-        if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
-      }
+  function emitRhythmKitCc(kit: number, assign: RhythmKitMidiAssign) {
+    if (!midiRef.current.connectedName && outId) {
       midiRef.current.channel = midiCh;
-      midiRef.current.controlChange(kitAssign.cc, kitIndexToCcValue(kit, kitAssign), true);
-    },
-    [kitAssign, midiCh, model, outId, pushOps],
-  );
+      midiRef.current.listenChannels = sendChannelsRef.current;
+      if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
+    }
+    midiRef.current.channel = midiCh;
+    midiRef.current.listenChannels = sendChannelsRef.current;
+    midiRef.current.controlChange(
+      assign.cc,
+      kitIndexToCcValue(kit, assign),
+      true,
+      sendChannelsRef.current,
+    );
+  }
+
+  function recallPedalMemory(targetSlot: number, xml: string) {
+    if (
+      !shouldSyncPedalOnMemorySelect({
+        midiConnected: Boolean(midiRef.current.connectedName || connected),
+        usbStorageOpen: Boolean(dirHandleRef.current),
+      })
+    ) {
+      return;
+    }
+    if (!midiRef.current.connectedName && outId) {
+      midiRef.current.channel = midiCh;
+      midiRef.current.listenChannels = sendChannelsRef.current;
+      if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
+    }
+    if (!midiRef.current.connectedName) return;
+    ignoreIncomingPcUntilRef.current = Date.now() + MEMORY_RELOAD_SETTLE_MS + 250;
+    const parsed = parseMemory(xml, targetSlot);
+    const kit = num(parsed.rhythm, "D", 0);
+    const assign = resolveRhythmKitAssign(parsed.assigns);
+    midiRef.current.channel = midiCh;
+    midiRef.current.listenChannels = sendChannelsRef.current;
+    for (const ch of sendChannelsRef.current) midiRef.current.allNotesOff(ch);
+    midiRef.current.reloadMemory(targetSlot, sendChannelsRef.current);
+    window.setTimeout(() => {
+      midiRef.current.channel = midiCh;
+      midiRef.current.listenChannels = sendChannelsRef.current;
+      midiRef.current.controlChange(
+        assign.cc,
+        kitIndexToCcValue(kit, assign),
+        true,
+        sendChannelsRef.current,
+      );
+    }, MEMORY_RELOAD_SETTLE_MS + 40);
+    setStatus(
+      `Recalled memory ${String(targetSlot).padStart(2, "0")} on Rx CH ${sendChannelsRef.current.map((c) => c + 1).join("/")} so pads use that kit.`,
+    );
+  }
+  recallPedalMemoryRef.current = recallPedalMemory;
 
   const applyMidiPortsRef = useRef(applyMidiPorts);
   applyMidiPortsRef.current = applyMidiPorts;
@@ -828,30 +962,73 @@ export function App() {
 
   useEffect(() => {
     midiRef.current.channel = midiCh;
-    saveMidiPrefs({ channel: midiCh });
-  }, [midiCh]);
+    midiRef.current.listenChannels = sendChannels;
+    saveMidiPrefs({ channel: midiCh, rhythmChannel: midiCh });
+  }, [midiCh, sendChannels]);
 
   useEffect(() => {
-    saveMidiPrefs({ rhythmChannel: rhythmCh });
-  }, [rhythmCh]);
-
-  useEffect(() => {
-    const s = pendingMemoryReloadRef.current;
-    if (!connected || s == null) return;
-    midiRef.current.channel = midiCh;
-    midiRef.current.programChange(s);
-    pendingMemoryReloadRef.current = null;
-  }, [connected, midiCh]);
+    const pending = pendingMemoryReloadRef.current;
+    if (
+      !pending ||
+      !shouldReloadSavedMemory({ midiConnected: Boolean(connected), usbStorageOpen: hasDirHandle })
+    ) {
+      return;
+    }
+    let cancelled = false;
+    const elapsed = usbReleasedAtRef.current ? Date.now() - usbReleasedAtRef.current : USB_MIDI_SETTLE_MS;
+    const wait = Math.max(0, USB_MIDI_SETTLE_MS - elapsed);
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      const still = pendingMemoryReloadRef.current;
+      if (!still) return;
+      pendingMemoryReloadRef.current = null;
+      midiRef.current.channel = midiCh;
+      midiRef.current.listenChannels = sendChannels;
+      for (const ch of sendChannels) midiRef.current.allNotesOff(ch);
+      midiRef.current.reloadMemory(still.slot, sendChannels);
+      if (still.assign && still.kit != null) {
+        window.setTimeout(() => {
+          midiRef.current.channel = midiCh;
+          midiRef.current.listenChannels = sendChannels;
+          midiRef.current.controlChange(
+            still.assign!.cc,
+            kitIndexToCcValue(still.kit!, still.assign!),
+            true,
+            sendChannels,
+          );
+        }, MEMORY_RELOAD_SETTLE_MS + 40);
+      }
+      setStatus(
+        `Reloaded memory ${String(still.slot).padStart(2, "0")} so the pedal uses the saved kit.`,
+      );
+    }, wait);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [connected, midiCh, hasDirHandle, sendChannels]);
 
   useEffect(() => {
     const midi = midiRef.current;
     midi.onStateChange = (ports) => {
       applyMidiPortsRef.current(ports, !connectedRef.current);
     };
+    midi.onIncomingProgramChange = (incomingSlot) => {
+      if (Date.now() < ignoreIncomingPcUntilRef.current) return;
+      const map = filesRef.current;
+      const a = map.get(slotFileName(incomingSlot, "A"));
+      const b = map.get(slotFileName(incomingSlot, "B"));
+      if (!a && !b) return;
+      loadSlot(incomingSlot, map);
+      const xml = a && b ? pickActiveXml(a, b).xml : (a || b)!;
+      const parsed = parseMemory(xml, incomingSlot);
+      emitRhythmKitCc(num(parsed.rhythm, "D", 0), resolveRhythmKitAssign(parsed.assigns));
+    };
     return () => {
       midi.onStateChange = null;
+      midi.onIncomingProgramChange = null;
     };
-  }, []);
+  }, [loadSlot, midiCh, outId, sendChannels]);
 
   useEffect(() => {
     if (!env.supported) return;
@@ -905,6 +1082,7 @@ export function App() {
   const tabs: { id: TabId; label: string }[] = [
     { id: "info", label: "Info" },
     { id: "loop", label: "Loop" },
+    { id: "audio", label: "Audio" },
     { id: "ctl", label: "Ctl Func" },
     { id: "assigns", label: "Assigns" },
     { id: "input", label: "Input" },
@@ -933,10 +1111,9 @@ export function App() {
         <header className="topbar">
           <div className="topbar-start">
             <div className="brand">
-              <div className="brand-name">RC-600 Editor</div>
+              <PlatformSelect current="rc-600" />
               <div className="brand-sub">memories · system · Web MIDI</div>
             </div>
-            <PlatformSelect current="rc-600" />
           </div>
         </header>
         <LicenseScreen onActivated={setSession} />
@@ -950,10 +1127,35 @@ export function App() {
       <header className="topbar">
         <div className="topbar-start">
           <div className="brand">
-            <div className="brand-name">RC-600 Editor</div>
+            <div className="brand-row">
+              <PlatformSelect current="rc-600" />
+              <MidiBar
+                env={env}
+                outputs={outputs}
+                selectedOutId={outId}
+                busy={midiBusy}
+                hasAccess={midiAccess}
+                onRequestAccess={() => void requestMidi(true)}
+                onSelectOut={(id) => {
+                  setOutId(id);
+                  saveMidiPrefs({ outId: id || null });
+                  if (!id) {
+                    midiRef.current.disconnect();
+                    setConnected(null);
+                    return;
+                  }
+                  midiRef.current.channel = midiCh;
+                  if (midiRef.current.connect(id)) {
+                    setConnected(midiRef.current.connectedName);
+                    saveMidiPrefs({ allowed: true, outId: id, channel: midiCh });
+                  }
+                }}
+                channel={midiCh}
+                onChannel={setMidiCh}
+              />
+            </div>
             <div className="brand-sub">memories · system · Web MIDI</div>
           </div>
-          <PlatformSelect current="rc-600" />
         </div>
         <div className="topbar-actions">
           <button type="button" className="btn primary" onClick={openDirectory}>
@@ -1123,14 +1325,11 @@ export function App() {
                 midiLinked={Boolean(connected)}
                 midiOutHint={connected ?? undefined}
                 usbStorageActive={hasDirHandle}
-                rhythmChannel={rhythmCh}
-                systemRhythmCh={systemRhythmCh}
-                onRhythmChannel={setRhythmCh}
+                onEjectUsb={() => void ejectUsb()}
+                rhythmChannel={midiCh}
                 onPlayNotes={playDrumNotes}
                 onSilence={silenceRhythm}
                 onRequestMidi={() => void requestMidi(true)}
-                onRhythmKit={sendRhythmKit}
-                memoryKit={memoryKit}
               />
             ) : workspace === "system" ? (
               <div className="empty-state">
@@ -1236,7 +1435,7 @@ export function App() {
                 <Icon name="note" size={14} />
                 Play Drum
               </button>
-              {workspace === "system" ? (
+              {sysBaseXml && (workspace === "system" || sysDirty) ? (
                 <>
                   <span className="status-pill" style={{ marginLeft: "auto" }}>
                     SYSTEM{sysSide} · count {systemModel?.count ?? "—"}
@@ -1259,14 +1458,14 @@ export function App() {
                 midiLinked={Boolean(connected)}
                 midiOutHint={connected ?? undefined}
                 usbStorageActive={hasDirHandle}
-                rhythmChannel={rhythmCh}
-                systemRhythmCh={systemRhythmCh}
-                onRhythmChannel={setRhythmCh}
+                onEjectUsb={() => void ejectUsb()}
+                rhythmChannel={midiCh}
                 onPlayNotes={playDrumNotes}
                 onSilence={silenceRhythm}
                 onRequestMidi={() => void requestMidi(true)}
-                onRhythmKit={sendRhythmKit}
-                memoryKit={memoryKit}
+                memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
+                currentSlot={slot}
+                onSelectMemory={(s) => loadSlot(s, files, { syncPedal: true })}
               />
             ) : workspace === "memory" ? (
               <div className="memory-layout">
@@ -1280,7 +1479,7 @@ export function App() {
                     value={slot ?? ""}
                     onChange={(e) => {
                       const next = Number(e.target.value);
-                      if (Number.isFinite(next) && next > 0) loadSlot(next);
+                      if (Number.isFinite(next) && next > 0) loadSlot(next, files, { syncPedal: true });
                     }}
                   >
                     {slot == null ? (
@@ -1312,7 +1511,7 @@ export function App() {
                               ? `Memory ${String(s.slot).padStart(2, "0")} ${s.name || ""}, unsaved changes`
                               : undefined
                           }
-                          onClick={() => loadSlot(s.slot)}
+                          onClick={() => loadSlot(s.slot, files, { syncPedal: true })}
                         >
                           <span className="slot">{String(s.slot).padStart(2, "0")}</span>
                           <span className="name">{s.name || "—"}</span>
@@ -1368,6 +1567,26 @@ export function App() {
                     )}
 
                     {tab === "loop" && model ? <LoopTab model={model} onPatch={pushOps} /> : null}
+
+                    {tab === "audio" && model ? (
+                      <AudioTab
+                        model={model}
+                        onPatch={pushOps}
+                        dirHandle={hasDirHandle ? dirHandleRef.current : null}
+                        canWrite={
+                          hasDirHandle && backupAck && (!requireLicense || sessionOk)
+                        }
+                        writeBlockedReason={
+                          !hasDirHandle
+                            ? null
+                            : requireLicense && !sessionOk
+                              ? "Enter a valid license key before writing track audio."
+                              : !backupAck
+                                ? "Confirm the backup before writing track audio."
+                                : null
+                        }
+                      />
+                    ) : null}
 
                     {tab === "assigns" && model ? (
                       <AssignTab model={model} onPatch={pushOps} />
@@ -1483,33 +1702,6 @@ export function App() {
           </section>
         </div>
       )}
-
-      <MidiBar
-        env={env}
-        outputs={outputs}
-        selectedOutId={outId}
-        connectedName={connected}
-        busy={midiBusy}
-        hasAccess={midiAccess}
-        onRequestAccess={() => void requestMidi(true)}
-        onSelectOut={(id) => {
-          setOutId(id);
-          saveMidiPrefs({ outId: id || null });
-        }}
-        onConnect={connectMidi}
-        onDisconnect={() => {
-          midiRef.current.disconnect();
-          setConnected(null);
-        }}
-        onRefresh={refreshMidi}
-        channel={midiCh}
-        onChannel={setMidiCh}
-        currentSlot={slot}
-        onProgram={(s) => midiRef.current.programChange(s)}
-        onStart={() => midiRef.current.start()}
-        onStop={() => midiRef.current.stop()}
-        onCc={(cc, v) => midiRef.current.controlChange(cc, v)}
-      />
 
       {discardAllOpen ? (
         <div

@@ -689,6 +689,12 @@ export function assignSourceMidiCc(source: number): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/** Assign Source value for a MIDI CC, or null when that CC cannot be an Assign Source. */
+export function assignSourceForMidiCc(cc: number): number | null {
+  const label = midiCcLabel(cc);
+  return ASSIGN_SOURCES.find((s) => s.label === label)?.value ?? null;
+}
+
 export function assignSourceInfo(v: number): string | undefined {
   return ASSIGN_SOURCES.find((s) => s.value === v)?.info;
 }
@@ -2486,7 +2492,7 @@ export const MIDI_PARAMS: ParamDef[] = [
     name: "PC Out",
     kind: "bool",
     default: 0,
-    info: "Transmit program change messages when ON.",
+    info: "When ON, the RC-600 sends a Program Change each time you switch memories. Factory is OFF. Turn it ON if you want the editor to follow memory changes made on the pedal. Stored in SYSTEM.RC0 — Save system, then Eject USB. To apply it immediately while USB MIDI is connected, use MENU → MIDI → PC Out on the pedal.",
   },
   {
     tag: "J",

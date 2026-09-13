@@ -1,12 +1,12 @@
-/** GM Standard Kit notes + Note On/Off encode for RC-600 rhythm pads. */
+/** RC-600 rhythm-kit MIDI notes + Note On/Off encode for Play Drum pads. */
 
 export interface DrumInstrument {
   note: number;
   label: string;
 }
 
-/** Common GM drum kit notes (Standard Kit / GM percussion map). */
-export const GM_DRUM_INSTRUMENTS: readonly DrumInstrument[] = [
+/** Instruments the RC-600 rhythm kit plays on Rx Rhythm CH (note → Kick, Snare, HH…). */
+export const DRUM_INSTRUMENTS: readonly DrumInstrument[] = [
   { note: 35, label: "Kick 2" },
   { note: 36, label: "Kick" },
   { note: 37, label: "Rim" },
@@ -57,8 +57,10 @@ export const GM_DRUM_INSTRUMENTS: readonly DrumInstrument[] = [
 ] as const;
 
 export const PAD_SLOT_COUNT = 16;
+export const MIN_PAD_COUNT = 1;
+export const MAX_PAD_COUNT = PAD_SLOT_COUNT;
 
-/** Default 4×4 layout (slot index → GM note). */
+/** Default 4×4 layout (slot index → rhythm-kit MIDI note). */
 export const DEFAULT_PAD_NOTES: readonly number[] = [
   36, 38, 39, 37, 42, 46, 44, 56, 41, 43, 45, 47, 49, 51, 52, 53,
 ] as const;
@@ -67,7 +69,7 @@ export const DEFAULT_PAD_NOTES: readonly number[] = [
 export const DEFAULT_RHYTHM_CHANNEL = 9;
 
 export function drumLabelForNote(note: number): string {
-  const hit = GM_DRUM_INSTRUMENTS.find((i) => i.note === note);
+  const hit = DRUM_INSTRUMENTS.find((i) => i.note === note);
   return hit?.label ?? `N${note}`;
 }
 
@@ -78,6 +80,34 @@ export function clampDrumNote(note: number): number {
 
 export function defaultPadNotes(): number[] {
   return [...DEFAULT_PAD_NOTES];
+}
+
+export function clampPadCount(value: number): number {
+  if (!Number.isFinite(value)) return PAD_SLOT_COUNT;
+  return Math.max(MIN_PAD_COUNT, Math.min(MAX_PAD_COUNT, Math.round(value)));
+}
+
+export function padIdsForCount(padCount: number): number[] {
+  return Array.from({ length: clampPadCount(padCount) }, (_, i) => i);
+}
+
+/** Fill or trim a note list to padCount, using the default layout for new slots. */
+export function notesForPadCount(notes: readonly number[], padCount: number): number[] {
+  const n = clampPadCount(padCount);
+  const fallback = DEFAULT_PAD_NOTES;
+  return Array.from({ length: n }, (_, i) =>
+    clampDrumNote(Number(notes[i] ?? fallback[i] ?? 36)),
+  );
+}
+
+/** Grid columns/rows for the visible pad count (3×3 for 9, otherwise up to 4 wide). */
+export function padGridMetrics(padCount: number): { cols: number; rows: number } {
+  const n = clampPadCount(padCount);
+  if (n <= 4) return { cols: n, rows: 1 };
+  if (n === 6) return { cols: 3, rows: 2 };
+  if (n === 9) return { cols: 3, rows: 3 };
+  const cols = 4;
+  return { cols, rows: Math.ceil(n / cols) };
 }
 
 /** Clamp 0-based MIDI channel. */

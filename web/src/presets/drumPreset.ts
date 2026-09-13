@@ -3,11 +3,20 @@ import {
   DEFAULT_GLOBAL_METER,
   clampBpm,
   clampHitsPerBar,
+  clampVelocity,
   isTimeSignature,
+  mixPadVelocity,
+  parseOptionalPadVelocity,
   type PadTimingOverride,
   type TimeSignature,
 } from "../drumLoop";
-import { PAD_SLOT_COUNT, clampDrumNote, defaultPadNotes } from "../drumMap";
+import { PAD_SLOT_COUNT, clampDrumNote, clampPadCount, defaultPadNotes } from "../drumMap";
+import {
+  DEFAULT_DRUM_PRESET_CATEGORY,
+  resolveDrumPresetCategory,
+  type DrumPresetCategory,
+} from "./drumCategories";
+import { DEFAULT_KIT_ID } from "./drumKit";
 
 export const DRUM_PRESET_CATALOG_VERSION = 1;
 export const USER_PRESETS_STORAGE_KEY = "rc600.playDrum.userPresets";
@@ -26,6 +35,8 @@ export interface DrumPresetPayload {
 export interface DrumPreset {
   id: string;
   name: string;
+  category: DrumPresetCategory;
+  kitId: string;
   source: DrumPresetSource;
   updatedAt: string;
   payload: DrumPresetPayload;
@@ -46,9 +57,34 @@ export function emptyDrumPresetPayload(): DrumPresetPayload {
   };
 }
 
-export function clampVelocity(value: number): number {
-  if (!Number.isFinite(value)) return 100;
-  return Math.max(1, Math.min(127, Math.round(value)));
+export function compactPadOverride(ov: PadTimingOverride): PadTimingOverride {
+  const next: PadTimingOverride = {};
+  if (typeof ov.bpm === "number") next.bpm = ov.bpm;
+  if (ov.meter) next.meter = ov.meter;
+  if ((ov.hitsPerBar ?? 0) > 0) next.hitsPerBar = clampHitsPerBar(ov.hitsPerBar ?? 0);
+  if (ov.velocity != null) next.velocity = clampVelocity(ov.velocity);
+  return next;
+}
+
+export function withMixedPadVelocities(payload: DrumPresetPayload): DrumPresetPayload {
+  const notes =
+    payload.notes.length >= 1 && payload.notes.length <= PAD_SLOT_COUNT
+      ? payload.notes
+      : defaultPadNotes();
+  const globalVel = clampVelocity(payload.velocity);
+  const overrides: Record<string, PadTimingOverride> = {};
+  for (let i = 0; i < notes.length; i++) {
+    const existing = payload.overrides[String(i)];
+    const hits = existing?.hitsPerBar ?? 0;
+    const mixed: PadTimingOverride = {
+      bpm: typeof existing?.bpm === "number" ? existing.bpm : null,
+      meter: existing?.meter ?? null,
+      hitsPerBar: hits,
+      velocity: mixPadVelocity(globalVel, notes[i] ?? 36, hits),
+    };
+    overrides[String(i)] = compactPadOverride(mixed);
+  }
+  return { ...payload, notes, velocity: globalVel, overrides };
 }
 
 export function parsePadOverrides(raw: unknown): Record<string, PadTimingOverride> {
@@ -62,6 +98,7 @@ export function parsePadOverrides(raw: unknown): Record<string, PadTimingOverrid
       bpm: typeof v.bpm === "number" ? clampBpm(v.bpm) : v.bpm ?? null,
       meter: v.meter && isTimeSignature(v.meter) ? v.meter : null,
       hitsPerBar: typeof v.hitsPerBar === "number" ? clampHitsPerBar(v.hitsPerBar) : 0,
+      velocity: parseOptionalPadVelocity(v.velocity),
     };
   }
   return overrides;
@@ -71,9 +108,9 @@ export function parseDrumPresetPayload(raw: unknown): DrumPresetPayload {
   const fallback = emptyDrumPresetPayload();
   if (!raw || typeof raw !== "object") return fallback;
   const parsed = raw as Partial<DrumPresetPayload>;
-  const notes = Array.isArray(parsed.notes)
-    ? Array.from({ length: PAD_SLOT_COUNT }, (_, i) =>
-        clampDrumNote(Number(parsed.notes?.[i] ?? fallback.notes[i])),
+  const notes = Array.isArray(parsed.notes) && parsed.notes.length > 0
+    ? Array.from({ length: clampPadCount(parsed.notes.length) }, (_, i) =>
+        clampDrumNote(Number(parsed.notes?.[i] ?? fallback.notes[i] ?? 36)),
       )
     : fallback.notes;
   return {
@@ -83,6 +120,16 @@ export function parseDrumPresetPayload(raw: unknown): DrumPresetPayload {
     velocity: typeof parsed.velocity === "number" ? clampVelocity(parsed.velocity) : fallback.velocity,
     overrides: parsePadOverrides(parsed.overrides),
   };
+}
+
+export function payloadForKit(payload: DrumPresetPayload, padCount: number): DrumPresetPayload {
+  const notes = payload.notes.slice(0, clampPadCount(padCount));
+  const overrides: Record<string, PadTimingOverride> = {};
+  for (const [k, v] of Object.entries(payload.overrides)) {
+    const id = Number(k);
+    if (Number.isInteger(id) && id >= 0 && id < notes.length) overrides[k] = v;
+  }
+  return { ...payload, notes, overrides };
 }
 
 export function overridesToPadMap(
@@ -132,9 +179,15 @@ export function parseDrumPreset(raw: unknown, source: DrumPresetSource): DrumPre
   const parsed = raw as Partial<DrumPreset> & { payload?: unknown };
   if (typeof parsed.id !== "string" || !parsed.id.trim()) return null;
   if (typeof parsed.name !== "string") return null;
+  const name = normalizePresetName(parsed.name);
   return {
     id: parsed.id.trim().slice(0, 80),
-    name: normalizePresetName(parsed.name),
+    name,
+    category: resolveDrumPresetCategory(parsed.category, name),
+    kitId:
+      typeof parsed.kitId === "string" && parsed.kitId.trim()
+        ? parsed.kitId.trim().slice(0, 80)
+        : DEFAULT_KIT_ID,
     source,
     updatedAt:
       typeof parsed.updatedAt === "string" && isIsoDate(parsed.updatedAt)
@@ -165,6 +218,8 @@ export function serializeDrumPresetCatalog(presets: readonly DrumPreset[]): Drum
     presets: presets.map((p) => ({
       id: p.id,
       name: p.name,
+      category: p.category ?? DEFAULT_DRUM_PRESET_CATEGORY,
+      kitId: p.kitId || DEFAULT_KIT_ID,
       source: p.source,
       updatedAt: p.updatedAt,
       payload: p.payload,

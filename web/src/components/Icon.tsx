@@ -56,6 +56,14 @@ const ICONS = {
   note: "mdi:music-note",
   mic: "mdi:microphone-outline",
   equalizer: "mdi:equalizer",
+  chevronDown: "mdi:chevron-down",
+  chevronRight: "mdi:chevron-right",
+  download: "mdi:download",
+  upload: "mdi:upload",
+  deleteOutline: "mdi:delete-outline",
+  pause: "mdi:pause",
+  fullscreen: "mdi:fullscreen",
+  fullscreenExit: "mdi:fullscreen-exit",
 } as const;
 
 export type IconName = keyof typeof ICONS;

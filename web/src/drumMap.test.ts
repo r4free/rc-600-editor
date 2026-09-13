@@ -3,28 +3,43 @@ import { describe, it } from "node:test";
 import {
   DEFAULT_PAD_NOTES,
   DEFAULT_RHYTHM_CHANNEL,
-  GM_DRUM_INSTRUMENTS,
+  DRUM_INSTRUMENTS,
   clampDrumNote,
   clampMidiChannel,
+  clampPadCount,
   drumLabelForNote,
   encodeAllNotesOff,
   encodeChannelSilence,
   encodeNoteOff,
   encodeNoteOn,
   encodeNoteRelease,
+  notesForPadCount,
+  padGridMetrics,
+  padIdsForCount,
   parseRhythmChannel,
 } from "./drumMap.js";
 
 describe("drumMap", () => {
-  it("has 16 default pad slots and a GM instrument catalog", () => {
+  it("has 16 default pad slots and a rhythm-kit instrument catalog", () => {
     assert.equal(DEFAULT_PAD_NOTES.length, 16);
     assert.equal(new Set(DEFAULT_PAD_NOTES).size, 16);
     assert.ok(DEFAULT_PAD_NOTES.includes(36));
     assert.ok(DEFAULT_PAD_NOTES.includes(38));
-    assert.ok(GM_DRUM_INSTRUMENTS.length >= 16);
+    assert.ok(DRUM_INSTRUMENTS.length >= 16);
     assert.equal(drumLabelForNote(36), "Kick");
     assert.equal(drumLabelForNote(38), "Snare");
     assert.equal(clampDrumNote(200), 127);
+  });
+
+  it("clamps pad count and sizes the grid", () => {
+    assert.equal(clampPadCount(0), 1);
+    assert.equal(clampPadCount(99), 16);
+    assert.deepEqual(padIdsForCount(8), [0, 1, 2, 3, 4, 5, 6, 7]);
+    assert.deepEqual(padGridMetrics(4), { cols: 4, rows: 1 });
+    assert.deepEqual(padGridMetrics(9), { cols: 3, rows: 3 });
+    assert.deepEqual(padGridMetrics(16), { cols: 4, rows: 4 });
+    assert.equal(notesForPadCount([36, 38], 4).length, 4);
+    assert.equal(notesForPadCount(DEFAULT_PAD_NOTES, 8).length, 8);
   });
 
   it("parses Rx Rhythm CH (factory 10 → 9)", () => {

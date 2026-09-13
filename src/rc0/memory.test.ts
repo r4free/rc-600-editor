@@ -20,6 +20,7 @@ import {
   pickActiveXml,
   summarizePair,
   systemAsMemoryModel,
+  memoryFilesAfterSave,
 } from "./memory.js";
 import {
   patchIfxSection,
@@ -211,6 +212,19 @@ describe("assemble (server writer)", () => {
       ops: [{ type: "section", section: "RHYTHM", tags: { D: "15" } }],
     });
     assert.equal(parseMemory(out, 1).rhythm.D, "15");
+  });
+
+  it("mirrors a saved memory onto both A and B so a stale kit cannot remain", () => {
+    const saved = assemble({
+      kind: "patch",
+      xml: fix("MEMORY001A.RC0"),
+      ops: [{ type: "section", section: "RHYTHM", tags: { D: "8" } }],
+    }).xml;
+    const pair = memoryFilesAfterSave(saved);
+    assert.equal(pair.xmlA, saved);
+    assert.equal(pair.xmlB, saved);
+    assert.equal(parseMemory(pair.xmlA, 1).rhythm.D, "8");
+    assert.equal(parseMemory(pair.xmlB, 1).rhythm.D, "8");
   });
 
   it("copies assigns between memories", () => {

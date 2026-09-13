@@ -6,6 +6,8 @@ import {
   type DrumPresetPayload,
   type DrumPresetSource,
 } from "./drumPreset";
+import { resolveDrumPresetCategory } from "./drumCategories";
+import { DEFAULT_KIT_ID } from "./drumKit";
 import { nativePresetApi, type NativePresetApi } from "./nativePresetApi";
 import { userPresetStore, type UserPresetStore } from "./userPresetStore";
 
@@ -15,6 +17,8 @@ export interface PresetRepository {
   save(input: {
     name: string;
     payload: DrumPresetPayload;
+    category?: string;
+    kitId?: string;
     /** Reuse id when overwriting the currently selected preset in the save target. */
     id?: string;
   }): Promise<DrumPreset>;
@@ -41,6 +45,8 @@ export function createPresetRepository(deps: {
       const preset: DrumPreset = {
         id: input.id?.trim() || newPresetId(target, name),
         name,
+        category: resolveDrumPresetCategory(input.category, name),
+        kitId: input.kitId?.trim() || DEFAULT_KIT_ID,
         source: target,
         updatedAt: new Date().toISOString(),
         payload: input.payload,

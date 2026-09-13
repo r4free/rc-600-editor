@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   hitsToStepSet,
   resolvePadTiming,
+  resolvePadVelocity,
   stepIntervalSec,
   type PadTimingOverride,
   type TimingConfig,
@@ -103,7 +104,7 @@ export function usePadLoopEngine({
       const midi = midiFor(padId);
       const delayMs = Math.max(0, (whenAudio - ctx.currentTime) * 1000);
       window.setTimeout(() => {
-        onDrumNoteRef.current(midi, velocityRef.current, true);
+        onDrumNoteRef.current(midi, resolvePadVelocity(velocityRef.current, overridesRef.current[padId]), true);
         clearNoteOff(padId);
         const off = window.setTimeout(() => {
           onDrumNoteRef.current(midi, 0, false);
@@ -225,6 +226,24 @@ export function usePadLoopEngine({
     }
     syncPlayingState();
   }, [armVoice, ensureCtx, startScheduler, syncPlayingState]);
+
+  useEffect(() => {
+    const allowed = new Set(padIds);
+    let changed = false;
+    for (const [padId, voice] of voicesRef.current) {
+      if (voice.playing && !allowed.has(padId)) {
+        voice.playing = false;
+        clearNoteOff(padId);
+        onDrumNoteRef.current(midiFor(padId), 0, false);
+        changed = true;
+      }
+    }
+    if (changed) {
+      const any = [...voicesRef.current.values()].some((v) => v.playing);
+      if (!any) stopScheduler();
+      syncPlayingState();
+    }
+  }, [padIds, clearNoteOff, midiFor, stopScheduler, syncPlayingState]);
 
   useEffect(() => {
     const ctx = ctxRef.current;

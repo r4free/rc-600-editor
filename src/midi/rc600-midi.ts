@@ -127,6 +127,66 @@ export function shouldReuseMidiAccess(
   return permission === "granted" || (permission === "unknown" && previouslyAllowed);
 }
 
+/** Neighbor slot used to force a memory reload (same-slot PC is often ignored). */
+export function adjacentMemorySlot(slot: number): number {
+  const n = Math.max(1, Math.min(99, Math.round(slot)));
+  return n <= 1 ? 2 : n - 1;
+}
+
+/**
+ * USB Storage and USB MIDI are exclusive. A Program Change sent while the
+ * ROLAND folder is still open is ignored, and the live kit stays unchanged.
+ */
+export function shouldReloadSavedMemory(opts: {
+  midiConnected: boolean;
+  usbStorageOpen: boolean;
+}): boolean {
+  return opts.midiConnected && !opts.usbStorageOpen;
+}
+
+/** Editor memory clicks should follow the pedal over USB MIDI, not while Storage is open. */
+export function shouldSyncPedalOnMemorySelect(opts: {
+  midiConnected: boolean;
+  usbStorageOpen?: boolean;
+}): boolean {
+  return opts.midiConnected && !opts.usbStorageOpen;
+}
+
+/** Memory 1–99 from a Program Change on Rx CTL CH (or any listen channel), or null. */
+export function parseCtlProgramChange(
+  data: ArrayLike<number> | null | undefined,
+  ctlChannel: number | readonly number[],
+): number | null {
+  if (!data || data.length < 2) return null;
+  const status = data[0]!;
+  if ((status & 0xf0) !== 0xc0) return null;
+  const ch = status & 0x0f;
+  const allowed = (typeof ctlChannel === "number" ? [ctlChannel] : ctlChannel).map((c) => c & 0x0f);
+  if (!allowed.includes(ch)) return null;
+  return (data[1]! & 0x7f) + 1;
+}
+
+/**
+ * Channels to send Program Change, kit CC, and Play Drum notes on.
+ * Pads use Rx Rhythm CH; memory/kit follow Rx CTL CH. Include every channel
+ * the pedal might be listening on (bar + SYSTEM tags) so a single-channel
+ * setup like Rx 3 still gets memory recalls.
+ */
+export function midiSendChannels(...channels: number[]): number[] {
+  const out: number[] = [];
+  for (const raw of channels) {
+    if (!Number.isFinite(raw)) continue;
+    const ch = Math.max(0, Math.min(15, raw | 0));
+    if (!out.includes(ch)) out.push(ch);
+  }
+  return out.length ? out : [0];
+}
+
+/** Wait after the bounce PC so the pedal can finish loading the other memory. */
+export const MEMORY_RELOAD_SETTLE_MS = 400;
+/** Wait after eject so DISCONNECTING can finish before the first PC. */
+export const USB_MIDI_SETTLE_MS = 1600;
+
 const MIDI_PREFS_KEY = "rc600.midi.prefs";
 
 export interface MidiSessionPrefs {
@@ -135,6 +195,14 @@ export interface MidiSessionPrefs {
   channel: number;
   /** 0-based channel for Play Drum note messages. Factory Rx Rhythm CH is 10. */
   rhythmChannel: number;
+}
+
+export function initialMidiChannel(
+  prefs: Pick<MidiSessionPrefs, "channel" | "rhythmChannel">,
+): number {
+  if (prefs.channel !== 0) return prefs.channel;
+  if (prefs.rhythmChannel !== 9) return prefs.rhythmChannel;
+  return 0;
 }
 
 const DEFAULT_MIDI_PREFS: MidiSessionPrefs = {
@@ -183,13 +251,20 @@ export function saveMidiPrefs(patch: Partial<MidiSessionPrefs>): MidiSessionPref
 export class Rc600Midi {
   private access: MIDIAccess | null = null;
   private out: MIDIOutput | null = null;
-  channel = 0; // 0-based
+  channel = 0; // 0-based Rx CTL CH
+  /** Extra channels for PC / kit CC / incoming PC (Rx Rhythm CH when it differs). */
+  listenChannels: number[] = [];
   onStateChange: ((ports: { outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }) => void) | null =
     null;
+  onIncomingProgramChange: ((slot: number) => void) | null = null;
 
   async requestAccess(): Promise<{ outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }> {
     this.access = await navigator.requestMIDIAccess({ sysex: false });
-    this.access.onstatechange = () => this.onStateChange?.(this.listPorts());
+    this.access.onstatechange = () => {
+      this.armInputs();
+      this.onStateChange?.(this.listPorts());
+    };
+    this.armInputs();
     return this.listPorts();
   }
 
@@ -207,6 +282,7 @@ export class Rc600Midi {
     const out = this.access.outputs.get(outputId);
     if (!out) return false;
     this.out = out;
+    this.armInputs();
     void this.armOutputs();
     return true;
   }
@@ -237,6 +313,16 @@ export class Rc600Midi {
     return outs;
   }
 
+  private armInputs(): void {
+    if (!this.access) return;
+    this.access.inputs.forEach((p) => {
+      p.onmidimessage = (ev) => {
+        const slot = parseCtlProgramChange(ev.data, [this.channel, ...this.listenChannels]);
+        if (slot != null) this.onIncomingProgramChange?.(slot);
+      };
+    });
+  }
+
   private async armOutputs(): Promise<void> {
     for (const out of this.noteOutputs()) {
       if (out.connection !== "open" && typeof out.open === "function") {
@@ -249,13 +335,17 @@ export class Rc600Midi {
     }
   }
 
-  private sendTo(out: MIDIOutput, data: Uint8Array): void {
+  private sendTo(out: MIDIOutput, data: Uint8Array, timestamp?: number): void {
     try {
-      out.send(data);
+      if (timestamp != null) out.send(data, timestamp);
+      else out.send(data);
     } catch {
       if (typeof out.open === "function") {
         void out.open()
-          .then(() => out.send(data))
+          .then(() => {
+            if (timestamp != null) out.send(data, timestamp);
+            else out.send(data);
+          })
           .catch(() => {
             /* closed / exclusive */
           });
@@ -263,19 +353,41 @@ export class Rc600Midi {
     }
   }
 
-  private send(bytes: number[], allRc600 = false): void {
+  private send(bytes: number[], allRc600 = false, timestamp?: number): void {
     const targets = allRc600 ? this.noteOutputs() : this.out ? [this.out] : [];
-    for (const out of targets) this.sendTo(out, new Uint8Array(bytes));
+    for (const out of targets) this.sendTo(out, new Uint8Array(bytes), timestamp);
   }
 
-  /** Program Change: memory 1–99 → PC 0–98 */
-  programChange(memorySlot: number): void {
+  private ctlChannels(extra?: readonly number[]): number[] {
+    const raw = extra?.length ? extra : [this.channel, ...this.listenChannels];
+    return [...new Set(raw.map((c) => c & 0x0f))];
+  }
+
+  /** Program Change: memory 1–99 → PC 0–98. Broadcast to every RC-600 USB port. */
+  programChange(memorySlot: number, timestamp?: number, channel = this.channel): void {
     const pc = Math.max(1, Math.min(99, memorySlot)) - 1;
-    this.send([0xc0 | (this.channel & 0x0f), pc]);
+    this.send([0xc0 | (channel & 0x0f), pc], true, timestamp);
   }
 
-  controlChange(cc: number, value: number, allRc600 = false): void {
-    this.send([0xb0 | (this.channel & 0x0f), cc & 0x7f, value & 0x7f], allRc600);
+  /**
+   * Same-slot PC often leaves the current kit in RAM. Switch away, then back,
+   * so the pedal reloads the saved memory (including Rhythm Kit).
+   */
+  reloadMemory(memorySlot: number, channels?: readonly number[]): void {
+    const target = Math.max(1, Math.min(99, memorySlot));
+    const neighbor = adjacentMemorySlot(target);
+    const chans = this.ctlChannels(channels);
+    for (const ch of chans) this.programChange(neighbor, undefined, ch);
+    const when =
+      typeof performance !== "undefined" ? performance.now() + MEMORY_RELOAD_SETTLE_MS : undefined;
+    for (const ch of chans) this.programChange(target, when, ch);
+  }
+
+  controlChange(cc: number, value: number, allRc600 = false, channels?: readonly number[]): void {
+    const chans = this.ctlChannels(channels);
+    for (const ch of chans) {
+      this.send([0xb0 | ch, cc & 0x7f, value & 0x7f], allRc600 || chans.length > 1);
+    }
   }
 
   start(): void {

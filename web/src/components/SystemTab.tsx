@@ -161,6 +161,11 @@ export function SystemTab({
       {primary === "midi" ? (
         <>
           <h3 className="section-title">MIDI</h3>
+          <p className="hint">
+            PC Out is factory OFF. Turn it ON so the editor follows memory changes you make on the
+            pedal. Save system, then Eject USB. To apply it immediately while USB MIDI is connected,
+            use MENU → MIDI → PC Out on the pedal.
+          </p>
           <div className="param-columns">
             {MIDI_PARAMS.map((def) => (
               <ParamControl

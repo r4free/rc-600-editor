@@ -13,6 +13,7 @@ import {
   INPUT_FX_TYPE_OPTIONS,
   INPUT_SETUP_PARAMS,
   MASTER_FX_PARAMS,
+  MIDI_PARAMS,
   MIXER_INPUT_GROUPS,
   MIXER_OUTPUT_GROUPS,
   MIXER_PARAMS,
@@ -363,6 +364,15 @@ describe("assign target catalog", () => {
       assert.equal(level.min, 0);
       assert.equal(level.max, 200);
     }
+  });
+});
+
+describe("system MIDI catalog", () => {
+  it("exposes PC Out as a switch on tag I", () => {
+    const pcOut = MIDI_PARAMS.find((p) => p.tag === "I");
+    assert.equal(pcOut?.name, "PC Out");
+    assert.equal(pcOut?.kind, "bool");
+    assert.equal(pcOut?.default, 0);
   });
 });
 

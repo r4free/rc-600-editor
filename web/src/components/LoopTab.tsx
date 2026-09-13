@@ -52,7 +52,7 @@ export function LoopTab({
   const [sameTracks, setSameTracks] = useState<Set<number>>(() => new Set());
 
   const track = model.tracks[trackNo - 1] ?? {};
-  const recorded = num(track, "V") > 0 || num(track, "X") > 0;
+  const recorded = num(track, "X") > 0;
   const inputMask = num(track, "Q", 127);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export function LoopTab({
                 <span>Phrase</span>
                 <InfoTip
                   label="Phrase"
-                  text="Whether this track already has recorded audio in the RC0 phrase data. WAV files live under WAVE/ and are not edited here."
+                  text="Recorded when this track has phrase length (X greater than 0). Manage WAV files on the Audio tab."
                 />
               </div>
               <div className="param-control">

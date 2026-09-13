@@ -1,4 +1,4 @@
-import { assignSourceMidiCc, RHYTHM_KITS } from "./params.js";
+import { assignSourceForMidiCc, assignSourceMidiCc, RHYTHM_KITS } from "./params.js";
 import { ASSIGN_TARGETS } from "./assign-targets.js";
 
 export const RHYTHM_KIT_COUNT = RHYTHM_KITS.length;
@@ -74,6 +74,36 @@ export function resolveRhythmKitAssign(
   const found = assigns ? findRhythmKitAssign(assigns) : null;
   if (found) return found;
   return { ...DEFAULT_ASSIGN, cc: clampRhythmKitCc(fallbackCc) };
+}
+
+export function rhythmKitAssignTags(
+  cc = DEFAULT_RHYTHM_KIT_CC,
+): Record<string, string> {
+  const source = assignSourceForMidiCc(clampRhythmKitCc(cc));
+  if (source == null) throw new Error("Rhythm Kit MIDI CC is not a valid Assign Source");
+  return {
+    A: "1",
+    B: String(source),
+    C: "0",
+    D: "0",
+    E: "0",
+    F: "127",
+    G: String(rhythmKitTargetValue()),
+    H: "0",
+    I: String(RHYTHM_KIT_COUNT - 1),
+    J: "1",
+  };
+}
+
+/** First unused Assign slot as a MIDI CC → Rhythm Kit mapping, or null if one already exists. */
+export function ensureRhythmKitAssignOp(
+  assigns: readonly Record<string, string | undefined>[],
+  fallbackCc = DEFAULT_RHYTHM_KIT_CC,
+): { type: "assign"; assign: number; tags: Record<string, string> } | null {
+  if (findRhythmKitAssign(assigns)) return null;
+  const idx = assigns.findIndex((tags) => num(tags.A, 0) === 0);
+  if (idx < 0) return null;
+  return { type: "assign", assign: idx + 1, tags: rhythmKitAssignTags(fallbackCc) };
 }
 
 /**

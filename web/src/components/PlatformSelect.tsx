@@ -12,7 +12,7 @@ export function PlatformSelect({ current }: { current: EditorPlatformId }) {
   return (
     <select
       className="product-switch"
-      aria-label="Open another editor"
+      aria-label="Switch editor"
       value={current}
       onChange={(e) => {
         const next = EDITOR_PLATFORMS.find((p) => p.id === e.target.value);

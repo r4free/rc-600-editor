@@ -4,9 +4,13 @@ import {
   barDurationSec,
   beatIntervalSec,
   clampBpm,
+  clampVelocity,
   evenDistributeHits,
+  mixPadVelocity,
   parseOptionalBpm,
+  parseOptionalPadVelocity,
   resolvePadTiming,
+  resolvePadVelocity,
   stepIntervalSec,
 } from "./drumLoop.js";
 
@@ -63,5 +67,20 @@ describe("drumLoop", () => {
     assert.equal(barDurationSec({ bpm: 120, meter: "4/4" }), 2);
     assert.equal(stepIntervalSec({ bpm: 120, meter: "4/4" }), 0.125);
     assert.equal(barDurationSec({ bpm: 120, meter: "3/4" }), 1.5);
+  });
+
+  it("inherits pad velocity from global unless the pad sets one", () => {
+    assert.equal(resolvePadVelocity(100, undefined), 100);
+    assert.equal(resolvePadVelocity(100, { velocity: null }), 100);
+    assert.equal(resolvePadVelocity(80, { velocity: 110 }), 110);
+    assert.equal(clampVelocity(400), 127);
+    assert.equal(parseOptionalPadVelocity(""), null);
+    assert.equal(parseOptionalPadVelocity(12), 12);
+  });
+
+  it("mixes kick forward and hats back from the global Vel", () => {
+    assert.equal(mixPadVelocity(100, 36, 4), 114);
+    assert.ok(mixPadVelocity(100, 42, 8) < mixPadVelocity(100, 36, 4));
+    assert.ok(mixPadVelocity(100, 42, 16) < mixPadVelocity(100, 42, 8));
   });
 });

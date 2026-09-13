@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { assignSourceMidiCc } from "./params.js";
+import { assignSourceForMidiCc, assignSourceMidiCc } from "./params.js";
 import {
   clampKitIndex,
   clampRhythmKitCc,
+  ensureRhythmKitAssignOp,
   findRhythmKitAssign,
   kitIndexToCcValue,
   resolveRhythmKitAssign,
+  rhythmKitAssignTags,
   rhythmKitTargetValue,
 } from "./rhythm-kit-midi.js";
 
@@ -62,5 +64,26 @@ describe("rhythm kit MIDI", () => {
     assert.equal(clampRhythmKitCc(40), 2);
     assert.equal(clampRhythmKitCc(70), 70);
     assert.equal(resolveRhythmKitAssign(null).cc, 2);
+  });
+
+  it("maps MIDI CC numbers back to Assign Source values", () => {
+    assert.equal(assignSourceForMidiCc(1), 46);
+    assert.equal(assignSourceForMidiCc(2), 47);
+    assert.equal(assignSourceForMidiCc(4), 49);
+  });
+
+  it("fills the first unused assign as MIDI CC → Rhythm Kit", () => {
+    const op = ensureRhythmKitAssignOp([
+      { A: "1", B: "49", G: "771" },
+      { A: "0", B: "0", G: "0" },
+      { A: "0", B: "0", G: "0" },
+    ]);
+    assert.deepEqual(op, { type: "assign", assign: 2, tags: rhythmKitAssignTags() });
+    assert.equal(op?.tags.G, "772");
+    assert.equal(op?.tags.B, "47");
+    assert.equal(
+      ensureRhythmKitAssignOp([{ A: "1", B: "47", G: "772", D: "0", F: "127", H: "0", I: "15" }]),
+      null,
+    );
   });
 });

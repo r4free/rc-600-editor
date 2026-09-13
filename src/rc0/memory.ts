@@ -371,4 +371,13 @@ export function inactiveSide(side: "a" | "b"): "a" | "b" {
   return side === "a" ? "b" : "a";
 }
 
+/**
+ * Each memory is a ping-pong A/B pair. Saving only one side leaves the other
+ * with the previous Rhythm Kit, and the pedal may reload that stale file.
+ * Mirror the assembled XML onto both files so either side has the new kit.
+ */
+export function memoryFilesAfterSave(savedXml: string): { xmlA: string; xmlB: string } {
+  return { xmlA: savedXml, xmlB: savedXml };
+}
+
 export { extractCount, parseHexCount, activeSide };

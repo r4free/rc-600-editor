@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
-  GM_DRUM_INSTRUMENTS,
+  DRUM_INSTRUMENTS,
+  MAX_PAD_COUNT,
+  MIN_PAD_COUNT,
   PAD_SLOT_COUNT,
   clampDrumNote,
   clampMidiChannel,
+  clampPadCount,
   drumLabelForNote,
+  notesForPadCount,
+  padGridMetrics,
+  padIdsForCount,
 } from "../drumMap";
 import {
   DEFAULT_GLOBAL_BPM,
@@ -12,6 +18,7 @@ import {
   TIME_SIGNATURES,
   clampHitsPerBar,
   evenDistributeHits,
+  resolvePadVelocity,
   type PadTimingOverride,
   type TimeSignature,
 } from "../drumLoop";
@@ -21,42 +28,66 @@ import {
   overridesToPadMap,
   padMapToOverrides,
   parseDrumPresetPayload,
+  payloadForKit,
   type DrumPreset,
   type DrumPresetPayload,
 } from "../presets/drumPreset";
-import { RHYTHM_KITS } from "@rc600/catalog/params";
 import {
-  clampKitIndex,
-} from "@rc600/catalog/rhythm-kit-midi";
+  DEFAULT_KIT_ID,
+  factoryDrumKits,
+  findKit,
+  kitFromNotes,
+  kitsEqualLayout,
+  type DrumKit,
+} from "../presets/drumKit";
+import { browserKitRepository } from "../presets/kitRepository";
+import { DrumKitGallery } from "./DrumKitGallery";
 import { DrumPresetGallery } from "./DrumPresetGallery";
 import { Icon } from "./Icon";
-import { InfoTip } from "./InfoTip";
 
-const PAD_IDS = Array.from({ length: PAD_SLOT_COUNT }, (_, i) => i);
+const PAD_COUNT_OPTIONS = Array.from(
+  { length: MAX_PAD_COUNT - MIN_PAD_COUNT + 1 },
+  (_, i) => i + MIN_PAD_COUNT,
+);
 const PLAY_DRUM_PREFS_KEY = "rc600.playDrum.prefs";
 /** RC-600 ignores ~0 ms notes; keep a one-shot gate even on tap. */
 const MIN_PAD_GATE_MS = 90;
 
 interface PlayDrumPrefs extends DrumPresetPayload {
+  kitId: string;
+  kitName: string;
+  padCount: number;
   showSettings: boolean;
-  kit: number;
+  galleryCollapsed: boolean;
+  kitGalleryCollapsed: boolean;
 }
 
 function loadPlayDrumPrefs(): PlayDrumPrefs {
+  const empty = emptyDrumPresetPayload();
   const fallback: PlayDrumPrefs = {
-    ...emptyDrumPresetPayload(),
+    ...empty,
+    kitId: DEFAULT_KIT_ID,
+    kitName: "Studio",
+    padCount: empty.notes.length,
     showSettings: false,
-    kit: 0,
+    galleryCollapsed: false,
+    kitGalleryCollapsed: false,
   };
   if (typeof localStorage === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(PLAY_DRUM_PREFS_KEY);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<PlayDrumPrefs>;
+    const payload = parseDrumPresetPayload(parsed);
+    const padCount = clampPadCount(parsed.padCount ?? payload.notes.length);
     return {
-      ...parseDrumPresetPayload(parsed),
+      ...payload,
+      kitId: typeof parsed.kitId === "string" && parsed.kitId.trim() ? parsed.kitId.trim() : DEFAULT_KIT_ID,
+      kitName: typeof parsed.kitName === "string" && parsed.kitName.trim() ? parsed.kitName.trim() : "Studio",
+      padCount,
       showSettings: parsed.showSettings === true,
-      kit: clampKitIndex(Number(parsed.kit)),
+      galleryCollapsed: parsed.galleryCollapsed === true,
+      kitGalleryCollapsed: parsed.kitGalleryCollapsed === true,
     };
   } catch {
     return fallback;
@@ -77,45 +108,49 @@ export function PlayDrumTab({
   midiLinked,
   midiOutHint,
   usbStorageActive,
+  onEjectUsb,
   rhythmChannel,
-  systemRhythmCh,
-  onRhythmChannel,
   onPlayNotes,
   onSilence,
   onRequestMidi,
-  onRhythmKit,
-  memoryKit,
+  memories = [],
+  currentSlot = null,
+  onSelectMemory,
 }: {
   midiLinked: boolean;
   midiOutHint?: string;
-  /** True when the ROLAND folder is open — USB Storage usually kills USB MIDI. */
   usbStorageActive?: boolean;
-  /** 0-based MIDI channel used for pad notes. */
+  onEjectUsb?: () => void;
+  /** 0-based MIDI channel shown in status (MIDI bar Rx CH). */
   rhythmChannel: number;
-  /** 1-based Rx Rhythm CH from the loaded SYSTEM file, if any. */
-  systemRhythmCh: number | null;
-  onRhythmChannel: (channel: number) => void;
   onPlayNotes: (notes: readonly number[], velocity: number, down: boolean) => void;
   onSilence?: () => void;
   onRequestMidi?: () => void;
-  /** Write Kit on the loaded memory (USB Save). Live MIDI only if that memory already has a Rhythm Kit assign. */
-  onRhythmKit?: (kit: number) => void;
-  /** Kit index from the open memory, if any. */
-  memoryKit?: number | null;
+  memories?: { slot: number; name: string }[];
+  currentSlot?: number | null;
+  onSelectMemory?: (slot: number) => void;
 }) {
   const initial = useMemo(() => loadPlayDrumPrefs(), []);
+  const kitRepo = useMemo(() => browserKitRepository(), []);
   const [velocity, setVelocity] = useState(initial.velocity);
   const [activePads, setActivePads] = useState<Set<number>>(() => new Set());
   const [globalBpm, setGlobalBpm] = useState(initial.bpm);
   const [globalMeter, setGlobalMeter] = useState<TimeSignature>(initial.meter);
-  const [drumPadNotes, setDrumPadNotes] = useState<number[]>(() => initial.notes);
+  const [drumPadNotes, setDrumPadNotes] = useState<number[]>(() =>
+    notesForPadCount(initial.notes, PAD_SLOT_COUNT),
+  );
+  const [padCount, setPadCount] = useState(initial.padCount);
+  const [kitId, setKitId] = useState(initial.kitId);
+  const [kitName, setKitName] = useState(initial.kitName);
+  const [kits, setKits] = useState<DrumKit[]>(() => factoryDrumKits());
+  const [kitRev, setKitRev] = useState(0);
   const [padOverrides, setPadOverrides] = useState<Record<number, PadTimingOverride>>(
     () => overridesToPadMap(initial.overrides),
   );
   const [showPadSettings, setShowPadSettings] = useState(initial.showSettings);
-  const [kit, setKit] = useState(() =>
-    memoryKit != null ? clampKitIndex(memoryKit) : initial.kit,
-  );
+  const [galleryCollapsed, setGalleryCollapsed] = useState(initial.galleryCollapsed);
+  const [kitGalleryCollapsed, setKitGalleryCollapsed] = useState(initial.kitGalleryCollapsed);
+  const [stageMode, setStageMode] = useState(false);
   const [lastMidi, setLastMidi] = useState<string | null>(null);
 
   const heldRef = useRef(new Map<number, number>());
@@ -174,7 +209,12 @@ export function PlayDrumTab({
     });
   }
 
-  const padIds = useMemo(() => PAD_IDS, []);
+  const padIds = useMemo(() => padIdsForCount(padCount), [padCount]);
+  const gridMetrics = useMemo(() => padGridMetrics(padCount), [padCount]);
+  const visibleNotes = useMemo(
+    () => notesForPadCount(drumPadNotes, padCount),
+    [drumPadNotes, padCount],
+  );
 
   const fireDrumNote = useCallback(
     (note: number, vel: number, down: boolean) => {
@@ -195,26 +235,33 @@ export function PlayDrumTab({
 
   useEffect(() => {
     savePlayDrumPrefs({
-      notes: drumPadNotes,
+      notes: visibleNotes,
       bpm: globalBpm,
       meter: globalMeter,
       velocity,
       overrides: padMapToOverrides(padOverrides),
+      kitId,
+      kitName,
+      padCount,
       showSettings: showPadSettings,
-      kit,
+      galleryCollapsed,
+      kitGalleryCollapsed,
     });
-  }, [drumPadNotes, globalBpm, globalMeter, velocity, padOverrides, showPadSettings, kit]);
+  }, [
+    visibleNotes,
+    globalBpm,
+    globalMeter,
+    velocity,
+    padOverrides,
+    kitId,
+    kitName,
+    padCount,
+    showPadSettings,
+    galleryCollapsed,
+    kitGalleryCollapsed,
+  ]);
 
-  useEffect(() => {
-    if (memoryKit != null) setKit(clampKitIndex(memoryKit));
-  }, [memoryKit]);
-
-  const canEditKit = Boolean(usbStorageActive && memoryKit != null);
-  const kitName =
-    memoryKit != null ? (RHYTHM_KITS[clampKitIndex(memoryKit)] ?? "Studio") : "Current memory";
-  const kitInfo = canEditKit
-    ? "Drum kit of this memory (same as Loop → Rhythm → Kit). Click Save memory in the header, then Eject USB. When MIDI is connected, the editor sends Program Change so the pedal reloads this kit. Gallery Save only stores a pad rhythm, not the pedal kit."
-    : "Pads play the drum kit already loaded on the pedal. MIDI cannot switch Kit. Open the ROLAND folder (USB Storage ON) to choose a kit, click Save memory, Eject USB, then Allow MIDI.";
+  const midiLive = midiLinked && !usbStorageActive;
 
   const flushPads = useCallback(
     (silenceChannel: boolean) => {
@@ -244,6 +291,15 @@ export function PlayDrumTab({
     };
   }, []);
 
+  useEffect(() => {
+    if (!stageMode) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") setStageMode(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [stageMode]);
+
   function markActive(padId: number, on: boolean) {
     setActivePads((prev) => {
       const next = new Set(prev);
@@ -254,6 +310,7 @@ export function PlayDrumTab({
   }
 
   function pressDrum(pointerId: number, padId: number) {
+    if (usbStorageActive) return;
     if (heldRef.current.has(pointerId)) return;
     heldRef.current.set(pointerId, padId);
     clearPendingOff(padId);
@@ -261,7 +318,7 @@ export function PlayDrumTab({
     markActive(padId, true);
     const midi = clampDrumNote(drumPadNotes[padId] ?? 36);
     soundingRef.current.set(padId, [midi]);
-    emitNotes([midi], velocityRef.current, true);
+    emitNotes([midi], resolvePadVelocity(velocityRef.current, padOverrides[padId]), true);
     bindPointerRelease(pointerId, () => releaseDrum(pointerId));
   }
 
@@ -287,37 +344,77 @@ export function PlayDrumTab({
     }
   }
 
-  function sendTestKick() {
-    const note = 36;
-    emitNotes([note], velocityRef.current, true);
-    window.setTimeout(() => emitNotes([note], 0, false), 200);
-  }
-
-  function changeKit(next: number) {
-    if (!canEditKit) return;
-    const kitIndex = clampKitIndex(next);
-    setKit(kitIndex);
-    onRhythmKit?.(kitIndex);
-  }
-
   const currentPayload: DrumPresetPayload = useMemo(
-    () => ({
-      notes: drumPadNotes,
-      bpm: globalBpm,
-      meter: globalMeter,
-      velocity,
-      overrides: padMapToOverrides(padOverrides),
-    }),
-    [drumPadNotes, globalBpm, globalMeter, velocity, padOverrides],
+    () =>
+      payloadForKit(
+        {
+          notes: visibleNotes,
+          bpm: globalBpm,
+          meter: globalMeter,
+          velocity,
+          overrides: padMapToOverrides(padOverrides),
+        },
+        padCount,
+      ),
+    [visibleNotes, globalBpm, globalMeter, velocity, padOverrides, padCount],
   );
 
+  const refreshKits = useCallback(async () => {
+    const listed = await kitRepo.list();
+    setKits([...listed.native, ...listed.user]);
+  }, [kitRepo]);
+
+  useEffect(() => {
+    void refreshKits();
+  }, [refreshKits, kitRev]);
+
+  function applyKit(kit: DrumKit) {
+    setKitId(kit.id);
+    setKitName(kit.name);
+    setPadCount(kit.padCount);
+    setDrumPadNotes(notesForPadCount(kit.notes, PAD_SLOT_COUNT));
+  }
+
   function applyPreset(preset: DrumPreset) {
+    const kit =
+      findKit(kits, preset.kitId) ??
+      kitFromNotes(
+        preset.payload.notes,
+        preset.payload.notes.length,
+        preset.kitId || DEFAULT_KIT_ID,
+      );
+    applyKit(kit);
     const p = preset.payload;
-    setDrumPadNotes(p.notes);
     setGlobalBpm(p.bpm);
     setGlobalMeter(p.meter);
     setVelocity(p.velocity);
     setPadOverrides(overridesToPadMap(p.overrides));
+  }
+
+  function setVisiblePadCount(next: number) {
+    setPadCount(clampPadCount(next));
+    setDrumPadNotes((prev) => notesForPadCount(prev, PAD_SLOT_COUNT));
+  }
+
+  async function persistKitIfDirty(): Promise<string> {
+    const listed = await kitRepo.list();
+    const all = [...listed.native, ...listed.user];
+    setKits(all);
+    const selected = findKit(all, kitId);
+    if (selected && kitsEqualLayout(selected, visibleNotes, padCount)) return selected.id;
+    const target = kitRepo.saveTarget();
+    const reuseId =
+      selected && selected.source === target && selected.source === "user" ? selected.id : undefined;
+    const saved = await kitRepo.save({
+      name: selected?.name ?? kitName,
+      padCount,
+      notes: visibleNotes,
+      id: reuseId,
+    });
+    setKitId(saved.id);
+    setKitName(saved.name);
+    setKitRev((n) => n + 1);
+    return saved.id;
   }
 
   function setHits(padId: number, hits: number) {
@@ -325,6 +422,13 @@ export function PlayDrumTab({
     setPadOverrides((prev) => ({
       ...prev,
       [padId]: { ...prev[padId], hitsPerBar: n },
+    }));
+  }
+
+  function setPadVelocity(padId: number, next: number | null) {
+    setPadOverrides((prev) => ({
+      ...prev,
+      [padId]: { ...prev[padId], velocity: next },
     }));
   }
 
@@ -338,12 +442,25 @@ export function PlayDrumTab({
   }
 
   return (
-    <div className="play-drum-body">
+    <div
+      className={`play-drum-body${usbStorageActive ? " is-storage-blocked" : ""}${
+        stageMode ? " is-stage" : ""
+      }`}
+    >
       {usbStorageActive ? (
         <p className="drum-pad-hint warn">
-          USB Storage is open. The RC-600 cannot receive USB MIDI while STORAGE is ON. Click{" "}
-          <strong>Eject USB</strong>, wait until the pedal leaves DISCONNECTING, then Allow MIDI and
-          Connect to the port named RC-600 (not MIDIOUT2).
+          Play Drum is USB MIDI only. STORAGE is ON, so the RC-600 cannot receive notes or Program
+          Change. Click <strong>Eject USB</strong>, wait until the pedal leaves DISCONNECTING, set
+          MENU → USB → STORAGE Off, then Allow MIDI and connect the port named RC-600 (not
+          MIDIOUT2).
+          {onEjectUsb ? (
+            <>
+              {" "}
+              <button type="button" className="btn primary" onClick={onEjectUsb}>
+                Eject USB
+              </button>
+            </>
+          ) : null}
         </p>
       ) : !midiLinked ? (
         <p className="drum-pad-hint warn">
@@ -353,60 +470,88 @@ export function PlayDrumTab({
               Allow MIDI
             </button>
           ) : (
-            "Connect in the MIDI bar first."
+            "Allow MIDI in the top bar first."
           )}{" "}
           STORAGE must be OFF on the pedal (MENU → USB → STORAGE Off).
         </p>
       ) : (
         <p className="drum-pad-hint">
           Notes go to every RC-600 USB port on {channelLabel}
-          {midiOutHint ? ` (linked ${midiOutHint})` : ""}. Factory Rx Rhythm CH is 10. The CTL Ch in
-          the MIDI bar is only for Program Change.
+          {midiOutHint ? ` (linked ${midiOutHint})` : ""}. Set Rx CH to the pedal
+          (Rx CTL / Rx Rhythm — you are on {channelLabel}). Memory follows that
+          channel. Play Drum kits are pad layouts (count and instruments); the pedal
+          still uses the kit in the current memory.
           {lastMidi ? ` Last send: ${lastMidi}.` : ""}
         </p>
       )}
 
-      <div className="drum-pad-source-row">
-        <div className="drum-pad-source-copy">
-          <span className="drum-pad-source-label">Rhythm notes</span>
-          <span className="drum-pad-source-status">
-            Send GM kit notes on {channelLabel}
-            {midiOutHint ? ` → ${midiOutHint}` : ""}. Match System → MIDI → Rx Rhythm CH
-            {systemRhythmCh != null ? ` (currently ${systemRhythmCh})` : " (factory 10)"}.
-          </span>
-        </div>
-        <label className="drum-pad-field">
-          <span>Rx CH</span>
-          <select
-            value={channel}
-            aria-label="Rhythm MIDI channel"
-            onChange={(e) => onRhythmChannel(Number(e.target.value))}
-          >
-            {Array.from({ length: 16 }, (_, i) => (
-              <option key={i} value={i}>
-                {i + 1}
-              </option>
-            ))}
-          </select>
-        </label>
-        {systemRhythmCh != null && systemRhythmCh - 1 !== channel ? (
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => onRhythmChannel(systemRhythmCh - 1)}
-          >
-            Use Rx Rhythm CH {systemRhythmCh}
-          </button>
-        ) : null}
-      </div>
+      <DrumKitGallery
+        kit={{ name: kitName, padCount, notes: visibleNotes }}
+        selectedId={kitId}
+        revision={kitRev}
+        collapsed={kitGalleryCollapsed}
+        onCollapsedChange={setKitGalleryCollapsed}
+        onBeforeLoad={() => loop.stopAll()}
+        onLoad={applyKit}
+        onPadCountChange={setVisiblePadCount}
+        onSaved={(saved) => {
+          setKitId(saved.id);
+          setKitName(saved.name);
+          setPadCount(saved.padCount);
+          setDrumPadNotes(notesForPadCount(saved.notes, PAD_SLOT_COUNT));
+          setKitRev((n) => n + 1);
+        }}
+      />
 
       <DrumPresetGallery
         payload={currentPayload}
+        kitId={kitId}
+        kits={kits}
+        collapsed={galleryCollapsed}
+        onCollapsedChange={setGalleryCollapsed}
         onBeforeLoad={() => loop.stopAll()}
+        onEnsureKit={() => persistKitIfDirty()}
         onLoad={applyPreset}
       />
 
       <div className="drum-pad-transport" role="group" aria-label="Global loop">
+        {memories.length > 0 ? (
+          <label className="drum-pad-field drum-pad-memory-field">
+            <span>Memory</span>
+            <select
+              value={currentSlot ?? ""}
+              aria-label="Memory"
+              disabled={!midiLive}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (!Number.isFinite(next) || next < 1) return;
+                loop.stopAll();
+                onSilence?.();
+                onSelectMemory?.(next);
+              }}
+            >
+              {memories.map((m) => (
+                <option key={m.slot} value={m.slot}>
+                  {String(m.slot).padStart(2, "0")} {m.name || "—"}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <label className="drum-pad-field">
+          <span>Pads</span>
+          <select
+            value={padCount}
+            aria-label="Pad count"
+            onChange={(e) => setVisiblePadCount(Number(e.target.value))}
+          >
+            {PAD_COUNT_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="drum-pad-field">
           <span>BPM</span>
           <input
@@ -430,28 +575,6 @@ export function PlayDrumTab({
             ))}
           </select>
         </label>
-        <label className="drum-pad-field drum-pad-kit-field">
-          <span>Kit</span>
-          {canEditKit ? (
-            <select
-              value={kit}
-              aria-label="Rhythm kit"
-              onChange={(e) => changeKit(Number(e.target.value))}
-            >
-              {RHYTHM_KITS.map((name, value) => (
-                <option key={name} value={value}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="drum-pad-kit-value">{kitName}</span>
-          )}
-          <InfoTip label="Kit" text={kitInfo} />
-        </label>
-        <button type="button" className="btn ghost" onClick={sendTestKick}>
-          Test Kick
-        </button>
         <button type="button" className="btn" onClick={() => loop.playAll()}>
           <Icon name="play" />
           Play All
@@ -468,6 +591,17 @@ export function PlayDrumTab({
         >
           <Icon name="tune" />
           {showPadSettings ? "Hide pad settings" : "Show pad settings"}
+        </button>
+        <button
+          type="button"
+          className={`btn ghost${stageMode ? " is-on" : ""}`}
+          aria-pressed={stageMode}
+          aria-label={stageMode ? "Exit full screen" : "Full screen"}
+          title={stageMode ? "Exit full screen (Esc)" : "Play Drum fills the screen"}
+          onClick={() => setStageMode((v) => !v)}
+        >
+          <Icon name={stageMode ? "fullscreenExit" : "fullscreen"} />
+          {stageMode ? "Exit full screen" : "Full screen"}
         </button>
         <label className="drum-pad-velocity drum-pad-velocity-inline">
           <span>Vel</span>
@@ -486,6 +620,12 @@ export function PlayDrumTab({
         className={`drum-pad-grid${showPadSettings ? " with-settings" : ""}`}
         role="group"
         aria-label="Drum pads"
+        style={
+          {
+            "--pad-cols": String(gridMetrics.cols),
+            "--pad-rows": String(gridMetrics.rows),
+          } as CSSProperties
+        }
       >
         {padIds.map((padId) => {
           const midi = clampDrumNote(drumPadNotes[padId] ?? 36);
@@ -494,6 +634,9 @@ export function PlayDrumTab({
           const isLooping = loop.isPlaying(padId);
           const hits = padOverrides[padId]?.hitsPerBar ?? 0;
           const lit = new Set(evenDistributeHits(hits));
+          const localVel = padOverrides[padId]?.velocity;
+          const padVel = resolvePadVelocity(velocity, padOverrides[padId]);
+          const inheritsVel = localVel == null;
           return (
             <div
               key={padId}
@@ -509,17 +652,46 @@ export function PlayDrumTab({
                     value={midi}
                     onChange={(e) => setDrumInstrument(padId, Number(e.target.value))}
                   >
-                    {GM_DRUM_INSTRUMENTS.map((inst) => (
+                    {DRUM_INSTRUMENTS.map((inst) => (
                       <option key={inst.note} value={inst.note}>
                         {inst.label} ({inst.note})
                       </option>
                     ))}
-                    {!GM_DRUM_INSTRUMENTS.some((i) => i.note === midi) ? (
+                    {!DRUM_INSTRUMENTS.some((i) => i.note === midi) ? (
                       <option value={midi}>
                         N{midi} ({midi})
                       </option>
                     ) : null}
                   </select>
+                  <div className="drum-pad-hits-row">
+                    <span className="drum-pad-vel-tag">Vel</span>
+                    <input
+                      type="range"
+                      className="drum-pad-hits-slider"
+                      min={1}
+                      max={127}
+                      value={padVel}
+                      aria-label={`${label} velocity`}
+                      onChange={(e) => setPadVelocity(padId, Number(e.target.value))}
+                    />
+                    <span className="drum-pad-hits-val" title="Velocity">
+                      {padVel}
+                    </span>
+                    <button
+                      type="button"
+                      className={`drum-pad-play-btn${inheritsVel ? " is-on" : ""}`}
+                      aria-pressed={inheritsVel}
+                      aria-label={
+                        inheritsVel
+                          ? `${label} uses global velocity`
+                          : `Use global velocity for ${label}`
+                      }
+                      title={inheritsVel ? "Using global Vel" : "Use global Vel"}
+                      onClick={() => setPadVelocity(padId, null)}
+                    >
+                      G
+                    </button>
+                  </div>
                   <div className="drum-pad-hits-row">
                     <button
                       type="button"

@@ -30,6 +30,8 @@ describe("userPresetStore", () => {
     const saved = store.upsert({
       id: "user-rock",
       name: "Rock",
+      category: "Rock",
+      kitId: "studio-16",
       source: "user",
       updatedAt: "2026-01-01T00:00:00.000Z",
       payload: { ...emptyDrumPresetPayload(), bpm: 100 },
@@ -76,6 +78,8 @@ describe("presetRepository", () => {
           {
             id: "kit",
             name: "Default Kit",
+            category: "Practice",
+            kitId: "studio-16",
             source: "native",
             updatedAt: "2026-01-01T00:00:00.000Z",
             payload: emptyDrumPresetPayload(),
