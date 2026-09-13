@@ -4,6 +4,7 @@ import {
   type MemorySummary,
   type TagMap,
   parseMemory,
+  parseSystem,
   pickActiveSystem,
   pickActiveXml,
   summarizePair,
@@ -41,6 +42,7 @@ import { OutputTab } from "./components/OutputTab";
 import { MixerTab } from "./components/MixerTab";
 import { InputFxTab } from "./components/InputFxTab";
 import { SystemTab } from "./components/SystemTab";
+import { PlayDrumTab } from "./components/PlayDrumTab";
 import { LicenseScreen } from "./components/LicenseScreen";
 import { PlatformSelect } from "./components/PlatformSelect";
 import { Icon } from "./components/Icon";
@@ -48,6 +50,7 @@ import {
   Rc600Midi,
   midiEnvironment,
   isLikelyRc600,
+  preferRc600Output,
   loadMidiPrefs,
   queryMidiPermission,
   saveMidiPrefs,
@@ -62,8 +65,9 @@ import {
   saveFolderMeta,
   saveRolandHandle,
 } from "@rc600/files/folder-store";
+import { parseRhythmChannel } from "./drumMap";
 
-type Workspace = "memory" | "system";
+type Workspace = "memory" | "system" | "play-drum";
 
 type TabId =
   | "info"
@@ -127,6 +131,7 @@ export function App() {
   const [outId, setOutId] = useState<string | null>(midiPrefs.outId);
   const [connected, setConnected] = useState<string | null>(null);
   const [midiCh, setMidiCh] = useState(midiPrefs.channel);
+  const [rhythmCh, setRhythmCh] = useState(midiPrefs.rhythmChannel);
   const [midiBusy, setMidiBusy] = useState(() => env.supported && midiPrefs.allowed);
 
   const [sysSide, setSysSide] = useState<"1" | "2">("1");
@@ -185,6 +190,18 @@ export function App() {
     if (!sysBaseXml) return null;
     return { side: sysSide, count: sysBaseXml.match(/<count>([^<]+)<\/count>/)?.[1] ?? "—" };
   }, [sysBaseXml, sysSide]);
+
+  const systemRhythmCh = useMemo(() => {
+    if (!sysBaseXml) return null;
+    const sys = parseSystem(sysBaseXml, sysSide);
+    let raw: string | undefined = sys.sections.MIDI?.C;
+    for (const op of sysOps) {
+      if (op.type === "section" && op.scope === "sys" && op.section === "MIDI" && op.tags.C != null) {
+        raw = op.tags.C;
+      }
+    }
+    return parseRhythmChannel(raw) + 1;
+  }, [sysBaseXml, sysSide, sysOps]);
 
   const loadSlot = useCallback(
     (s: number, map: Map<string, string> = files) => {
@@ -613,7 +630,8 @@ export function App() {
       const preferred =
         ports.outputs.find((p) => p.id === outId) ??
         ports.outputs.find((p) => p.id === prefs.outId) ??
-        ports.outputs.find((p) => isLikelyRc600(p.name));
+        preferRc600Output(ports.outputs.filter((p) => isLikelyRc600(p.name))) ??
+        preferRc600Output(ports.outputs);
       const nextOutId = preferred?.id ?? outId;
       if (nextOutId) setOutId(nextOutId);
       saveMidiPrefs({ allowed: true, outId: nextOutId ?? prefs.outId, channel: midiCh });
@@ -656,6 +674,24 @@ export function App() {
     }
   }
 
+  const playDrumNotes = useCallback(
+    (notes: readonly number[], velocity: number, down: boolean) => {
+      if (!midiRef.current.connectedName && outId) {
+        midiRef.current.channel = midiCh;
+        if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
+      }
+      for (const note of notes) {
+        if (down) midiRef.current.noteOn(note, velocity, rhythmCh);
+        else midiRef.current.noteOff(note, rhythmCh);
+      }
+    },
+    [midiCh, outId, rhythmCh],
+  );
+
+  const silenceRhythm = useCallback(() => {
+    midiRef.current.allNotesOff(rhythmCh);
+  }, [rhythmCh]);
+
   const applyMidiPortsRef = useRef(applyMidiPorts);
   applyMidiPortsRef.current = applyMidiPorts;
   const requestMidiRef = useRef(requestMidi);
@@ -667,6 +703,10 @@ export function App() {
     midiRef.current.channel = midiCh;
     saveMidiPrefs({ channel: midiCh });
   }, [midiCh]);
+
+  useEffect(() => {
+    saveMidiPrefs({ rhythmChannel: rhythmCh });
+  }, [rhythmCh]);
 
   useEffect(() => {
     const midi = midiRef.current;
@@ -882,7 +922,59 @@ export function App() {
       )}
 
       {files.size === 0 ? (
-        <div className="empty-state editor-panel">
+        <div className="main">
+          <section className="editor-panel">
+            <div className="tabs tabs-workspace" role="tablist" aria-label="Workspace">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "memory"}
+                className={`tab ${workspace === "memory" ? "active" : ""}`}
+                onClick={() => setWorkspace("memory")}
+              >
+                <Icon name="library" size={14} />
+                Memory
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "system"}
+                className={`tab ${workspace === "system" ? "active" : ""}`}
+                onClick={() => setWorkspace("system")}
+              >
+                <Icon name="system" size={14} />
+                System
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "play-drum"}
+                className={`tab ${workspace === "play-drum" ? "active" : ""}`}
+                onClick={() => setWorkspace("play-drum")}
+              >
+                <Icon name="note" size={14} />
+                Play Drum
+              </button>
+            </div>
+            {workspace === "play-drum" ? (
+              <PlayDrumTab
+                midiLinked={Boolean(connected)}
+                midiOutHint={connected ?? undefined}
+                usbStorageActive={hasDirHandle}
+                rhythmChannel={rhythmCh}
+                systemRhythmCh={systemRhythmCh}
+                onRhythmChannel={setRhythmCh}
+                onPlayNotes={playDrumNotes}
+                onSilence={silenceRhythm}
+                onRequestMidi={() => void requestMidi(true)}
+              />
+            ) : workspace === "system" ? (
+              <div className="empty-state">
+                <h2>Open the ROLAND folder to edit System</h2>
+                <p>Play Drum works over MIDI without a folder. Memory and System need DATA/*.RC0 files.</p>
+              </div>
+            ) : (
+        <div className="empty-state">
           {!folderReady ? (
             <>
               <h2>Opening last folder…</h2>
@@ -940,6 +1032,9 @@ export function App() {
             </>
           )}
         </div>
+            )}
+          </section>
+        </div>
       ) : (
         <div className="main">
           <section className="editor-panel">
@@ -967,6 +1062,16 @@ export function App() {
                 <Icon name="system" size={14} />
                 System
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "play-drum"}
+                className={`tab ${workspace === "play-drum" ? "active" : ""}`}
+                onClick={() => setWorkspace("play-drum")}
+              >
+                <Icon name="note" size={14} />
+                Play Drum
+              </button>
               {workspace === "system" ? (
                 <>
                   <span className="status-pill" style={{ marginLeft: "auto" }}>
@@ -985,7 +1090,19 @@ export function App() {
               ) : null}
             </div>
 
-            {workspace === "memory" ? (
+            {workspace === "play-drum" ? (
+              <PlayDrumTab
+                midiLinked={Boolean(connected)}
+                midiOutHint={connected ?? undefined}
+                usbStorageActive={hasDirHandle}
+                rhythmChannel={rhythmCh}
+                systemRhythmCh={systemRhythmCh}
+                onRhythmChannel={setRhythmCh}
+                onPlayNotes={playDrumNotes}
+                onSilence={silenceRhythm}
+                onRequestMidi={() => void requestMidi(true)}
+              />
+            ) : workspace === "memory" ? (
               <div className="memory-layout">
                 <aside className="sidebar">
                   <div className="sidebar-head">

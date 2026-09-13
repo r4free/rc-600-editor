@@ -77,6 +77,30 @@ export function isLikelyRc600(name: string): boolean {
   return /rc[\s-]?600/i.test(name);
 }
 
+/** Windows lists a second DAW port (MIDIIN2 / MIDIOUT2) that often ignores notes. */
+export function isSecondaryUsbMidiPort(name: string): boolean {
+  const s = name.toLowerCase();
+  return /midiin\s*2|midiout\s*2|midi\s*in\s*2|midi\s*out\s*2|\bport\s*2\b|midi\s*2/.test(s);
+}
+
+export function isLoopbackMidiPort(name: string): boolean {
+  const s = name.toLowerCase();
+  return /loopmidi|loopbe|loopback|midi yoke|\biac\b|virtual midi/.test(s);
+}
+
+/** Lower is better. Prefer the main RC-600 USB port over MIDIOUT2 / loopback. */
+export function rc600PortRank(name: string): number {
+  if (isLoopbackMidiPort(name)) return 90;
+  if (isLikelyRc600(name)) return isSecondaryUsbMidiPort(name) ? 5 : 0;
+  if (/boss|roland/i.test(name)) return 20;
+  return 50;
+}
+
+export function preferRc600Output(ports: readonly MidiPortInfo[]): MidiPortInfo | undefined {
+  if (!ports.length) return undefined;
+  return [...ports].sort((a, b) => rc600PortRank(a.name) - rc600PortRank(b.name))[0];
+}
+
 export type MidiPermissionState = PermissionState | "unknown";
 
 /** Chrome/Edge remember MIDI per origin; query so we can skip the Allow button. */
@@ -109,9 +133,16 @@ export interface MidiSessionPrefs {
   allowed: boolean;
   outId: string | null;
   channel: number;
+  /** 0-based channel for Play Drum note messages. Factory Rx Rhythm CH is 10. */
+  rhythmChannel: number;
 }
 
-const DEFAULT_MIDI_PREFS: MidiSessionPrefs = { allowed: false, outId: null, channel: 0 };
+const DEFAULT_MIDI_PREFS: MidiSessionPrefs = {
+  allowed: false,
+  outId: null,
+  channel: 0,
+  rhythmChannel: 9,
+};
 
 export function loadMidiPrefs(): MidiSessionPrefs {
   if (typeof localStorage === "undefined") return { ...DEFAULT_MIDI_PREFS };
@@ -120,6 +151,7 @@ export function loadMidiPrefs(): MidiSessionPrefs {
     if (!raw) return { ...DEFAULT_MIDI_PREFS };
     const parsed = JSON.parse(raw) as Partial<MidiSessionPrefs>;
     const channel = parsed.channel;
+    const rhythmChannel = parsed.rhythmChannel;
     return {
       allowed: parsed.allowed === true,
       outId: typeof parsed.outId === "string" && parsed.outId ? parsed.outId : null,
@@ -127,6 +159,13 @@ export function loadMidiPrefs(): MidiSessionPrefs {
         typeof channel === "number" && Number.isInteger(channel) && channel >= 0 && channel <= 15
           ? channel
           : 0,
+      rhythmChannel:
+        typeof rhythmChannel === "number" &&
+        Number.isInteger(rhythmChannel) &&
+        rhythmChannel >= 0 &&
+        rhythmChannel <= 15
+          ? rhythmChannel
+          : 9,
     };
   } catch {
     return { ...DEFAULT_MIDI_PREFS };
@@ -168,6 +207,7 @@ export class Rc600Midi {
     const out = this.access.outputs.get(outputId);
     if (!out) return false;
     this.out = out;
+    void this.armOutputs();
     return true;
   }
 
@@ -179,8 +219,53 @@ export class Rc600Midi {
     return this.out?.name ?? null;
   }
 
-  private send(bytes: number[]): void {
-    this.out?.send(bytes);
+  /** Linked OUT plus every other RC-600 USB port (Windows often has two). */
+  private noteOutputs(): MIDIOutput[] {
+    const seen = new Set<string>();
+    const outs: MIDIOutput[] = [];
+    const add = (o: MIDIOutput | null | undefined) => {
+      if (!o || seen.has(o.id)) return;
+      seen.add(o.id);
+      outs.push(o);
+    };
+    add(this.out);
+    if (this.access) {
+      this.access.outputs.forEach((p) => {
+        if (isLikelyRc600(p.name ?? "")) add(p);
+      });
+    }
+    return outs;
+  }
+
+  private async armOutputs(): Promise<void> {
+    for (const out of this.noteOutputs()) {
+      if (out.connection !== "open" && typeof out.open === "function") {
+        try {
+          await out.open();
+        } catch {
+          /* browser may already own the port */
+        }
+      }
+    }
+  }
+
+  private sendTo(out: MIDIOutput, data: Uint8Array): void {
+    try {
+      out.send(data);
+    } catch {
+      if (typeof out.open === "function") {
+        void out.open()
+          .then(() => out.send(data))
+          .catch(() => {
+            /* closed / exclusive */
+          });
+      }
+    }
+  }
+
+  private send(bytes: number[], allRc600 = false): void {
+    const targets = allRc600 ? this.noteOutputs() : this.out ? [this.out] : [];
+    for (const out of targets) this.sendTo(out, new Uint8Array(bytes));
   }
 
   /** Program Change: memory 1–99 → PC 0–98 */
@@ -208,5 +293,25 @@ export class Rc600Midi {
   /** Send one MIDI clock tick (0xF8). Caller owns tempo timing. */
   clock(): void {
     this.send([0xf8]);
+  }
+
+  noteOn(note: number, velocity: number, channel = this.channel): void {
+    const ch = channel & 0x0f;
+    const n = note & 0x7f;
+    const v = Math.max(1, velocity & 0x7f);
+    this.send([0x90 | ch, n, v], true);
+  }
+
+  noteOff(note: number, channel = this.channel): void {
+    const ch = channel & 0x0f;
+    const n = note & 0x7f;
+    this.send([0x80 | ch, n, 0], true);
+    this.send([0x90 | ch, n, 0], true);
+  }
+
+  allNotesOff(channel = this.channel): void {
+    const ch = channel & 0x0f;
+    /* CC 120 All Sound Off can stop the RC-600 rhythm engine — only notes off. */
+    this.send([0xb0 | ch, 123, 0], true);
   }
 }

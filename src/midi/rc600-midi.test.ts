@@ -2,9 +2,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   isLikelyRc600,
+  isSecondaryUsbMidiPort,
   loadMidiPrefs,
   midiEnvironment,
+  preferRc600Output,
   queryMidiPermission,
+  rc600PortRank,
   saveMidiPrefs,
   shouldReuseMidiAccess,
 } from "./rc600-midi.js";
@@ -14,6 +17,17 @@ describe("rc600 midi helpers", () => {
     assert.equal(isLikelyRc600("RC-600"), true);
     assert.equal(isLikelyRc600("Boss RC 600"), true);
     assert.equal(isLikelyRc600("VG-800"), false);
+  });
+
+  it("prefers the main RC-600 USB port over MIDIOUT2", () => {
+    assert.equal(isSecondaryUsbMidiPort("MIDIOUT2 (RC-600)"), true);
+    assert.equal(isSecondaryUsbMidiPort("RC-600"), false);
+    const ports = [
+      { id: "2", name: "MIDIOUT2 (RC-600)", manufacturer: "BOSS" },
+      { id: "1", name: "RC-600", manufacturer: "BOSS" },
+    ];
+    assert.equal(preferRc600Output(ports)?.id, "1");
+    assert.equal(rc600PortRank("RC-600") < rc600PortRank("MIDIOUT2 (RC-600)"), true);
   });
 
   it("reports environment in node as unavailable or insecure", () => {
@@ -53,9 +67,19 @@ describe("rc600 midi helpers", () => {
       },
     });
     try {
-      assert.deepEqual(loadMidiPrefs(), { allowed: false, outId: null, channel: 0 });
-      saveMidiPrefs({ allowed: true, outId: "out-1", channel: 3 });
-      assert.deepEqual(loadMidiPrefs(), { allowed: true, outId: "out-1", channel: 3 });
+      assert.deepEqual(loadMidiPrefs(), {
+        allowed: false,
+        outId: null,
+        channel: 0,
+        rhythmChannel: 9,
+      });
+      saveMidiPrefs({ allowed: true, outId: "out-1", channel: 3, rhythmChannel: 9 });
+      assert.deepEqual(loadMidiPrefs(), {
+        allowed: true,
+        outId: "out-1",
+        channel: 3,
+        rhythmChannel: 9,
+      });
     } finally {
       if (previous === undefined) {
         Reflect.deleteProperty(globalThis, "localStorage");

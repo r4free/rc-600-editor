@@ -116,7 +116,10 @@ export function MidiBar({
           CC64
         </button>
       </div>
-      <span className="hint">Live: Program Change + CC via ASSIGN (no parameter SysEx)</span>
+      <span className="hint">
+        USB MIDI needs STORAGE OFF. Play Drum notes use Rx Rhythm CH (factory 10), not the CTL Ch
+        here.
+      </span>
     </div>
   );
 }
