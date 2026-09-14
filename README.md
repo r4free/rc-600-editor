@@ -13,6 +13,8 @@ npm run dev
 
 Sobe a API em **http://127.0.0.1:5191** e o Vite em **http://127.0.0.1:5190** (proxy `/api`). Abra o Vite no Chrome/Edge.
 
+O select da barra superior abre o VG-800, GM-800 ou TONEX Pedal (`https://vg.test` / `https://gm.test` / `https://tonex-pedal-editor.test` no local; `https://vg-800-editor.onrender.com` / `https://gm-800-editor.onrender.com` / `https://tonex-pedal-editor.onrender.com` em produção).
+
 **Modo público (padrão):** assemble aberto, sem tela de unlock. Ideal enquanto divulga o beta.
 
 ## License keys (quando quiser fechar)
