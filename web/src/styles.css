@@ -900,6 +900,31 @@ textarea {
   gap: 0.25rem;
 }
 
+.assign-source-btn {
+  min-width: 2rem;
+  padding: 0.15rem 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.copy-source-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.65rem;
+}
+
+.copy-source-label {
+  margin-right: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.assign-row-source {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
 .assign-table input,
 .assign-table select {
   width: 100%;
@@ -1126,11 +1151,11 @@ textarea {
   min-width: 3rem;
 }
 
-.track-copy-panel .hint {
-  margin: 0 0 0.65rem;
-  font-size: 0.78rem;
-  line-height: 1.4;
-  color: var(--muted);
+.config-copy-panel {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
 }
 
 .section-subtitle {
@@ -1139,43 +1164,162 @@ textarea {
   font-weight: 600;
 }
 
-.track-copy-targets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  margin: 0.35rem 0 0.55rem;
-}
-
-.track-copy-targets label {
-  font-size: 0.78rem;
-  display: flex;
+.config-slot-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.3rem;
-  align-items: center;
+  align-items: stretch;
+  margin-top: 0;
+  position: relative;
+  z-index: 20;
 }
 
-.memory-range-rows {
+.config-slot {
+  box-sizing: border-box;
+  position: relative;
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.config-slot.is-empty {
+  border-style: dashed;
+}
+
+.config-slot.is-filled {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+
+.config-slot.is-mismatch > .config-slot-btn {
+  opacity: 0.55;
+}
+
+.config-slot.is-hot {
+  z-index: 30;
+}
+
+.config-slot.is-hot .config-slot-btn,
+.config-slot-btn:hover {
+  color: var(--accent);
+}
+
+.config-slot-btn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  margin: 0;
+  padding: 0 1.1rem 0 0.35rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.config-slot.is-empty .config-slot-btn {
+  padding-right: 0.35rem;
+}
+
+.config-slot-clear {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.config-slot-clear:hover {
+  color: var(--danger);
+}
+
+.config-slot-popover {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.45rem);
+  left: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin: 0.45rem 0 0.55rem;
+  gap: 0.2rem;
+  min-width: 11.5rem;
+  max-width: 16rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--bg-raised);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+  isolation: isolate;
+  animation: config-slot-pop-in 0.12s ease-out;
 }
 
-.memory-range {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
+.config-slot-popover strong {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.config-slot-popover > span {
   font-size: 0.78rem;
+  color: var(--text);
+}
+
+.config-slot-pop-hint {
+  margin-top: 0.15rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.memory-range input {
-  width: 4.2rem;
-  background: var(--bg-chain);
-  border: 1px solid var(--line);
-  color: var(--text);
-  padding: 0.25rem 0.35rem;
-  font: inherit;
+.config-slot-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+@keyframes config-slot-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .config-slot-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .play-drum-body {

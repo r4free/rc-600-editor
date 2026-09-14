@@ -10,6 +10,7 @@ import {
   OUTPUT_ROUTE_DESTS,
   OUTPUT_ROUTE_TRACK_BITS,
   OUTPUT_SETUP_GROUPS,
+  OUTPUT_SETUP_PARAMS,
   PREF_OUTPUT_GROUP,
   bitOn,
   masterFxInsertDef,
@@ -31,6 +32,8 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
+import { pickTags } from "../presets/configClipboard";
+import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
@@ -39,6 +42,9 @@ const OUTPUT_SUBS = ["setup", "routing", "eq", "mfx"] as const;
 type OutputSub = (typeof OUTPUT_SUBS)[number];
 const ROUTING_SUBS_IDS = ["track", "input", "phones"] as const;
 type RoutingSub = (typeof ROUTING_SUBS_IDS)[number];
+const OUTPUT_SETUP_TAGS = OUTPUT_SETUP_PARAMS.map((p) => p.tag);
+const OUTPUT_EQ_TAGS = OUTPUT_EQ_PARAMS.map((p) => p.tag);
+const MASTER_FX_TAGS = MASTER_FX_PARAMS.map((p) => p.tag);
 
 const SUBS: { id: OutputSub; label: string; icon: IconName }[] = [
   { id: "setup", label: "Setup", icon: "system" },
@@ -186,6 +192,12 @@ export function OutputTab({
               ? "System output defaults. Preference chooses whether each jack uses MEMORY or SYSTEM settings on the pedal."
               : "Output knob, stereo link, routing, EQ, and Master FX are stored in this memory. MEMORY vs SYSTEM preference lives in System → Output → Setup."}
           </p>
+          <ConfigCopyPanel
+            kind="outputSetup"
+            sourceLabel="Output Setup"
+            tags={pickTags(model.output, OUTPUT_SETUP_TAGS)}
+            onPaste={(tags) => onPatch(sectionOp("OUTPUT", tags))}
+          />
           <div className="channel-grid">
             {OUTPUT_SETUP_GROUPS.map((group) => (
               <section key={group.title} className="channel-card">
@@ -357,6 +369,15 @@ export function OutputTab({
               </button>
             ))}
           </div>
+          <ConfigCopyPanel
+            kind="outputEq"
+            sourceLabel={outputEqChannelLabel(
+              OUTPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? OUTPUT_EQ_CHANNELS[0],
+              model.output,
+            )}
+            tags={pickTags(eqTags, OUTPUT_EQ_TAGS)}
+            onPaste={(tags) => onPatch(sectionOp(eqSection, tags))}
+          />
           <h3 className="section-title">
             {outputEqChannelLabel(
               OUTPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? OUTPUT_EQ_CHANNELS[0],
@@ -380,6 +401,12 @@ export function OutputTab({
       {sub === "mfx" ? (
         <>
           <p className="hint">Compressor and reverb applied to the Insert destination.</p>
+          <ConfigCopyPanel
+            kind="masterFx"
+            sourceLabel="Master FX"
+            tags={pickTags(model.masterFx, MASTER_FX_TAGS)}
+            onPaste={(tags) => onPatch(sectionOp("MASTER_FX", tags))}
+          />
           <div className="param-columns">
             {MASTER_FX_PARAMS.map((def) => {
               const use = def.tag === "C" ? masterFxInsertDef(model.output, insertValue) : def;

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { usePersistedTab } from "../uiTabs";
 import {
   PLAY_ALL_START_BITS,
@@ -15,7 +14,9 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
+import { pickTags } from "../presets/configClipboard";
 import { trackCopyTags } from "../presets/trackCopy";
+import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ParamControl } from "./ParamControl";
@@ -30,6 +31,10 @@ const SUBS: { id: LoopSub; label: string; icon: IconName }[] = [
   { id: "play", label: "Play", icon: "play" },
   { id: "rhythm", label: "Rhythm", icon: "tempo" },
 ];
+
+const REC_COPY_TAGS = [...REC_PARAMS.map((p) => p.tag), "F"];
+const PLAY_COPY_TAGS = [...PLAY_PARAMS.map((p) => p.tag), "D", "E"];
+const RHYTHM_COPY_TAGS = RHYTHM_PARAMS.map((p) => p.tag);
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -49,31 +54,10 @@ export function LoopTab({
 }) {
   const [sub, setSub] = usePersistedTab<LoopSub>("loop", "track", LOOP_SUBS);
   const [trackNo, setTrackNo] = usePersistedTab("loopTrack", 1, TRACK_NOS);
-  const [sameTracks, setSameTracks] = useState<Set<number>>(() => new Set());
 
   const track = model.tracks[trackNo - 1] ?? {};
   const recorded = num(track, "X") > 0;
   const inputMask = num(track, "Q", 127);
-
-  useEffect(() => {
-    setSameTracks((prev) => {
-      if (!prev.has(trackNo)) return prev;
-      const next = new Set(prev);
-      next.delete(trackNo);
-      return next;
-    });
-  }, [trackNo]);
-
-  function copyToSelectedTracks() {
-    if (sameTracks.size === 0) return;
-    const tags = trackCopyTags(track);
-    const ops: PatchOp[] = [...sameTracks].map((t) => ({
-      type: "track",
-      track: t,
-      tags,
-    }));
-    onPatch(ops);
-  }
 
   return (
     <div className="loop-tab">
@@ -110,6 +94,13 @@ export function LoopTab({
               </button>
             ))}
           </div>
+
+          <ConfigCopyPanel
+            kind="track"
+            sourceLabel={`Track ${trackNo}`}
+            tags={trackCopyTags(track)}
+            onPaste={(tags) => onPatch({ type: "track", track: trackNo, tags })}
+          />
 
           <h3 className="section-title">Track {trackNo}</h3>
           <div className="param-columns">
@@ -162,46 +153,17 @@ export function LoopTab({
               />
             ))}
           </div>
-
-          <div className="copy-panel track-copy-panel">
-            <h3 className="section-title">Copy Track {trackNo} settings</h3>
-            <p className="hint">
-              Copies editable track settings to other tracks in this memory (not Phrase / WAV). Save
-              memory when you are ready to write.
-            </p>
-
-            <div className="track-copy-targets">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <label key={n}>
-                  <input
-                    type="checkbox"
-                    checked={sameTracks.has(n)}
-                    disabled={n === trackNo}
-                    onChange={(e) => {
-                      const next = new Set(sameTracks);
-                      if (e.target.checked) next.add(n);
-                      else next.delete(n);
-                      setSameTracks(next);
-                    }}
-                  />
-                  Track {n}
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="btn primary"
-              disabled={sameTracks.size === 0}
-              onClick={copyToSelectedTracks}
-            >
-              Copy to selected tracks
-            </button>
-          </div>
         </>
       ) : null}
 
       {sub === "rec" ? (
         <>
+          <ConfigCopyPanel
+            kind="rec"
+            sourceLabel="Record"
+            tags={pickTags(model.rec, REC_COPY_TAGS)}
+            onPaste={(tags) => onPatch({ type: "section", section: "REC", tags })}
+          />
           <div className="param-columns">
             {REC_PARAMS.map((def) => (
               <ParamControl
@@ -246,6 +208,12 @@ export function LoopTab({
 
       {sub === "play" ? (
         <>
+          <ConfigCopyPanel
+            kind="play"
+            sourceLabel="Play"
+            tags={pickTags(model.play, PLAY_COPY_TAGS)}
+            onPaste={(tags) => onPatch({ type: "section", section: "PLAY", tags })}
+          />
           <div className="param-columns">
             {PLAY_PARAMS.map((def) => (
               <ParamControl
@@ -332,6 +300,12 @@ function RhythmEditor({ tags, onPatch }: { tags: TagMap; onPatch: PatchHandler }
 
   return (
     <>
+      <ConfigCopyPanel
+        kind="rhythm"
+        sourceLabel="Rhythm"
+        tags={pickTags(tags, RHYTHM_COPY_TAGS)}
+        onPaste={(next) => onPatch({ type: "section", section: "RHYTHM", tags: next })}
+      />
       {groups.map((group) => (
         <section key={group.title}>
           <h3 className="section-title">{group.title}</h3>
