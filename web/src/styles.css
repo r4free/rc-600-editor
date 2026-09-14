@@ -1141,11 +1141,32 @@ textarea {
   max-width: 28rem;
   width: 100%;
   padding: 1rem;
+  max-height: min(90vh, 52rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-sheet-wide {
+  max-width: min(52rem, 96vw);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .modal-sheet h2 {
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-size: 1rem;
+}
+
+.modal-body {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
 }
 
 .modal-sheet p {
@@ -1159,6 +1180,51 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 0.4rem;
+}
+
+.modal-close {
+  flex-shrink: 0;
+}
+
+.ifx-effect-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ifx-effect-name {
+  font-weight: 600;
+  min-width: 7rem;
+  flex: 1 1 7rem;
+}
+
+.ifx-library-toolbar {
+  margin-bottom: 0.65rem;
+}
+
+.ifx-library-cols {
+  margin-top: 0.65rem;
+}
+
+.ifx-library-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.ifx-preset-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ifx-preset-chip-row .drum-preset-chip {
+  flex: 1;
 }
 
 .tag-editor {

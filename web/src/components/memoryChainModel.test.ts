@@ -77,6 +77,7 @@ function baseModel(overrides: Partial<MemoryModel> = {}): MemoryModel {
       [{}, {}, {}, {}],
       [{}, {}, {}, {}],
     ],
+    ifxBlocks: {},
     tfxSetup: { A: "0" },
     tfxBanks: [{ A: "1", B: "1", C: "0" }, {}, {}, {}],
     tfxSlots: [

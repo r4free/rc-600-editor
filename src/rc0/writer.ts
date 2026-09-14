@@ -211,6 +211,7 @@ function selectionFromCopyRequest(req: Extract<AssembleRequest, { kind: "copy" }
     return sel;
   }
   if (req.mode === "inputFx") {
+    sel.ifxSetup = true;
     sel.ifxBanks = [true, true, true, true];
     sel.ifxSlots = [
       [true, true, true, true],
@@ -273,11 +274,14 @@ function applyMemoryCopySelection(
     if (sel.ifxBanks[b]) patched = patchIfxSection(patched, bank, source.ifxBanks[b] ?? {});
     for (let s = 0; s < 4; s++) {
       if (sel.ifxSlots[b]?.[s]) {
-        patched = patchIfxSection(
-          patched,
-          `${bank}${String.fromCharCode(65 + s)}`,
-          source.ifxSlots[b]?.[s] ?? {},
-        );
+        const slotName = `${bank}${String.fromCharCode(65 + s)}`;
+        patched = patchIfxSection(patched, slotName, source.ifxSlots[b]?.[s] ?? {});
+        const prefix = `${slotName}_`;
+        for (const [blockName, tags] of Object.entries(source.ifxBlocks)) {
+          if (blockName.startsWith(prefix)) {
+            patched = patchIfxSection(patched, blockName, tags);
+          }
+        }
       }
     }
   }

@@ -52,6 +52,7 @@ function cloneModel(model: MemoryModel): MemoryModel {
     ifxSetup: { ...model.ifxSetup },
     ifxBanks: model.ifxBanks.map((b) => ({ ...b })),
     ifxSlots: model.ifxSlots.map((row) => row.map((s) => ({ ...s }))),
+    ifxBlocks: Object.fromEntries(Object.entries(model.ifxBlocks).map(([k, v]) => [k, { ...v }])),
     tfxSetup: { ...model.tfxSetup },
     tfxBanks: model.tfxBanks.map((b) => ({ ...b })),
     tfxSlots: model.tfxSlots.map((row) => row.map((s) => ({ ...s }))),
@@ -173,6 +174,10 @@ function applyFxToModel(
     if (bi >= 0 && si >= 0) {
       model[slots][bi]![si] = mergeTags(model[slots][bi]![si] ?? {}, tags);
     }
+    return;
+  }
+  if (kind === "ifx" && /^[A-D][A-D]_/.test(section)) {
+    model.ifxBlocks[section] = mergeTags(model.ifxBlocks[section] ?? {}, tags);
   }
 }
 

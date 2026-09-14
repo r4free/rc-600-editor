@@ -6,6 +6,7 @@ import {
   type InputEqSection,
   type OutputEqSection,
 } from "../catalog/params.js";
+import { FX_BLOCK_TAGS } from "../catalog/input-fx.js";
 import {
   extractCount,
   findSection,
@@ -57,6 +58,8 @@ export interface MemoryModel {
   ifxBanks: TagMap[];
   /** 4 banks × 4 slots (AA–AD … DA–DD). */
   ifxSlots: TagMap[][];
+  /** Per-type param blocks under `<ifx>` (e.g. AA_PREAMP, AA_PHASER_SEQ). */
+  ifxBlocks: Record<string, TagMap>;
   tfxSetup: TagMap;
   tfxBanks: TagMap[];
   tfxSlots: TagMap[][];
@@ -79,6 +82,45 @@ function readTags(xml: string, from: number, to: number): TagMap {
     if (v !== null) out[tag] = v;
   }
   return out;
+}
+
+/** FX type blocks may include Step Slicer tags 0–9 and #. */
+function readFxBlockTags(xml: string, from: number, to: number): TagMap {
+  const out: TagMap = {};
+  for (const tag of FX_BLOCK_TAGS) {
+    const v = getTagContent(xml, tag, from, to);
+    if (v !== null) out[tag] = v;
+  }
+  return out;
+}
+
+const FX_BLOCK_NAME_RE = /^[A-D][A-D]_[A-Z0-9_]+$/;
+
+function parseFxBlocks(xml: string, from: number, to: number): Record<string, TagMap> {
+  const blocks: Record<string, TagMap> = {};
+  let i = from;
+  while (i < to) {
+    const open = xml.indexOf("<", i);
+    if (open < 0 || open >= to) break;
+    if (xml[open + 1] === "/") {
+      i = open + 2;
+      continue;
+    }
+    const gt = xml.indexOf(">", open);
+    if (gt < 0 || gt >= to) break;
+    let nameEnd = open + 1;
+    while (nameEnd < gt && /[A-Za-z0-9_]/.test(xml[nameEnd]!)) nameEnd++;
+    const name = xml.slice(open + 1, nameEnd);
+    if (!FX_BLOCK_NAME_RE.test(name) || !isNamedOpenTag(xml, name, open)) {
+      i = open + 1;
+      continue;
+    }
+    const end = matchingClose(xml, name, open, to);
+    if (end < 0) break;
+    blocks[name] = readFxBlockTags(xml, gt + 1, end);
+    i = end + `</${name}>`.length;
+  }
+  return blocks;
 }
 
 const EMPTY_FX_BANKS: TagMap[] = [{}, {}, {}, {}];
@@ -154,13 +196,14 @@ function findFxBankSection(
 function parseFxFamily(
   xml: string,
   kind: "ifx" | "tfx",
-): { setup: TagMap; banks: TagMap[]; slots: TagMap[][] } {
+): { setup: TagMap; banks: TagMap[]; slots: TagMap[][]; blocks: Record<string, TagMap> } {
   const range = findSection(xml, kind);
   if (!range) {
     return {
       setup: {},
       banks: EMPTY_FX_BANKS.map((b) => ({ ...b })),
       slots: EMPTY_FX_SLOTS.map((row) => row.map((s) => ({ ...s }))),
+      blocks: {},
     };
   }
   const setupSec = findSection(xml, "SETUP", range[0], range[1]);
@@ -183,7 +226,8 @@ function parseFxFamily(
     }
     slots.push(row);
   }
-  return { setup, banks, slots };
+  const blocks = kind === "ifx" ? parseFxBlocks(xml, range[0], range[1]) : {};
+  return { setup, banks, slots, blocks };
 }
 
 export function decodeName(xml: string, memRange: [number, number]): string {
@@ -269,6 +313,7 @@ export function parseMemory(xml: string, slot: number): MemoryModel {
     ifxSetup: ifx.setup,
     ifxBanks: ifx.banks,
     ifxSlots: ifx.slots,
+    ifxBlocks: ifx.blocks,
     tfxSetup: tfx.setup,
     tfxBanks: tfx.banks,
     tfxSlots: tfx.slots,

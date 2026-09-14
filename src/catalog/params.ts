@@ -11,7 +11,7 @@ export interface ParamDef {
   default?: number;
   options?: EnumOption[];
   /** How int values are shown next to the slider. */
-  format?: "db" | "comp";
+  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan";
   /** Parameter Guide text shown by the Info icon. */
   info?: string;
 }
@@ -2916,11 +2916,20 @@ export function enumLabel(def: ParamDef, v: number): string {
   return opt?.label ?? String(v);
 }
 
+function bipolarLabel(raw: number, center: number): string {
+  const n = raw - center;
+  if (n > 0) return `+${n}`;
+  return String(n);
+}
+
 export function displayParam(def: ParamDef, raw: number): string {
   if (def.kind === "bool") return boolLabel(raw);
   if (def.format === "db") return dbLabel(raw);
   if (def.format === "comp") return compLabel(raw);
-  if (def.tag === "C" && def.name === "Pan") return panLabel(raw);
+  if (def.format === "bipolar50") return bipolarLabel(raw, 50);
+  if (def.format === "bipolar20") return bipolarLabel(raw, 20);
+  if (def.format === "bipolar12") return bipolarLabel(raw, 12);
+  if (def.format === "pan" || (def.tag === "C" && def.name === "Pan")) return panLabel(raw);
   if (def.tag === "F" && def.name === "Loop Length") return loopLengthLabel(raw);
   if (def.kind === "enum") return enumLabel(def, raw);
   return String(raw);
