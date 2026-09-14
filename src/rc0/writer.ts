@@ -292,11 +292,14 @@ function applyMemoryCopySelection(
     if (sel.tfxBanks[b]) patched = patchTfxSection(patched, bank, source.tfxBanks[b] ?? {});
     for (let s = 0; s < 4; s++) {
       if (sel.tfxSlots[b]?.[s]) {
-        patched = patchTfxSection(
-          patched,
-          `${bank}${String.fromCharCode(65 + s)}`,
-          source.tfxSlots[b]?.[s] ?? {},
-        );
+        const slotName = `${bank}${String.fromCharCode(65 + s)}`;
+        patched = patchTfxSection(patched, slotName, source.tfxSlots[b]?.[s] ?? {});
+        const prefix = `${slotName}_`;
+        for (const [blockName, tags] of Object.entries(source.tfxBlocks)) {
+          if (blockName.startsWith(prefix)) {
+            patched = patchTfxSection(patched, blockName, tags);
+          }
+        }
       }
     }
   }

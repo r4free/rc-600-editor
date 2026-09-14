@@ -43,6 +43,7 @@ import { InputTab } from "./components/InputTab";
 import { OutputTab } from "./components/OutputTab";
 import { MixerTab } from "./components/MixerTab";
 import { InputFxTab } from "./components/InputFxTab";
+import { TrackFxTab } from "./components/TrackFxTab";
 import { AudioTab } from "./components/AudioTab";
 import { SystemTab } from "./components/SystemTab";
 import { PlayDrumTab } from "./components/PlayDrumTab";
@@ -238,12 +239,11 @@ export function App() {
       const b = files.get(slotFileName(s, "B")) ?? "";
       if (a && b) return summarizePair(s, a, b);
       const only = a || b;
-      const m = parseMemory(only, s);
+      const summary = summarizePair(s, only, only);
       return {
-        slot: s,
-        name: m.name,
-        countA: a ? m.count : "0000",
-        countB: b ? m.count : "0000",
+        ...summary,
+        countA: a ? summary.countA : "0000",
+        countB: b ? summary.countB : "0000",
         active: (a ? "a" : "b") as "a" | "b",
       };
     });
@@ -269,10 +269,15 @@ export function App() {
   const backupAckRef = useRef(backupAck);
   backupAckRef.current = backupAck;
 
-  const model: MemoryModel | null = useMemo(() => {
+  const baseModel: MemoryModel | null = useMemo(() => {
     if (!baseXml || slot == null) return null;
-    return applyOpsToModel(parseMemory(baseXml, slot), ops);
-  }, [baseXml, slot, ops]);
+    return parseMemory(baseXml, slot);
+  }, [baseXml, slot]);
+
+  const model: MemoryModel | null = useMemo(() => {
+    if (!baseModel) return null;
+    return applyOpsToModel(baseModel, ops);
+  }, [baseModel, ops]);
 
   const systemModel = useMemo(() => {
     if (!sysBaseXml) return null;
@@ -1726,34 +1731,7 @@ export function App() {
                     ) : null}
 
                     {tab === "tfx" && model ? (
-                      <>
-                        <h3 className="section-title">Track FX</h3>
-                        <p className="hint">
-                          FX blocks stay in the XML. Bank select is below; per-slot type/params come
-                          in a later pass.
-                        </p>
-                        <div className="param-row">
-                          <div className="param-label">
-                            <label htmlFor="fx-bank">TFX bank</label>
-                          </div>
-                          <div className="param-control">
-                            <input
-                              id="fx-bank"
-                              type="number"
-                              min={0}
-                              max={3}
-                              value={num(model.tfxSetup, "A")}
-                              onChange={(e) =>
-                                pushOps({
-                                  type: "tfx",
-                                  section: "SETUP",
-                                  tags: { A: String(Number(e.target.value) || 0) },
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
-                      </>
+                      <TrackFxTab model={model} onPatch={pushOps} />
                     ) : null}
 
                   </div>

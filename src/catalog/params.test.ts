@@ -11,6 +11,8 @@ import {
   INPUT_EQ_CHANNELS,
   INPUT_EQ_PARAMS,
   INPUT_FX_TYPE_OPTIONS,
+  TRACK_FX_TYPE_OPTIONS,
+  TFX_SLOT_PARAMS,
   INPUT_SETUP_PARAMS,
   MASTER_FX_PARAMS,
   MIDI_PARAMS,
@@ -296,6 +298,18 @@ describe("input FX catalog", () => {
     assert.ok(!linked.includes("INST 2 R"));
     const keepSecondary = inputFxInsertDef({ G: "1" }, 6).options!.map((o) => o.value);
     assert.ok(keepSecondary.includes(6));
+  });
+});
+
+describe("track FX catalog", () => {
+  it("maps MEMORY001A TFX slot type and insert to Parameter Guide fields", () => {
+    const mem = parseMemory(xml, 1);
+    const type = TFX_SLOT_PARAMS.find((p) => p.tag === "C")!;
+    const insert = TFX_SLOT_PARAMS.find((p) => p.tag === "D")!;
+    assert.equal(TRACK_FX_TYPE_OPTIONS.length, 56);
+    assert.equal(displayParam(type, Number(mem.tfxSlots[0][0].C)), "Beat Scatter");
+    assert.equal(displayParam(insert, Number(mem.tfxSlots[0][0].D)), "ALL");
+    assert.equal(displayParam(type, 55), "Vinyl Flick");
   });
 });
 

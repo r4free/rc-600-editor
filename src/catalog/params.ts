@@ -1736,6 +1736,15 @@ export const INPUT_FX_TYPE_OPTIONS: EnumOption[] = [
   "Reverse Reverb",
 ].map((label, value) => ({ value, label }));
 
+/** Track FX types: shared Input FX list plus Beat Scatter / Repeat / Shift / Vinyl Flick. */
+export const TRACK_FX_TYPE_OPTIONS: EnumOption[] = [
+  ...INPUT_FX_TYPE_OPTIONS,
+  { value: 52, label: "Beat Scatter" },
+  { value: 53, label: "Beat Repeat" },
+  { value: 54, label: "Beat Shift" },
+  { value: 55, label: "Vinyl Flick" },
+];
+
 /** Bank MODE: SINGLE first in the Parameter Guide. */
 export const IFX_MODE_SINGLE = 0;
 
@@ -1823,6 +1832,53 @@ export const IFX_SLOT_PARAMS: ParamDef[] = [
     default: 0,
     options: INPUT_FX_TYPE_OPTIONS,
     info: "Effect type for this slot. Parameters for each type come from the Input FX / Track FX List.",
+  },
+];
+
+const TFX_INSERT_OPTIONS: EnumOption[] = [
+  { value: 0, label: "ALL" },
+  { value: 1, label: "TRACK 1" },
+  { value: 2, label: "TRACK 2" },
+  { value: 3, label: "TRACK 3" },
+  { value: 4, label: "TRACK 4" },
+  { value: 5, label: "TRACK 5" },
+  { value: 6, label: "TRACK 6" },
+];
+
+export const TFX_SLOT_PARAMS: ParamDef[] = [
+  {
+    tag: "A",
+    name: "Switch",
+    kind: "bool",
+    default: 0,
+    info: "Turns this effect on or off. In SINGLE mode only one of FX A–D can be on.",
+  },
+  {
+    tag: "B",
+    name: "Switch Mode",
+    kind: "enum",
+    default: 0,
+    options: [
+      { value: 0, label: "TOGGLE" },
+      { value: 1, label: "MOMENT" },
+    ],
+    info: "TOGGLE: each press flips the effect. MOMENT: the effect is on only while the switch is held.",
+  },
+  {
+    tag: "D",
+    name: "Insert",
+    kind: "enum",
+    default: 0,
+    options: TFX_INSERT_OPTIONS,
+    info: "Tracks this effect is applied to. ALL applies Track FX to every track.",
+  },
+  {
+    tag: "C",
+    name: "Type",
+    kind: "enum",
+    default: 0,
+    options: TRACK_FX_TYPE_OPTIONS,
+    info: "Effect type for this slot. Parameters for each type come from the Input FX / Track FX List. Beat Scatter, Beat Repeat, Beat Shift, and Vinyl Flick are Track FX only.",
   },
 ];
 

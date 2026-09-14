@@ -22,7 +22,7 @@ describe("chainFocusFor", () => {
     });
     assert.deepEqual(chainFocusFor("tfx:0:2"), {
       tab: "tfx",
-      prefs: { tfxBank: 0, tfxSlot: 2 },
+      prefs: { tfx: "A", tfxSlot: 2 },
     });
     assert.deepEqual(chainFocusFor("mix"), {
       tab: "mixer",

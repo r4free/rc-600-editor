@@ -63,6 +63,8 @@ export interface MemoryModel {
   tfxSetup: TagMap;
   tfxBanks: TagMap[];
   tfxSlots: TagMap[][];
+  /** Per-type param blocks under `<tfx>` (e.g. AA_BEAT_REPEAT, AA_PREAMP). */
+  tfxBlocks: Record<string, TagMap>;
   raw: string;
 }
 
@@ -84,12 +86,32 @@ function readTags(xml: string, from: number, to: number): TagMap {
   return out;
 }
 
-/** FX type blocks may include Step Slicer tags 0–9 and #. */
+const FX_BLOCK_TAG_SET = new Set<string>(FX_BLOCK_TAGS);
+
+/** FX type blocks may include Step Slicer tags 0–9 and #. One pass — do not scan the rest of the file. */
 function readFxBlockTags(xml: string, from: number, to: number): TagMap {
   const out: TagMap = {};
-  for (const tag of FX_BLOCK_TAGS) {
-    const v = getTagContent(xml, tag, from, to);
-    if (v !== null) out[tag] = v;
+  let i = from;
+  while (i < to) {
+    const open = xml.indexOf("<", i);
+    if (open < 0 || open >= to) break;
+    if (xml[open + 1] === "/") {
+      i = open + 2;
+      continue;
+    }
+    const gt = xml.indexOf(">", open);
+    if (gt < 0 || gt >= to) break;
+    const name = xml.slice(open + 1, gt);
+    if (FX_BLOCK_TAG_SET.has(name)) {
+      const close = `</${name}>`;
+      const end = xml.indexOf(close, gt + 1);
+      if (end >= 0 && end < to) {
+        out[name] = xml.slice(gt + 1, end);
+        i = end + close.length;
+        continue;
+      }
+    }
+    i = gt + 1;
   }
   return out;
 }
@@ -112,13 +134,14 @@ function parseFxBlocks(xml: string, from: number, to: number): Record<string, Ta
     while (nameEnd < gt && /[A-Za-z0-9_]/.test(xml[nameEnd]!)) nameEnd++;
     const name = xml.slice(open + 1, nameEnd);
     if (!FX_BLOCK_NAME_RE.test(name) || !isNamedOpenTag(xml, name, open)) {
-      i = open + 1;
+      i = gt + 1;
       continue;
     }
-    const end = matchingClose(xml, name, open, to);
-    if (end < 0) break;
+    const close = `</${name}>`;
+    const end = xml.indexOf(close, gt + 1);
+    if (end < 0 || end >= to) break;
     blocks[name] = readFxBlockTags(xml, gt + 1, end);
-    i = end + `</${name}>`.length;
+    i = end + close.length;
   }
   return blocks;
 }
@@ -226,7 +249,7 @@ function parseFxFamily(
     }
     slots.push(row);
   }
-  const blocks = kind === "ifx" ? parseFxBlocks(xml, range[0], range[1]) : {};
+  const blocks = parseFxBlocks(xml, range[0], range[1]);
   return { setup, banks, slots, blocks };
 }
 
@@ -317,6 +340,7 @@ export function parseMemory(xml: string, slot: number): MemoryModel {
     tfxSetup: tfx.setup,
     tfxBanks: tfx.banks,
     tfxSlots: tfx.slots,
+    tfxBlocks: tfx.blocks,
     raw: xml,
   };
 }
@@ -327,13 +351,26 @@ export function memoryTempo(model: MemoryModel): number | undefined {
   return parseInt(a, 10) / 10;
 }
 
+function summarizeXml(xml: string): { name: string; count: string; tempo?: number } {
+  const count = extractCount(xml);
+  const mem = findSection(xml, "mem") ?? ([0, xml.length] as [number, number]);
+  const master = findSection(xml, "MASTER", mem[0], mem[1]);
+  const raw = master ? getTagContent(xml, "A", master[0], master[1]) : null;
+  const tempo = raw != null ? parseInt(raw, 10) / 10 : undefined;
+  return {
+    name: decodeName(xml, mem),
+    count,
+    tempo: tempo != null && Number.isFinite(tempo) ? tempo : undefined,
+  };
+}
+
 export function summarizePair(
   slot: number,
   xmlA: string,
   xmlB: string,
 ): MemorySummary {
-  const a = parseMemory(xmlA, slot);
-  const b = parseMemory(xmlB, slot);
+  const a = summarizeXml(xmlA);
+  const b = summarizeXml(xmlB);
   const active = activeSide(a.count, b.count);
   const model = active === "b" ? b : a;
   return {
@@ -342,7 +379,7 @@ export function summarizePair(
     countA: a.count,
     countB: b.count,
     active,
-    tempo: memoryTempo(model),
+    tempo: model.tempo,
   };
 }
 

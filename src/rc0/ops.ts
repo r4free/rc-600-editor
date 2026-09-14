@@ -56,6 +56,7 @@ function cloneModel(model: MemoryModel): MemoryModel {
     tfxSetup: { ...model.tfxSetup },
     tfxBanks: model.tfxBanks.map((b) => ({ ...b })),
     tfxSlots: model.tfxSlots.map((row) => row.map((s) => ({ ...s }))),
+    tfxBlocks: Object.fromEntries(Object.entries(model.tfxBlocks).map(([k, v]) => [k, { ...v }])),
   };
 }
 
@@ -176,8 +177,9 @@ function applyFxToModel(
     }
     return;
   }
-  if (kind === "ifx" && /^[A-D][A-D]_/.test(section)) {
-    model.ifxBlocks[section] = mergeTags(model.ifxBlocks[section] ?? {}, tags);
+  if (/^[A-D][A-D]_/.test(section)) {
+    const blocks = kind === "ifx" ? "ifxBlocks" : "tfxBlocks";
+    model[blocks][section] = mergeTags(model[blocks][section] ?? {}, tags);
   }
 }
 

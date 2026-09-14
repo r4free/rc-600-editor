@@ -52,12 +52,10 @@ export function chainFocusFor(selectId: MemorySelectId): ChainFocus {
     const parts = selectId.split(":");
     const bank = Number(parts[1] ?? 0);
     const slot = Number(parts[2] ?? 0);
+    const page = FX_BANK_PAGES[Math.max(0, Math.min(3, bank))] ?? "A";
     return {
       tab: "tfx",
-      prefs: {
-        tfxBank: Math.max(0, Math.min(3, bank)),
-        tfxSlot: Math.max(0, Math.min(3, slot)),
-      },
+      prefs: { tfx: page, tfxSlot: Math.max(0, Math.min(3, slot)) },
     };
   }
   if (selectId === "mix") {
