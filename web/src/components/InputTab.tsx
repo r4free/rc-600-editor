@@ -1,12 +1,10 @@
 import {
   INPUT_DYNAMICS_GROUPS,
-  INPUT_DYNAMICS_PARAMS,
   INPUT_EQ_CHANNELS,
   INPUT_EQ_PARAMS,
   INPUT_EQ_SECTIONS,
   INPUT_MIC_DYNAMICS_LINK,
   INPUT_SETUP_GROUPS,
-  INPUT_SETUP_PARAMS,
   PREF_INPUT_GROUP,
   mixerCopyForInputLink,
   type InputEqSection,
@@ -17,8 +15,6 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
-import { pickTags } from "../presets/configClipboard";
-import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
@@ -26,10 +22,6 @@ import { usePersistedTab } from "../uiTabs";
 
 const INPUT_SUBS = ["setup", "eq", "dynamics"] as const;
 type InputSub = (typeof INPUT_SUBS)[number];
-const INPUT_SETUP_TAGS = INPUT_SETUP_PARAMS.map((p) => p.tag);
-const INPUT_DYN_TAGS = INPUT_DYNAMICS_PARAMS.map((p) => p.tag);
-const INPUT_EQ_TAGS = INPUT_EQ_PARAMS.map((p) => p.tag);
-
 const SUBS: { id: InputSub; label: string; icon: IconName }[] = [
   { id: "setup", label: "Setup", icon: "system" },
   { id: "eq", label: "EQ", icon: "equalizer" },
@@ -142,12 +134,6 @@ export function InputTab({
               ? "System input defaults. Preference chooses whether each jack uses MEMORY or SYSTEM settings on the pedal."
               : "Phantom power, INST gain, stereo link, EQ, and dynamics are stored in this memory. MEMORY vs SYSTEM preference lives in System → Input → Setup."}
           </p>
-          <ConfigCopyPanel
-            kind="inputSetup"
-            sourceLabel="Input Setup"
-            tags={pickTags(model.input, INPUT_SETUP_TAGS)}
-            onPaste={(tags) => onPatch(sectionOp("INPUT", tags))}
-          />
           <div className="channel-grid">
             {INPUT_SETUP_GROUPS.map((group) => (
               <section key={group.title} className="channel-card">
@@ -202,15 +188,6 @@ export function InputTab({
               </button>
             ))}
           </div>
-          <ConfigCopyPanel
-            kind="inputEq"
-            sourceLabel={inputEqChannelLabel(
-              INPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? INPUT_EQ_CHANNELS[0],
-              model.input,
-            )}
-            tags={pickTags(eqTags, INPUT_EQ_TAGS)}
-            onPaste={(tags) => onPatch(sectionOp(eqSection, tags))}
-          />
           <h3 className="section-title">
             {inputEqChannelLabel(
               INPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? INPUT_EQ_CHANNELS[0],
@@ -233,12 +210,6 @@ export function InputTab({
 
       {sub === "dynamics" ? (
         <>
-          <ConfigCopyPanel
-            kind="inputDynamics"
-            sourceLabel="Input Dynamics"
-            tags={pickTags(model.input, INPUT_DYN_TAGS)}
-            onPaste={(tags) => onPatch(sectionOp("INPUT", tags))}
-          />
           <div className="channel-grid">
             {INPUT_DYNAMICS_GROUPS.filter(
               (group) => group.role !== "secondary" || !inputStereoLinked(model.input, "E"),

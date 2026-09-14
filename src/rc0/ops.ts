@@ -1,5 +1,6 @@
 import type { MemoryModel, TagMap } from "./memory.js";
 import { encodeNameChars } from "./memory.js";
+import type { MemoryCopySelection } from "./memoryCopy.js";
 
 /** Declarative edits accumulated on the client; applied to RC0 only on the server. */
 export type PatchOp =
@@ -12,7 +13,14 @@ export type PatchOp =
 
 export type AssembleRequest =
   | { kind: "patch"; xml: string; ops: PatchOp[] }
-  | { kind: "copy"; sourceXml: string; targetXml: string; mode: "all" | "assigns" };
+  | {
+      kind: "copy";
+      sourceXml: string;
+      targetXml: string;
+      /** @deprecated Prefer `selection`. Kept for older clients. */
+      mode?: "all" | "assigns" | "inputFx";
+      selection?: MemoryCopySelection;
+    };
 
 export type AssembleResponse = { xml: string };
 

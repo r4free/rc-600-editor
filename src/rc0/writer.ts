@@ -1,7 +1,13 @@
-/**
- * RC0 XML writer — server-only. Do not import from the web bundle.
- */
-import { encodeNameChars, parseMemory, type TagMap } from "./memory.js";
+import { encodeNameChars, parseMemory, type MemoryModel, type TagMap } from "./memory.js";
+import {
+  MEMORY_COPY_INPUT_DYNAMICS_TAGS,
+  MEMORY_COPY_INPUT_SETUP_TAGS,
+  MEMORY_COPY_MIXER_INPUT_TAGS,
+  MEMORY_COPY_MIXER_OUTPUT_TAGS,
+  parseMemoryCopySelection,
+  pickTags,
+  type MemoryCopySelection,
+} from "./memoryCopy.js";
 import type { AssembleRequest, AssembleResponse, PatchOp } from "./ops.js";
 import {
   findSection,
@@ -9,6 +15,23 @@ import {
   incrementCount,
 } from "./xml-ops.js";
 
+const INPUT_EQ_SECTIONS = [
+  "EQ_MIC1",
+  "EQ_MIC2",
+  "EQ_INST1L",
+  "EQ_INST1R",
+  "EQ_INST2L",
+  "EQ_INST2R",
+] as const;
+
+const OUTPUT_EQ_SECTIONS = [
+  "EQ_MAINOUTL",
+  "EQ_MAINOUTR",
+  "EQ_SUBOUT1L",
+  "EQ_SUBOUT1R",
+  "EQ_SUBOUT2L",
+  "EQ_SUBOUT2R",
+] as const;
 function isNamedOpenTag(xml: string, name: string, at: number): boolean {
   if (!xml.startsWith(`<${name}`, at)) return false;
   const next = xml[at + name.length + 1];
@@ -176,16 +199,137 @@ export function applyPatchOp(xml: string, op: PatchOp): string {
   }
 }
 
+function selectionFromCopyRequest(req: Extract<AssembleRequest, { kind: "copy" }>): MemoryCopySelection | "all" {
+  if (req.selection) {
+    const parsed = parseMemoryCopySelection(req.selection);
+    if (parsed) return parsed;
+  }
+  if (req.mode === "all") return "all";
+  const sel = parseMemoryCopySelection({})!;
+  if (req.mode === "assigns") {
+    sel.assigns = Array.from({ length: 16 }, (_, i) => i + 1);
+    return sel;
+  }
+  if (req.mode === "inputFx") {
+    sel.ifxBanks = [true, true, true, true];
+    sel.ifxSlots = [
+      [true, true, true, true],
+      [true, true, true, true],
+      [true, true, true, true],
+      [true, true, true, true],
+    ];
+    return sel;
+  }
+  return sel;
+}
+
+function applyMemoryCopySelection(
+  source: MemoryModel,
+  targetXml: string,
+  sel: MemoryCopySelection,
+): string {
+  let patched = targetXml;
+
+  for (const t of sel.tracks) {
+    patched = patchTrack(patched, t, source.tracks[t - 1] ?? {});
+  }
+  if (sel.rec) patched = patchMemSection(patched, "REC", source.rec);
+  if (sel.play) patched = patchMemSection(patched, "PLAY", source.play);
+  if (sel.rhythm) patched = patchMemSection(patched, "RHYTHM", source.rhythm);
+
+  const inputTags: TagMap = {};
+  if (sel.inputSetup) Object.assign(inputTags, pickTags(source.input, MEMORY_COPY_INPUT_SETUP_TAGS));
+  if (sel.inputDynamics) {
+    Object.assign(inputTags, pickTags(source.input, MEMORY_COPY_INPUT_DYNAMICS_TAGS));
+  }
+  if (Object.keys(inputTags).length) patched = patchMemSection(patched, "INPUT", inputTags);
+  if (sel.inputEq) {
+    for (const sec of INPUT_EQ_SECTIONS) {
+      patched = patchMemSection(patched, sec, source.eq[sec] ?? {});
+    }
+  }
+
+  if (sel.outputSetup) patched = patchMemSection(patched, "OUTPUT", source.output);
+  if (sel.routing) patched = patchMemSection(patched, "ROUTING", source.routing);
+  if (sel.outputEq) {
+    for (const sec of OUTPUT_EQ_SECTIONS) {
+      patched = patchMemSection(patched, sec, source.outputEq[sec] ?? {});
+    }
+  }
+  if (sel.masterFx) patched = patchMemSection(patched, "MASTER_FX", source.masterFx);
+
+  const mixerTags: TagMap = {};
+  if (sel.mixerInput) Object.assign(mixerTags, pickTags(source.mixer, MEMORY_COPY_MIXER_INPUT_TAGS));
+  if (sel.mixerOutput) Object.assign(mixerTags, pickTags(source.mixer, MEMORY_COPY_MIXER_OUTPUT_TAGS));
+  if (Object.keys(mixerTags).length) patched = patchMemSection(patched, "MIXER", mixerTags);
+
+  for (const a of sel.assigns) {
+    patched = patchAssign(patched, a, source.assigns[a - 1] ?? {});
+  }
+
+  if (sel.ifxSetup) patched = patchIfxSection(patched, "SETUP", source.ifxSetup);
+  for (let b = 0; b < 4; b++) {
+    const bank = String.fromCharCode(65 + b);
+    if (sel.ifxBanks[b]) patched = patchIfxSection(patched, bank, source.ifxBanks[b] ?? {});
+    for (let s = 0; s < 4; s++) {
+      if (sel.ifxSlots[b]?.[s]) {
+        patched = patchIfxSection(
+          patched,
+          `${bank}${String.fromCharCode(65 + s)}`,
+          source.ifxSlots[b]?.[s] ?? {},
+        );
+      }
+    }
+  }
+
+  if (sel.tfxSetup) patched = patchTfxSection(patched, "SETUP", source.tfxSetup);
+  for (let b = 0; b < 4; b++) {
+    const bank = String.fromCharCode(65 + b);
+    if (sel.tfxBanks[b]) patched = patchTfxSection(patched, bank, source.tfxBanks[b] ?? {});
+    for (let s = 0; s < 4; s++) {
+      if (sel.tfxSlots[b]?.[s]) {
+        patched = patchTfxSection(
+          patched,
+          `${bank}${String.fromCharCode(65 + s)}`,
+          source.tfxSlots[b]?.[s] ?? {},
+        );
+      }
+    }
+  }
+
+  for (let mode = 0; mode < 3; mode++) {
+    for (let pedal = 0; pedal < 9; pedal++) {
+      if (sel.ctlModes[mode]?.[pedal]) {
+        patched = patchMemSection(
+          patched,
+          `ICTL${mode + 1}_PEDAL${pedal + 1}`,
+          source.ctlPedals[mode]?.[pedal] ?? {},
+        );
+      }
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    if (sel.ectlCtl[i]) {
+      patched = patchMemSection(patched, `ECTL_CTL${i + 1}`, source.ectlCtl[i] ?? {});
+    }
+  }
+  for (let i = 0; i < 2; i++) {
+    if (sel.ectlExp[i]) {
+      patched = patchMemSection(patched, `ECTL_EXP${i + 1}`, source.ectlExp[i] ?? {});
+    }
+  }
+
+  return patched;
+}
+
 export function assemble(req: AssembleRequest): AssembleResponse {
   if (req.kind === "copy") {
-    if (req.mode === "all") {
+    const resolved = selectionFromCopyRequest(req);
+    if (resolved === "all" || (typeof resolved !== "string" && resolved.copyAll)) {
       return { xml: prepareSaveXml(req.sourceXml) };
     }
     const source = parseMemory(req.sourceXml, 0);
-    let patched = req.targetXml;
-    for (let i = 1; i <= 16; i++) {
-      patched = patchAssign(patched, i, source.assigns[i - 1] ?? {});
-    }
+    const patched = applyMemoryCopySelection(source, req.targetXml, resolved);
     return { xml: prepareSaveXml(patched) };
   }
 

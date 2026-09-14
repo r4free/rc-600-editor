@@ -60,25 +60,25 @@ function isDirHandle(handle: FileSystemHandle): boolean {
 
 const WAVE_NAME_STORE = "rc600.waveFileNames";
 
+export function rememberWavFileName(slot: number, track: number, fileName: string): void {
+  try {
+    const raw = localStorage.getItem(WAVE_NAME_STORE);
+    const all = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    all[`${slot}:${track}`] = fileName;
+    localStorage.setItem(WAVE_NAME_STORE, JSON.stringify(all));
+  } catch {
+    /* private mode */
+  }
+}
+
 export function rememberedWavFileName(slot: number, track: number): string | null {
   try {
-    const raw = sessionStorage.getItem(WAVE_NAME_STORE);
+    const raw = localStorage.getItem(WAVE_NAME_STORE);
     if (!raw) return null;
     const all = JSON.parse(raw) as Record<string, string>;
     return all[`${slot}:${track}`] ?? null;
   } catch {
     return null;
-  }
-}
-
-export function rememberWavFileName(slot: number, track: number, fileName: string): void {
-  try {
-    const raw = sessionStorage.getItem(WAVE_NAME_STORE);
-    const all = raw ? (JSON.parse(raw) as Record<string, string>) : {};
-    all[`${slot}:${track}`] = fileName;
-    sessionStorage.setItem(WAVE_NAME_STORE, JSON.stringify(all));
-  } catch {
-    /* private mode / no sessionStorage */
   }
 }
 

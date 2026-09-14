@@ -14,9 +14,6 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
-import { pickTags } from "../presets/configClipboard";
-import { trackCopyTags } from "../presets/trackCopy";
-import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ParamControl } from "./ParamControl";
@@ -31,10 +28,6 @@ const SUBS: { id: LoopSub; label: string; icon: IconName }[] = [
   { id: "play", label: "Play", icon: "play" },
   { id: "rhythm", label: "Rhythm", icon: "tempo" },
 ];
-
-const REC_COPY_TAGS = [...REC_PARAMS.map((p) => p.tag), "F"];
-const PLAY_COPY_TAGS = [...PLAY_PARAMS.map((p) => p.tag), "D", "E"];
-const RHYTHM_COPY_TAGS = RHYTHM_PARAMS.map((p) => p.tag);
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -95,13 +88,6 @@ export function LoopTab({
             ))}
           </div>
 
-          <ConfigCopyPanel
-            kind="track"
-            sourceLabel={`Track ${trackNo}`}
-            tags={trackCopyTags(track)}
-            onPaste={(tags) => onPatch({ type: "track", track: trackNo, tags })}
-          />
-
           <h3 className="section-title">Track {trackNo}</h3>
           <div className="param-columns">
             <div className="param-row readonly">
@@ -158,12 +144,6 @@ export function LoopTab({
 
       {sub === "rec" ? (
         <>
-          <ConfigCopyPanel
-            kind="rec"
-            sourceLabel="Record"
-            tags={pickTags(model.rec, REC_COPY_TAGS)}
-            onPaste={(tags) => onPatch({ type: "section", section: "REC", tags })}
-          />
           <div className="param-columns">
             {REC_PARAMS.map((def) => (
               <ParamControl
@@ -208,12 +188,6 @@ export function LoopTab({
 
       {sub === "play" ? (
         <>
-          <ConfigCopyPanel
-            kind="play"
-            sourceLabel="Play"
-            tags={pickTags(model.play, PLAY_COPY_TAGS)}
-            onPaste={(tags) => onPatch({ type: "section", section: "PLAY", tags })}
-          />
           <div className="param-columns">
             {PLAY_PARAMS.map((def) => (
               <ParamControl
@@ -300,12 +274,6 @@ function RhythmEditor({ tags, onPatch }: { tags: TagMap; onPatch: PatchHandler }
 
   return (
     <>
-      <ConfigCopyPanel
-        kind="rhythm"
-        sourceLabel="Rhythm"
-        tags={pickTags(tags, RHYTHM_COPY_TAGS)}
-        onPaste={(next) => onPatch({ type: "section", section: "RHYTHM", tags: next })}
-      />
       {groups.map((group) => (
         <section key={group.title}>
           <h3 className="section-title">{group.title}</h3>

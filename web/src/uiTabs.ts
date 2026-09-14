@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export const UI_TABS_KEY = "rc600.ui.tabs";
 
@@ -27,14 +27,28 @@ export function loadUiTabs(): Record<string, UiTabValue> {
   }
 }
 
+type UiTabListener = (key: string, value: UiTabValue) => void;
+
+const listeners = new Set<UiTabListener>();
+
+/** Notify when a tab pref is written (so mounted hooks can follow external jumps). */
+export function subscribeUiTabs(listener: UiTabListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export function saveUiTab(key: string, value: UiTabValue): void {
   const store = storage();
-  if (!store) return;
-  try {
-    store.setItem(UI_TABS_KEY, JSON.stringify({ ...loadUiTabs(), [key]: value }));
-  } catch {
-    /* quota / private mode */
+  if (store) {
+    try {
+      store.setItem(UI_TABS_KEY, JSON.stringify({ ...loadUiTabs(), [key]: value }));
+    } catch {
+      /* quota / private mode */
+    }
   }
+  for (const listener of listeners) listener(key, value);
 }
 
 export function readUiTab<T extends UiTabValue>(
@@ -59,5 +73,14 @@ export function usePersistedTab<T extends UiTabValue>(
     },
     [key],
   );
+
+  useEffect(() => {
+    return subscribeUiTabs((changedKey, next) => {
+      if (changedKey !== key) return;
+      if (!(allowed as readonly unknown[]).includes(next)) return;
+      setValue(next as T);
+    });
+  }, [key, allowed]);
+
   return [value, set];
 }

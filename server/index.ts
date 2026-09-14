@@ -256,12 +256,17 @@ app.post("/api/assemble", requireAccess, async (c) => {
         return c.json({ error: "patch requires xml and ops" }, 400);
       }
     } else if (body.kind === "copy") {
-      if (
-        typeof body.sourceXml !== "string" ||
-        typeof body.targetXml !== "string" ||
-        (body.mode !== "all" && body.mode !== "assigns")
-      ) {
-        return c.json({ error: "copy requires sourceXml, targetXml, mode" }, 400);
+      if (typeof body.sourceXml !== "string" || typeof body.targetXml !== "string") {
+        return c.json({ error: "copy requires sourceXml, targetXml" }, 400);
+      }
+      const hasSelection = body.selection != null && typeof body.selection === "object";
+      const modeOk =
+        body.mode === "all" || body.mode === "assigns" || body.mode === "inputFx" || body.mode === undefined;
+      if (!hasSelection && !modeOk) {
+        return c.json({ error: "copy requires selection or mode" }, 400);
+      }
+      if (!hasSelection && body.mode === undefined) {
+        return c.json({ error: "copy requires selection or mode" }, 400);
       }
     } else {
       return c.json({ error: "Unknown kind" }, 400);

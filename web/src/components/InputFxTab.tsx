@@ -10,8 +10,6 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
-import { pickTags } from "../presets/configClipboard";
-import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
@@ -19,8 +17,6 @@ import { ParamControl } from "./ParamControl";
 const IFX_PAGES = ["setup", ...FX_BANKS] as const;
 type IfxPage = (typeof IFX_PAGES)[number];
 const IFX_SLOTS = [0, 1, 2, 3] as const;
-const IFX_SLOT_TAGS = IFX_SLOT_PARAMS.map((p) => p.tag);
-const IFX_BANK_TAGS = IFX_BANK_PARAMS.map((p) => p.tag);
 
 const PAGES: { id: IfxPage; label: string; icon: IconName }[] = [
   { id: "setup", label: "Setup", icon: "system" },
@@ -41,12 +37,15 @@ function bankIndex(letter: (typeof FX_BANKS)[number]): number {
   return FX_BANKS.indexOf(letter);
 }
 
-export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: PatchHandler }) {
+export function InputFxTab({
+  model,
+  onPatch,
+}: {
+  model: MemoryModel;
+  onPatch: PatchHandler;
+}) {
   const [page, setPage] = usePersistedTab<IfxPage>("ifx", "setup", IFX_PAGES);
-  const [slot, setSlot] = usePersistedTab("ifxSlot", 0, IFX_SLOTS);
   const bank = page === "setup" ? 0 : bankIndex(page);
-  const slotTags = model.ifxSlots[bank]?.[slot] ?? {};
-  const insertValue = num(slotTags, "D");
 
   function setSetup(tag: string, value: number) {
     onPatch({ type: "ifx", section: "SETUP", tags: { [tag]: String(value) } });
@@ -115,12 +114,6 @@ export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: Pa
             Selected Bank is the bank the RC-600 plays and edits. SINGLE mode allows only one of FX
             A–D on.
           </p>
-          <ConfigCopyPanel
-            kind="ifxSetup"
-            sourceLabel="Input FX Setup"
-            tags={pickTags(model.ifxSetup, ["A"])}
-            onPaste={(tags) => onPatch({ type: "ifx", section: "SETUP", tags })}
-          />
           <section>
             <h3 className="section-title">Setup</h3>
             <div className="param-columns">
@@ -154,55 +147,32 @@ export function InputFxTab({ model, onPatch }: { model: MemoryModel; onPatch: Pa
           <p className="hint">
             Effect-type parameters (rate, depth, and so on) come in a later pass.
           </p>
-          <div className="tabs tabs-sub" role="tablist" aria-label={`Bank ${page} FX`}>
-            {IFX_SLOTS.map((i) => (
-              <button
-                key={FX_BANKS[i]}
-                type="button"
-                role="tab"
-                aria-selected={slot === i}
-                className={`tab ${slot === i ? "active" : ""}`}
-                onClick={() => setSlot(i)}
-              >
-                <Icon name="chorus" size={14} />
-                FX {FX_BANKS[i]}
-              </button>
-            ))}
-          </div>
-          <ConfigCopyPanel
-            kind="ifxBank"
-            sourceLabel={`Bank ${page} mode`}
-            tags={pickTags(model.ifxBanks[bank] ?? {}, IFX_BANK_TAGS)}
-            onPaste={(tags) => onPatch({ type: "ifx", section: page, tags })}
-          />
-          <ConfigCopyPanel
-            kind="ifxSlot"
-            sourceLabel={`Bank ${page} FX ${FX_BANKS[slot]}`}
-            tags={pickTags(slotTags, IFX_SLOT_TAGS)}
-            onPaste={(tags) =>
-              onPatch({ type: "ifx", section: fxSlotSection(bank, slot), tags })
-            }
-          />
-          <section>
-            <h3 className="section-title">
-              Bank {page} · FX {FX_BANKS[slot]}
-            </h3>
-            <div className="param-columns">
-              {IFX_SLOT_PARAMS.map((def) => {
-                const current = def.tag === "D" ? insertValue : num(slotTags, def.tag, def.default ?? 0);
-                const shown = def.tag === "D" ? inputFxInsertDef(model.input, insertValue) : def;
-                return (
-                  <ParamControl
-                    key={def.tag}
-                    id={`ifx-slot-${page}-${slot}-${def.tag}`}
-                    def={shown}
-                    value={current}
-                    onChange={(v) => setSlotParam(bank, slot, def.tag, v)}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          {IFX_SLOTS.map((slotNo) => {
+            const tags = model.ifxSlots[bank]?.[slotNo] ?? {};
+            const insertValue = num(tags, "D");
+            return (
+              <section key={slotNo}>
+                <h3 className="section-title">FX {FX_BANKS[slotNo]}</h3>
+                <div className="param-columns">
+                  {IFX_SLOT_PARAMS.map((def) => {
+                    const current =
+                      def.tag === "D" ? insertValue : num(tags, def.tag, def.default ?? 0);
+                    const shown =
+                      def.tag === "D" ? inputFxInsertDef(model.input, insertValue) : def;
+                    return (
+                      <ParamControl
+                        key={def.tag}
+                        id={`ifx-slot-${page}-${slotNo}-${def.tag}`}
+                        def={shown}
+                        value={current}
+                        onChange={(v) => setSlotParam(bank, slotNo, def.tag, v)}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </>
       )}
     </div>

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { UI_TABS_KEY, loadUiTabs, readUiTab, saveUiTab } from "./uiTabs";
+import { UI_TABS_KEY, loadUiTabs, readUiTab, saveUiTab, subscribeUiTabs } from "./uiTabs";
 
 function withLocalStorage<T>(fn: () => T): T {
   const store = new Map<string, string>();
@@ -50,6 +50,24 @@ describe("ui tabs prefs", () => {
     withLocalStorage(() => {
       globalThis.localStorage.setItem(UI_TABS_KEY, "{not json");
       assert.equal(readUiTab("workspace", "memory", ["memory", "system"]), "memory");
+    });
+  });
+
+  it("broadcasts saves to subscribers", () => {
+    withLocalStorage(() => {
+      const seen: { key: string; value: string | number }[] = [];
+      const unsub = subscribeUiTabs((key, value) => {
+        seen.push({ key, value });
+      });
+      saveUiTab("loop", "rhythm");
+      saveUiTab("loopTrack", 3);
+      assert.deepEqual(seen, [
+        { key: "loop", value: "rhythm" },
+        { key: "loopTrack", value: 3 },
+      ]);
+      unsub();
+      saveUiTab("loop", "track");
+      assert.equal(seen.length, 2);
     });
   });
 });

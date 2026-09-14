@@ -30,6 +30,7 @@ import {
   prepareSaveXml,
   assemble,
 } from "./writer.js";
+import { emptyMemoryCopySelection } from "./memoryCopy.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fix = (name: string) => readFileSync(join(root, "fixtures", "DATA", name), "utf8");
@@ -240,5 +241,64 @@ describe("assemble (server writer)", () => {
     const dst = parseMemory(out, 2);
     assert.equal(dst.assigns[0].A, src.assigns[0].A);
     assert.equal(dst.assigns[0].G, src.assigns[0].G);
+  });
+
+  it("copies Input FX between memories", () => {
+    const source = fix("MEMORY001A.RC0");
+    const target = fix("MEMORY002A.RC0");
+    const { xml: out } = assemble({
+      kind: "copy",
+      sourceXml: source,
+      targetXml: target,
+      mode: "inputFx",
+    });
+    const src = parseMemory(source, 1);
+    const dst = parseMemory(out, 2);
+    assert.equal(dst.ifxSetup.A, src.ifxSetup.A);
+    assert.equal(dst.ifxBanks[0].B, src.ifxBanks[0].B);
+    assert.equal(dst.ifxBanks[0].C, src.ifxBanks[0].C);
+    assert.equal(dst.ifxSlots[0][0].C, src.ifxSlots[0][0].C);
+    assert.equal(dst.ifxSlots[0][1].C, src.ifxSlots[0][1].C);
+  });
+
+  it("copies a mixed selection (assigns + one IFX bank)", () => {
+    const source = fix("MEMORY001A.RC0");
+    const target = fix("MEMORY002A.RC0");
+    const selection = emptyMemoryCopySelection();
+    selection.assigns = [1, 2];
+    selection.ifxSetup = true;
+    selection.ifxBanks = [true, false, false, false];
+    const { xml: out } = assemble({
+      kind: "copy",
+      sourceXml: source,
+      targetXml: target,
+      selection,
+    });
+    const src = parseMemory(source, 1);
+    const dst = parseMemory(out, 2);
+    assert.equal(dst.assigns[0].A, src.assigns[0].A);
+    assert.equal(dst.assigns[1].A, src.assigns[1].A);
+    assert.equal(dst.ifxBanks[0].B, src.ifxBanks[0].B);
+    assert.equal(dst.ifxSetup.A, src.ifxSetup.A);
+  });
+
+  it("copies Input Setup without EQ or Dynamics", () => {
+    const source = fix("MEMORY001A.RC0");
+    const target = fix("MEMORY002A.RC0");
+    const selection = emptyMemoryCopySelection();
+    selection.inputSetup = true;
+    const { xml: out } = assemble({
+      kind: "copy",
+      sourceXml: source,
+      targetXml: target,
+      selection,
+    });
+    const src = parseMemory(source, 1);
+    const before = parseMemory(target, 2);
+    const dst = parseMemory(out, 2);
+    assert.equal(dst.input.A, src.input.A);
+    assert.equal(dst.input.E, src.input.E);
+    assert.equal(dst.eq.EQ_MIC1.A, before.eq.EQ_MIC1.A);
+    assert.equal(dst.input.H, before.input.H);
   });
 });

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { usePersistedTab } from "../uiTabs";
 import {
   ctlFunctionDef,
@@ -7,8 +6,6 @@ import {
   PREF_ALL_CLEAR,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { pickTags } from "../presets/configClipboard";
-import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { Icon, type IconName } from "./Icon";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
@@ -26,11 +23,6 @@ const SUBS: { id: CtlSub; label: string; icon: IconName }[] = [
 const PEDAL_NOS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const CTL_NOS = [1, 2, 3, 4] as const;
 const EXP_NOS = [1, 2] as const;
-const PEDAL_TAGS = ["A", "C"] as const;
-const ECTL_CTL_TAGS = ["A", "B", "C"] as const;
-const ECTL_EXP_TAGS = ["A", "C", "D"] as const;
-const PREF_TAGS = [...PREF_CTL_GROUP.params.map((p) => p.tag), PREF_ALL_CLEAR.tag];
-
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
   if (v === undefined) return fallback;
@@ -44,37 +36,6 @@ function patchPedalFunction(tags: TagMap, nextFn: number): Record<string, string
   if (nextFn === 0) patch.C = "0";
   else if (c === 0) patch.C = "1";
   return patch;
-}
-
-function SourcePicker({
-  label,
-  values,
-  selected,
-  onSelect,
-  format = (n) => String(n),
-}: {
-  label: string;
-  values: readonly number[];
-  selected: number;
-  onSelect: (n: number) => void;
-  format?: (n: number) => string;
-}) {
-  return (
-    <div className="copy-source-picker" role="group" aria-label={label}>
-      <span className="copy-source-label">{label}</span>
-      {values.map((n) => (
-        <button
-          key={n}
-          type="button"
-          className={`btn ghost assign-source-btn ${selected === n ? "primary" : ""}`}
-          onClick={() => onSelect(n)}
-          title={`Set ${format(n)} as clipboard target`}
-        >
-          {format(n)}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 export function ControlTab({
@@ -94,7 +55,6 @@ export function ControlTab({
   const [sub, setSub] = usePersistedTab<CtlSub>(`ctl.${scope}`, "mode1", CTL_SUBS_WITH_PREF);
   const visibleSub = !preference && sub === "pref" ? "mode1" : sub;
   const modeNo = visibleSub === "mode1" ? 1 : visibleSub === "mode2" ? 2 : visibleSub === "mode3" ? 3 : 0;
-  const [sourcePedal, setSourcePedal] = useState(1);
 
   return (
     <div className="ctl-tab">
@@ -120,16 +80,6 @@ export function ControlTab({
             MEMORY uses the Ctl Func settings stored in each memory. SYSTEM uses these global
             defaults.
           </p>
-          <ConfigCopyPanel
-            kind="ctlPref"
-            sourceLabel="Ctl Preference"
-            tags={pickTags(preference.tags, PREF_TAGS)}
-            onPaste={(tags) => {
-              for (const [tag, value] of Object.entries(tags)) {
-                preference.onChange(tag, Number(value) || 0);
-              }
-            }}
-          />
           <h3 className="section-title">{PREF_CTL_GROUP.title}</h3>
           <div className="param-columns">
             {PREF_CTL_GROUP.params.map((def) => (
@@ -159,26 +109,6 @@ export function ControlTab({
               ? ""
               : " MEMORY vs SYSTEM preference lives in System → Ctl Func → Preference."}
           </p>
-          <ConfigCopyPanel
-            kind="ctlPedal"
-            sourceLabel={`Mode ${modeNo} Pedal ${sourcePedal}`}
-            tags={pickTags(model.ctlPedals[modeNo - 1]?.[sourcePedal - 1] ?? {}, PEDAL_TAGS)}
-            onPaste={(tags) =>
-              onPatch({
-                type: "section",
-                section: `ICTL${modeNo}_PEDAL${sourcePedal}`,
-                tags,
-                scope,
-              })
-            }
-          />
-          <SourcePicker
-            label="Clipboard target"
-            values={PEDAL_NOS}
-            selected={sourcePedal}
-            onSelect={setSourcePedal}
-            format={(n) => `P${n}`}
-          />
           <div className="param-columns">
             {PEDAL_NOS.map((pedal) => {
               const tags = model.ctlPedals[modeNo - 1]?.[pedal - 1] ?? {};
@@ -222,11 +152,6 @@ function ExtCtrlEditor({
   scope: "mem" | "sys";
   system?: boolean;
 }) {
-  const [sourceCtl, setSourceCtl] = useState(1);
-  const [sourceExp, setSourceExp] = useState(1);
-  const ctlTags = model.ectlCtl[sourceCtl - 1] ?? {};
-  const expTags = model.ectlExp[sourceExp - 1] ?? {};
-
   return (
     <>
       <p className="hint">
@@ -235,21 +160,6 @@ function ExtCtrlEditor({
         {system ? "" : " MEMORY vs SYSTEM preference lives in System → Ctl Func → Preference."}
       </p>
 
-      <ConfigCopyPanel
-        kind="ectlCtl"
-        sourceLabel={`CTL ${sourceCtl}`}
-        tags={pickTags(ctlTags, ECTL_CTL_TAGS)}
-        onPaste={(tags) =>
-          onPatch({ type: "section", section: `ECTL_CTL${sourceCtl}`, tags, scope })
-        }
-      />
-      <SourcePicker
-        label="Clipboard target"
-        values={CTL_NOS}
-        selected={sourceCtl}
-        onSelect={setSourceCtl}
-        format={(n) => `CTL ${n}`}
-      />
       {CTL_NOS.map((n) => {
         const tags = model.ectlCtl[n - 1] ?? {};
         const push = num(tags, "A", 0);
@@ -289,21 +199,6 @@ function ExtCtrlEditor({
         );
       })}
 
-      <ConfigCopyPanel
-        kind="ectlExp"
-        sourceLabel={`EXP ${sourceExp}`}
-        tags={pickTags(expTags, ECTL_EXP_TAGS)}
-        onPaste={(tags) =>
-          onPatch({ type: "section", section: `ECTL_EXP${sourceExp}`, tags, scope })
-        }
-      />
-      <SourcePicker
-        label="Clipboard target"
-        values={EXP_NOS}
-        selected={sourceExp}
-        onSelect={setSourceExp}
-        format={(n) => `EXP ${n}`}
-      />
       {EXP_NOS.map((n) => {
         const tags = model.ectlExp[n - 1] ?? {};
         const fn = num(tags, "A", 0);

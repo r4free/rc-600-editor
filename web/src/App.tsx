@@ -26,7 +26,7 @@ import {
   writeFileToDirectory,
   zipRoland,
 } from "@rc600/files/roland";
-import { copyMemoryWavFolders } from "@rc600/files/wave";
+import { copyTrackWavFolder } from "@rc600/files/wave";
 import {
   assembleRemote,
   ejectUsbStorage,
@@ -48,6 +48,17 @@ import { SystemTab } from "./components/SystemTab";
 import { PlayDrumTab } from "./components/PlayDrumTab";
 import { LicenseScreen } from "./components/LicenseScreen";
 import { PlatformSelect } from "./components/PlatformSelect";
+import { MemoryCopyModal } from "./components/MemoryCopyModal";
+import { MemoryApplyTargetsModal } from "./components/MemoryApplyTargetsModal";
+import {
+  loadMemoryClipboard,
+  loadSkipApplyConfirm,
+  saveMemoryClipboard,
+  saveSkipApplyConfirm,
+  wavTracksForSelection,
+  type MemoryClipboard,
+  type MemoryCopySelection,
+} from "./presets/memoryClipboard";
 import { Icon } from "./components/Icon";
 import {
   Rc600Midi,
@@ -88,6 +99,7 @@ import {
   type DraftMap,
 } from "./presets/memoryDrafts";
 import { usePersistedTab } from "./uiTabs";
+import { MemoryChainBar } from "./components/MemoryChainView";
 
 const WORKSPACES = ["memory", "system", "play-drum"] as const;
 type Workspace = (typeof WORKSPACES)[number];
@@ -103,7 +115,6 @@ const MEMORY_TABS = [
   "mixer",
   "ifx",
   "tfx",
-  "copy",
 ] as const;
 type TabId = (typeof MEMORY_TABS)[number];
 
@@ -188,8 +199,15 @@ export function App() {
   const [sysBaseXml, setSysBaseXml] = useState("");
   const [sysOps, setSysOps] = useState<PatchOp[]>([]);
   const [sysDirty, setSysDirty] = useState(false);
-  const [copyTargets, setCopyTargets] = useState<Set<number>>(new Set());
-  const [copyMode, setCopyMode] = useState<"all" | "assigns">("assigns");
+  const [memoryClipboard, setMemoryClipboard] = useState<MemoryClipboard | null>(() =>
+    loadMemoryClipboard(),
+  );
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [massApplyOpen, setMassApplyOpen] = useState(false);
+  const [applyConfirm, setApplyConfirm] = useState<{
+    targets: number[];
+    skipChecked: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -763,8 +781,10 @@ export function App() {
     URL.revokeObjectURL(a.href);
   }
 
-  async function applyCopy() {
-    if (!slot || !baseXml || copyTargets.size === 0) return;
+  async function applyMemoryClipboard(targets: Iterable<number>) {
+    const clip = memoryClipboard;
+    const targetSet = targets instanceof Set ? targets : new Set(targets);
+    if (!clip || targetSet.size === 0) return;
     if (requireLicense && !sessionOk) {
       setError("Enter a valid license key before copying.");
       return;
@@ -776,11 +796,15 @@ export function App() {
     setSaving(true);
     setError(null);
     try {
-      const sourceXml = dirty
-        ? (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml
-        : baseXml;
+      // Prefer live dirty source if clipboard is from the current memory
+      let sourceXml = clip.sourceXml;
+      const sourceIsCurrentDirty = clip.sourceSlot === slot && dirty && Boolean(baseXml);
+      if (sourceIsCurrentDirty && baseXml) {
+        sourceXml = (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml;
+      }
+
       const next = new Map(files);
-      if (dirty) {
+      if (sourceIsCurrentDirty && slot != null) {
         const pair = memoryFilesAfterSave(sourceXml);
         next.set(slotFileName(slot, "A"), pair.xmlA);
         next.set(slotFileName(slot, "B"), pair.xmlB);
@@ -792,8 +816,9 @@ export function App() {
       }
 
       const clearedTargets: number[] = [];
-      for (const target of copyTargets) {
-        if (target === slot) continue;
+      const wavTracks = wavTracksForSelection(clip.selection);
+      for (const target of targetSet) {
+        if (target === clip.sourceSlot) continue;
         const aPath = slotFileName(target, "A");
         const bPath = slotFileName(target, "B");
         const a = next.get(aPath);
@@ -805,7 +830,8 @@ export function App() {
           kind: "copy",
           sourceXml,
           targetXml: picked.xml,
-          mode: copyMode,
+          selection: clip.selection,
+          mode: clip.selection.copyAll ? "all" : undefined,
         });
         const pair = memoryFilesAfterSave(patched);
         next.set(aPath, pair.xmlA);
@@ -814,20 +840,22 @@ export function App() {
         if (dirHandleRef.current) {
           await writeFileToDirectory(dirHandleRef.current, aPath, pair.xmlA);
           await writeFileToDirectory(dirHandleRef.current, bPath, pair.xmlB);
-          if (copyMode === "all" && slot != null) {
-            await copyMemoryWavFolders(dirHandleRef.current, slot, target);
+          for (const t of wavTracks) {
+            await copyTrackWavFolder(dirHandleRef.current, clip.sourceSlot, target, t);
           }
         }
       }
       setFiles(next);
-      if (dirty || clearedTargets.length) {
+      if (sourceIsCurrentDirty || clearedTargets.length) {
         setDrafts((prev) => {
-          let out = dirty ? clearSlotDraft(prev, slot) : prev;
+          let out = sourceIsCurrentDirty && slot != null ? clearSlotDraft(prev, slot) : prev;
           for (const t of clearedTargets) out = clearSlotDraft(out, t);
           return out;
         });
       }
-      setStatus(`Copied (${copyMode}) to ${copyTargets.size} slots`);
+      setStatus(
+        `Applied clipboard (${clip.summary}) to ${clearedTargets.length || targetSet.size} memories`,
+      );
     } catch (e) {
       setError(String(e));
       if (String(e).includes("License required") || String(e).includes("expired")) {
@@ -835,6 +863,37 @@ export function App() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  function requestApply(targets: number[]) {
+    const filtered = targets.filter((t) => t !== memoryClipboard?.sourceSlot);
+    if (!filtered.length || !memoryClipboard) return;
+    if (loadSkipApplyConfirm()) {
+      void applyMemoryClipboard(filtered);
+      return;
+    }
+    setApplyConfirm({ targets: filtered, skipChecked: false });
+  }
+
+  async function captureMemoryClipboard(selection: MemoryCopySelection) {
+    if (!slot || !baseXml) return;
+    try {
+      const sourceXml = dirty
+        ? (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml
+        : baseXml;
+      const name = model?.name ?? "";
+      const clip = saveMemoryClipboard({
+        sourceSlot: slot,
+        sourceName: name,
+        sourceXml,
+        selection,
+      });
+      setMemoryClipboard(clip);
+      setCopyModalOpen(false);
+      setStatus(`Copied ${clip.summary} from memory ${String(slot).padStart(2, "0")}`);
+    } catch (e) {
+      setError(String(e));
     }
   }
 
@@ -1090,7 +1149,6 @@ export function App() {
     { id: "mixer", label: "Mixer" },
     { id: "ifx", label: "Input FX" },
     { id: "tfx", label: "Track FX" },
-    { id: "copy", label: "Copy" },
   ];
 
   if (session === null) {
@@ -1473,6 +1531,38 @@ export function App() {
                   <div className="sidebar-head">
                     <span>Memories ({slots.length})</span>
                   </div>
+                  <div className="sidebar-copy-actions">
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={!slot || !baseXml || saving}
+                      title="Copy settings from the current memory"
+                      onClick={() => setCopyModalOpen(true)}
+                    >
+                      <Icon name="copy" size={14} />
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={!memoryClipboard || saving}
+                      title={
+                        memoryClipboard
+                          ? `Mass apply: ${memoryClipboard.summary}`
+                          : "Copy settings first"
+                      }
+                      onClick={() => setMassApplyOpen(true)}
+                    >
+                      <Icon name="paste" size={14} />
+                      Mass Apply
+                    </button>
+                  </div>
+                  {memoryClipboard ? (
+                    <p className="sidebar-clipboard-hint" title={memoryClipboard.summary}>
+                      Clipboard: {String(memoryClipboard.sourceSlot).padStart(2, "0")} ·{" "}
+                      {memoryClipboard.summary}
+                    </p>
+                  ) : null}
                   <select
                     className="mem-select"
                     aria-label="Memories"
@@ -1500,32 +1590,61 @@ export function App() {
                   <div className="mem-list">
                     {summaries.map((s) => {
                       const unsaved = (drafts.get(s.slot)?.length ?? 0) > 0;
+                      const canApply =
+                        Boolean(memoryClipboard) &&
+                        memoryClipboard!.sourceSlot !== s.slot &&
+                        !saving;
                       return (
-                        <button
-                          key={s.slot}
-                          type="button"
-                          className={`mem-item ${slot === s.slot ? "active" : ""} ${unsaved ? "dirty" : ""}`}
-                          title={unsaved ? "Unsaved changes" : undefined}
-                          aria-label={
-                            unsaved
-                              ? `Memory ${String(s.slot).padStart(2, "0")} ${s.name || ""}, unsaved changes`
-                              : undefined
-                          }
-                          onClick={() => loadSlot(s.slot, files, { syncPedal: true })}
-                        >
-                          <span className="slot">{String(s.slot).padStart(2, "0")}</span>
-                          <span className="name">{s.name || "—"}</span>
-                          <span className="meta">
-                            {unsaved ? <Icon name="dirty" className="mem-dirty" size={10} /> : null}
-                            {s.active.toUpperCase()}
-                          </span>
-                        </button>
+                        <div key={s.slot} className="mem-row">
+                          <button
+                            type="button"
+                            className={`mem-item ${slot === s.slot ? "active" : ""} ${unsaved ? "dirty" : ""}`}
+                            title={unsaved ? "Unsaved changes" : undefined}
+                            aria-label={
+                              unsaved
+                                ? `Memory ${String(s.slot).padStart(2, "0")} ${s.name || ""}, unsaved changes`
+                                : undefined
+                            }
+                            onClick={() => loadSlot(s.slot, files, { syncPedal: true })}
+                          >
+                            <span className="slot">{String(s.slot).padStart(2, "0")}</span>
+                            <span className="name">{s.name || "—"}</span>
+                            <span className="meta">
+                              {unsaved ? <Icon name="dirty" className="mem-dirty" size={10} /> : null}
+                              {s.active.toUpperCase()}
+                            </span>
+                          </button>
+                          {canApply ? (
+                            <button
+                              type="button"
+                              className="mem-apply-btn"
+                              title={`Apply clipboard: ${memoryClipboard!.summary}`}
+                              aria-label={`Apply clipboard to memory ${String(s.slot).padStart(2, "0")}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                requestApply([s.slot]);
+                              }}
+                            >
+                              <Icon name="paste" size={14} />
+                            </button>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
                 </aside>
 
                 <div className="memory-editor">
+                  <MemoryChainBar
+                    model={model}
+                    onPatch={pushOps}
+                    memoryTab={tab}
+                    onJumpTab={(next) => {
+                      if ((MEMORY_TABS as readonly string[]).includes(next)) {
+                        setTab(next as TabId);
+                      }
+                    }}
+                  />
                   <div className="tabs" role="tablist" aria-label="Memory editor">
                     {tabs.map((t) => (
                       <button
@@ -1602,7 +1721,9 @@ export function App() {
 
                     {tab === "mixer" && model ? <MixerTab model={model} onPatch={pushOps} /> : null}
 
-                    {tab === "ifx" && model ? <InputFxTab model={model} onPatch={pushOps} /> : null}
+                    {tab === "ifx" && model ? (
+                      <InputFxTab model={model} onPatch={pushOps} />
+                    ) : null}
 
                     {tab === "tfx" && model ? (
                       <>
@@ -1635,53 +1756,6 @@ export function App() {
                       </>
                     ) : null}
 
-                    {tab === "copy" && model && (
-                      <div className="copy-panel">
-                        <h3 className="section-title">Copy from memory {slot}</h3>
-                        <div className="row-actions">
-                          <button
-                            type="button"
-                            className={`btn ${copyMode === "assigns" ? "primary" : "ghost"}`}
-                            onClick={() => setCopyMode("assigns")}
-                          >
-                            Assigns only
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn ${copyMode === "all" ? "primary" : "ghost"}`}
-                            onClick={() => setCopyMode("all")}
-                          >
-                            Entire memory
-                          </button>
-                        </div>
-                        <div className="targets">
-                          {slots.map((s) => (
-                            <label key={s}>
-                              <input
-                                type="checkbox"
-                                checked={copyTargets.has(s)}
-                                disabled={s === slot}
-                                onChange={(e) => {
-                                  const next = new Set(copyTargets);
-                                  if (e.target.checked) next.add(s);
-                                  else next.delete(s);
-                                  setCopyTargets(next);
-                                }}
-                              />
-                              {String(s).padStart(2, "0")}
-                            </label>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          className="btn primary"
-                          disabled={!copyTargets.size || !backupAck || saving}
-                          onClick={() => void applyCopy()}
-                        >
-                          Apply copy
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1727,6 +1801,96 @@ export function App() {
               </button>
               <button type="button" className="btn warn" onClick={discardAll}>
                 Discard all
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {copyModalOpen && slot != null ? (
+        <MemoryCopyModal
+          sourceSlot={slot}
+          sourceName={model?.name ?? ""}
+          onCancel={() => setCopyModalOpen(false)}
+          onConfirm={(selection) => void captureMemoryClipboard(selection)}
+        />
+      ) : null}
+
+      {massApplyOpen && memoryClipboard ? (
+        <MemoryApplyTargetsModal
+          memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
+          sourceSlot={memoryClipboard.sourceSlot}
+          summary={memoryClipboard.summary}
+          onCancel={() => setMassApplyOpen(false)}
+          onConfirm={(targets) => {
+            setMassApplyOpen(false);
+            requestApply(targets);
+          }}
+        />
+      ) : null}
+
+      {applyConfirm && memoryClipboard ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => setApplyConfirm(null)}
+        >
+          <div
+            className="modal-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mem-apply-confirm-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="mem-apply-confirm-title">Apply clipboard?</h2>
+            <p>
+              Apply <strong>{memoryClipboard.summary}</strong> from memory{" "}
+              {String(memoryClipboard.sourceSlot).padStart(2, "0")} to{" "}
+              {applyConfirm.targets.length === 1
+                ? `memory ${String(applyConfirm.targets[0]).padStart(2, "0")}`
+                : `${applyConfirm.targets.length} memories`}
+              . This writes the selected settings on disk.
+            </p>
+            <div className="mem-copy-switch mem-apply-skip">
+              <label htmlFor="mem-apply-skip-confirm" className="mem-copy-switch-label">
+                Don&apos;t show this again
+              </label>
+              <button
+                id="mem-apply-skip-confirm"
+                type="button"
+                role="switch"
+                className={`power-switch${applyConfirm.skipChecked ? " on" : ""}`}
+                aria-checked={applyConfirm.skipChecked}
+                onClick={() =>
+                  setApplyConfirm((prev) =>
+                    prev ? { ...prev, skipChecked: !prev.skipChecked } : prev,
+                  )
+                }
+              >
+                <span className="power-switch-track">
+                  <span className="power-switch-thumb" />
+                </span>
+                <span className="power-switch-state">
+                  {applyConfirm.skipChecked ? "ON" : "OFF"}
+                </span>
+              </button>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn ghost" onClick={() => setApplyConfirm(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={!backupAck || saving}
+                onClick={() => {
+                  if (applyConfirm.skipChecked) saveSkipApplyConfirm(true);
+                  const targets = applyConfirm.targets;
+                  setApplyConfirm(null);
+                  void applyMemoryClipboard(targets);
+                }}
+              >
+                Apply
               </button>
             </div>
           </div>

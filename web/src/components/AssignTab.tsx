@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ASSIGN_PARAMS, assignSourceInfo, type ParamDef } from "@rc600/catalog/params";
 import {
   assignRangeOptions,
@@ -10,12 +9,9 @@ import {
   type AssignValueRange,
 } from "@rc600/catalog/assign-targets";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
-import { pickTags } from "../presets/configClipboard";
-import { ConfigCopyPanel } from "./ConfigCopyPanel";
 import { InfoTip } from "./InfoTip";
 import type { PatchHandler } from "./LoopTab";
 
-const ASSIGN_COPY_TAGS = ASSIGN_PARAMS.map((p) => p.tag);
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
   if (v === undefined) return fallback;
@@ -82,19 +78,11 @@ function RangeControl({
 }
 
 export function AssignTab({ model, onPatch }: { model: MemoryModel; onPatch: PatchHandler }) {
-  const [sourceAssign, setSourceAssign] = useState(1);
   const patch = (index: number, tags: TagMap) =>
     onPatch({ type: "assign", assign: index + 1, tags });
-  const sourceTags = model.assigns[sourceAssign - 1] ?? {};
 
   return (
     <div className="assign-tab">
-      <ConfigCopyPanel
-        kind="assign"
-        sourceLabel={`Assign ${sourceAssign}`}
-        tags={pickTags(sourceTags, ASSIGN_COPY_TAGS)}
-        onPaste={(tags) => onPatch({ type: "assign", assign: sourceAssign, tags })}
-      />
       <table className="assign-table">
         <thead>
           <tr>
@@ -115,17 +103,8 @@ export function AssignTab({ model, onPatch }: { model: MemoryModel; onPatch: Pat
             const range = assignTargetRange(target);
             const targetInfo = assignTargetInfo(target);
             return (
-              <tr key={i} className={sourceAssign === i + 1 ? "assign-row-source" : undefined}>
-                <td>
-                  <button
-                    type="button"
-                    className={`btn ghost assign-source-btn ${sourceAssign === i + 1 ? "primary" : ""}`}
-                    onClick={() => setSourceAssign(i + 1)}
-                    title="Clipboard target"
-                  >
-                    {i + 1}
-                  </button>
-                </td>
+              <tr key={i}>
+                <td>{i + 1}</td>
                 {ASSIGN_PARAMS.map((p) => {
                   const value = num(asg, p.tag);
                   if (p.tag === "A") {

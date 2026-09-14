@@ -93,26 +93,28 @@ export function AudioTab({
       const { files, probe } = await listMemoryTrackWavs(dirHandle, model.slot);
       let merged = files;
 
-      if (merged.every((f) => !f) || merged.some((f) => !f)) {
-        const serverTracks = await fetchMemoryWaveFiles(model.slot);
-        if (serverTracks) {
-          merged = merged.map((browser, i) => {
-            if (browser) return browser;
-            const s = serverTracks[i];
-            if (!s) return null;
-            rememberWavFileName(model.slot, i + 1, s.fileName);
+      // Always ask the local API — it sees AFTERL~1.WAV on the USB even when
+      // the browser directory listing returns empty.
+      const serverTracks = await fetchMemoryWaveFiles(model.slot);
+      if (serverTracks) {
+        merged = TRACK_NOS.map((n) => {
+          const i = n - 1;
+          const s = serverTracks[i];
+          if (s) {
+            rememberWavFileName(model.slot, n, s.fileName);
             return {
-              path: `WAVE/${String(model.slot).padStart(3, "0")}_${i + 1}/${s.fileName}`,
+              path: `WAVE/${String(model.slot).padStart(3, "0")}_${n}/${s.fileName}`,
               fileName: s.fileName,
               size: s.size,
             };
-          });
-        }
+          }
+          return files[i] ?? null;
+        });
       }
 
       setWavInfos(merged);
       setWaveProbe(probe);
-      if (!probe.waveOk && probe.message) {
+      if (!probe.waveOk && probe.message && !serverTracks?.some(Boolean)) {
         setLocalError(probe.message);
       } else {
         setLocalError(null);
@@ -246,14 +248,8 @@ export function AudioTab({
   async function loadTrackBytes(
     track: number,
   ): Promise<{ info: TrackWavInfo; bytes: Uint8Array } | null> {
-    if (!dirHandle) return null;
-
-    const fromBrowser = await readTrackWav(dirHandle, model.slot, track);
-    if (fromBrowser) {
-      rememberWavFileName(model.slot, track, fromBrowser.info.fileName);
-      return fromBrowser;
-    }
-
+    // Prefer the local API: Node can list FAT/USB 8.3 names (AFTERL~1.WAV) that
+    // the browser File System Access API often cannot enumerate.
     const fromServer = await fetchTrackWaveFile(model.slot, track);
     if (fromServer) {
       const info: TrackWavInfo = {
@@ -268,6 +264,18 @@ export function AudioTab({
         return next;
       });
       return { info, bytes: fromServer.bytes };
+    }
+
+    if (!dirHandle) return null;
+    const fromBrowser = await readTrackWav(dirHandle, model.slot, track);
+    if (fromBrowser) {
+      rememberWavFileName(model.slot, track, fromBrowser.info.fileName);
+      setWavInfos((prev) => {
+        const next = [...prev];
+        next[track - 1] = fromBrowser.info;
+        return next;
+      });
+      return fromBrowser;
     }
 
     return null;
@@ -328,7 +336,7 @@ export function AudioTab({
       const buffer = await ensureBuffer(track);
       if (!buffer) {
         setLocalError(
-          `Track ${track}: no WAV found under WAVE/${String(model.slot).padStart(3, "0")}_${track}/. Keep the RC-600 in USB Storage and run the local API (npm run dev).`,
+          `Track ${track}: no WAV found under WAVE/${String(model.slot).padStart(3, "0")}_${track}/. Keep USB Storage connected and the local API running (npm run dev).`,
         );
         return;
       }
@@ -518,9 +526,10 @@ export function AudioTab({
       />
 
       <p className="hint">
-        Manage phrase audio under WAVE/ for this memory. Play several tracks at once and scrub each
-        playhead. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save
-        memory after import or clear so the pedal sees the new phrase length.
+        Manage phrase audio under WAVE/ for this memory. Play several tracks at once and drag each
+        Position slider to scrub. Large imported songs may take a few seconds to load the first
+        time. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save memory
+        after import or clear so the pedal sees the new phrase length.
       </p>
 
       {!folderReady ? (
@@ -545,7 +554,8 @@ export function AudioTab({
 
       {waveProbe?.waveOk ? (
         <p className="hint audio-folder-hint" role="status">
-          <Icon name="folderOpen" size={14} /> Reading WAVE/ from “{waveProbe.rootName}”.
+          <Icon name="folderOpen" size={14} /> Folder “{waveProbe.rootName}” connected
+          {wavInfos.some(Boolean) ? " — WAVE files ready to play." : "."}
         </p>
       ) : null}
 
@@ -638,7 +648,7 @@ export function AudioTab({
                         : !folderReady
                           ? "n/a"
                           : recorded
-                            ? "Looking up WAVE…"
+                            ? "On USB — press Play to load"
                             : "—"}
                     </span>
                   </div>
