@@ -157,6 +157,8 @@ describe("setlist", () => {
             selectedTrackIndexes: [2, 0, 2, -1],
             mutedTrackIndexes: [1, 1, -1],
             vocalTrackIndex: 2,
+            rc600Drums: true,
+            drumTrackIndex: 3,
             key: "D",
             mode: "major",
             transpose: 0,
@@ -174,6 +176,8 @@ describe("setlist", () => {
     assert.deepEqual(music?.kind === "score" ? music.mutedTrackIndexes : [], [1]);
     assert.equal(music?.kind === "score" ? music.playbackSpeed : 0, 2);
     assert.equal(music?.kind === "score" ? music.vocalTrackIndex : null, 2);
+    assert.equal(music?.kind === "score" ? music.rc600Drums : false, true);
+    assert.equal(music?.kind === "score" ? music.drumTrackIndex : null, 3);
   });
 
   it("reorders songs without wrapping", () => {

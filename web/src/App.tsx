@@ -1556,6 +1556,9 @@ export function App() {
                 defaultMidiChannel={midiCh + 1}
                 onRecallMemory={changeSetlistMemory}
                 onSendControlChange={sendSetlistControlChange}
+                onPlayNotes={playDrumNotes}
+                onSilenceDrums={silenceRhythm}
+                onRequestMidi={() => void requestMidi(true)}
               />
             ) : workspace === "system" ? (
               <div className="empty-state">
@@ -1729,6 +1732,9 @@ export function App() {
                 defaultMidiChannel={midiCh + 1}
                 onRecallMemory={changeSetlistMemory}
                 onSendControlChange={sendSetlistControlChange}
+                onPlayNotes={playDrumNotes}
+                onSilenceDrums={silenceRhythm}
+                onRequestMidi={() => void requestMidi(true)}
               />
             ) : workspace === "memory" ? (
               <div className="memory-layout">

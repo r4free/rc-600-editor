@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SetlistScoreGuide, SetlistSong } from "../presets/playlist";
+import { alphaTabDrumNote } from "../setlists/alphaTabDrumMidi";
 import { midiNoteName, scoreVoiceStateFromActiveBeats } from "../setlists/alphaTabVoice";
 import { scoreAssetStore } from "../setlists/scoreAssetStore";
 import { Icon } from "./Icon";
@@ -7,6 +8,7 @@ import { Icon } from "./Icon";
 interface ScoreTrackInfo {
   index: number;
   name: string;
+  isPercussion: boolean;
 }
 
 export interface AlphaTabVoiceTarget {
@@ -23,7 +25,9 @@ function applyTrackAudio(api: any, guide: SetlistScoreGuide): void {
   if (!api?.score?.tracks) return;
   const muted = new Set(guide.mutedTrackIndexes ?? []);
   for (const track of api.score.tracks) {
-    api.changeTrackMute([track], muted.has(track.index));
+    const routedToRc600 =
+      guide.rc600Drums === true && guide.drumTrackIndex === track.index;
+    api.changeTrackMute([track], muted.has(track.index) || routedToRc600);
   }
 }
 
@@ -38,6 +42,10 @@ export function AlphaTabScoreViewer({
   onGuideChange,
   onCurrentChord,
   onVoiceTarget,
+  midiLive,
+  onDrumNotes,
+  onSilenceDrums,
+  onRequestMidi,
   children,
 }: {
   setlistName: string;
@@ -50,6 +58,10 @@ export function AlphaTabScoreViewer({
   onGuideChange: (guide: SetlistScoreGuide) => void;
   onCurrentChord: (chord: string | null) => void;
   onVoiceTarget: (target: AlphaTabVoiceTarget | null) => void;
+  midiLive: boolean;
+  onDrumNotes: (notes: readonly number[], velocity: number, down: boolean) => void;
+  onSilenceDrums: () => void;
+  onRequestMidi: () => void;
   children?: React.ReactNode;
 }) {
   const guide = song.music;
@@ -58,8 +70,20 @@ export function AlphaTabScoreViewer({
   const apiRef = useRef<any>(null);
   const guideRef = useRef(guide);
   const lastChordRef = useRef<string | null>(null);
-  const callbacksRef = useRef({ onGuideChange, onCurrentChord, onVoiceTarget });
-  callbacksRef.current = { onGuideChange, onCurrentChord, onVoiceTarget };
+  const callbacksRef = useRef({
+    onGuideChange,
+    onCurrentChord,
+    onVoiceTarget,
+    onDrumNotes,
+    onSilenceDrums,
+  });
+  callbacksRef.current = {
+    onGuideChange,
+    onCurrentChord,
+    onVoiceTarget,
+    onDrumNotes,
+    onSilenceDrums,
+  };
   const [tracks, setTracks] = useState<ScoreTrackInfo[]>([]);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -76,6 +100,7 @@ export function AlphaTabScoreViewer({
     api.countInVolume = guide.countIn ? 1 : 0;
     api.playbackSpeed = guide.playbackSpeed;
     applyTrackAudio(api, guide);
+    if (!guide.rc600Drums) callbacksRef.current.onSilenceDrums();
   }, [guide]);
 
   const emitActiveBeat = useCallback((args: any) => {
@@ -125,6 +150,11 @@ export function AlphaTabScoreViewer({
         const nextTracks = (score?.tracks ?? []).map((track: any, trackIndex: number) => ({
           index: Number.isInteger(track?.index) ? track.index : trackIndex,
           name: String(track?.name || `Track ${trackIndex + 1}`),
+          isPercussion: Boolean(
+            track?.isPercussion ||
+            track?.staves?.some?.((staff: any) => staff?.isPercussion) ||
+            /drum|percussion|bateria/i.test(String(track?.name ?? "")),
+          ),
         }));
         setTracks(nextTracks);
         if (!guideRef.current.selectedTrackIndexes.length && nextTracks.length) {
@@ -144,12 +174,46 @@ export function AlphaTabScoreViewer({
         applyTrackAudio(api, guideRef.current);
       });
       api.playerStateChanged.on((args: any) => {
-        if (!cancelled) setPlaying(Boolean(args?.state === 1 || args?.state === "playing"));
+        if (cancelled) return;
+        const nextPlaying = Boolean(args?.state === 1 || args?.state === "playing");
+        setPlaying(nextPlaying);
+        if (!nextPlaying) callbacksRef.current.onSilenceDrums();
       });
       api.playerPositionChanged.on((args: any) => {
         if (cancelled) return;
         setPosition(Number(args?.currentTime) || 0);
         setDuration(Number(args?.endTime) || 0);
+      });
+      api.midiEventsPlayedFilter = [
+        alphaTab.midi.MidiEventType.NoteOn,
+        alphaTab.midi.MidiEventType.NoteOff,
+      ];
+      api.midiEventsPlayed.on((args: any) => {
+        const currentGuide = guideRef.current;
+        if (!currentGuide.rc600Drums || currentGuide.drumTrackIndex === undefined) return;
+        const drumTrack = api.score?.tracks?.find(
+          (track: any) => track.index === currentGuide.drumTrackIndex,
+        );
+        if (!drumTrack) return;
+        const channels = new Set([
+          Number(drumTrack.playbackInfo?.primaryChannel),
+          Number(drumTrack.playbackInfo?.secondaryChannel),
+        ].filter(Number.isFinite));
+        for (const event of args?.events ?? []) {
+          const forwarded = alphaTabDrumNote(
+            event,
+            channels,
+            alphaTab.midi.MidiEventType.NoteOn,
+            alphaTab.midi.MidiEventType.NoteOff,
+          );
+          if (forwarded) {
+            callbacksRef.current.onDrumNotes(
+              [forwarded.note],
+              forwarded.velocity,
+              forwarded.down,
+            );
+          }
+        }
       });
       api.activeBeatsChanged.on(emitActiveBeat);
       api.error.on((event: any) => {
@@ -165,6 +229,7 @@ export function AlphaTabScoreViewer({
       cancelled = true;
       callbacksRef.current.onCurrentChord(null);
       callbacksRef.current.onVoiceTarget(null);
+      callbacksRef.current.onSilenceDrums();
       apiRef.current?.destroy();
       apiRef.current = null;
     };
@@ -180,6 +245,15 @@ export function AlphaTabScoreViewer({
     }
     onGuideChange({ ...guide, selectedTrackIndexes });
   };
+  const detectedDrumTrack =
+    tracks.find((track) => track.index === guide.drumTrackIndex) ??
+    tracks.find((track) => track.isPercussion);
+  const routedDrumIndex = guide.rc600Drums ? detectedDrumTrack?.index : undefined;
+  const audibleTrackCount = tracks.filter(
+    (track) =>
+      !(guide.mutedTrackIndexes ?? []).includes(track.index) &&
+      track.index !== routedDrumIndex,
+  ).length;
 
   return (
     <section className="setlist-chart-stage alphatab-stage" aria-label={`${song.name} score`}>
@@ -221,52 +295,59 @@ export function AlphaTabScoreViewer({
 
       {tracks.length ? (
         <div className="alphatab-track-controls">
-          <details>
-            <summary>Visible tracks</summary>
-            {tracks.map((track) => (
-              <label key={track.index}>
-                <input
-                  type="checkbox"
-                  checked={guide.selectedTrackIndexes.includes(track.index)}
-                  onChange={(event) => {
-                    const selected = event.target.checked
-                      ? [...guide.selectedTrackIndexes, track.index]
-                      : guide.selectedTrackIndexes.filter((index) => index !== track.index);
-                    if (selected.length) renderSelectedTracks(selected);
-                  }}
-                />
-                {track.name}
-              </label>
-            ))}
-          </details>
-          <details>
-            <summary>Audio tracks</summary>
-            {tracks.map((track) => {
-              const audible = !(guide.mutedTrackIndexes ?? []).includes(track.index);
-              return (
+          <details className="alphatab-multiselect">
+            <summary>Visible tracks · {guide.selectedTrackIndexes.length}</summary>
+            <div className="alphatab-multiselect-menu">
+              {tracks.map((track) => (
                 <label key={track.index}>
                   <input
                     type="checkbox"
-                    checked={audible}
+                    checked={guide.selectedTrackIndexes.includes(track.index)}
                     onChange={(event) => {
-                      const mutedTrackIndexes = event.target.checked
-                        ? (guide.mutedTrackIndexes ?? []).filter((index) => index !== track.index)
-                        : [...(guide.mutedTrackIndexes ?? []), track.index];
-                      const scoreTrack = apiRef.current?.score?.tracks?.find(
-                        (candidate: any) => candidate.index === track.index,
-                      );
-                      if (scoreTrack) {
-                        apiRef.current.changeTrackMute([scoreTrack], !event.target.checked);
-                      }
-                      onGuideChange({ ...guide, mutedTrackIndexes });
+                      const selected = event.target.checked
+                        ? [...guide.selectedTrackIndexes, track.index]
+                        : guide.selectedTrackIndexes.filter((index) => index !== track.index);
+                      if (selected.length) renderSelectedTracks(selected);
                     }}
                   />
                   {track.name}
                 </label>
-              );
-            })}
+              ))}
+            </div>
           </details>
-          <label className="playlist-field">
+          <details className="alphatab-multiselect">
+            <summary>Audio tracks · {audibleTrackCount}</summary>
+            <div className="alphatab-multiselect-menu">
+              {tracks.map((track) => {
+                const routed = track.index === routedDrumIndex;
+                const audible =
+                  !routed && !(guide.mutedTrackIndexes ?? []).includes(track.index);
+                return (
+                  <label key={track.index}>
+                    <input
+                      type="checkbox"
+                      checked={audible}
+                      disabled={routed}
+                      onChange={(event) => {
+                        const mutedTrackIndexes = event.target.checked
+                          ? (guide.mutedTrackIndexes ?? []).filter((index) => index !== track.index)
+                          : [...(guide.mutedTrackIndexes ?? []), track.index];
+                        const scoreTrack = apiRef.current?.score?.tracks?.find(
+                          (candidate: any) => candidate.index === track.index,
+                        );
+                        if (scoreTrack) {
+                          apiRef.current.changeTrackMute([scoreTrack], !event.target.checked);
+                        }
+                        onGuideChange({ ...guide, mutedTrackIndexes });
+                      }}
+                    />
+                    {track.name}{routed ? " · RC-600 MIDI" : ""}
+                  </label>
+                );
+              })}
+            </div>
+          </details>
+          <label className="playlist-field alphatab-vocal-select">
             <span>Vocal melody track</span>
             <select
               value={guide.vocalTrackIndex ?? ""}
@@ -281,6 +362,33 @@ export function AlphaTabScoreViewer({
               {tracks.map((track) => <option key={track.index} value={track.index}>{track.name}</option>)}
             </select>
           </label>
+          <button
+            type="button"
+            className={`btn ${guide.rc600Drums ? "primary" : "ghost"}`}
+            disabled={!detectedDrumTrack}
+            title={
+              detectedDrumTrack
+                ? `Route ${detectedDrumTrack.name} to the RC-600 rhythm channel`
+                : "No drum track was found in this score"
+            }
+            onClick={() => {
+              const enabled = !guide.rc600Drums;
+              if (enabled && !midiLive) onRequestMidi();
+              if (!enabled) onSilenceDrums();
+              onGuideChange({
+                ...guide,
+                rc600Drums: enabled,
+                drumTrackIndex: detectedDrumTrack?.index,
+              });
+            }}
+          >
+            <Icon name="midi" />{" "}
+            {guide.rc600Drums
+              ? midiLive
+                ? "RC-600 drums ON"
+                : "RC-600 drums · MIDI offline"
+              : "Use RC-600 drums"}
+          </button>
         </div>
       ) : null}
 

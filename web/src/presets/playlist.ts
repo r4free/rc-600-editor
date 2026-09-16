@@ -34,6 +34,9 @@ export interface SetlistScoreGuide extends SetlistMusicBase {
   /** Score tracks muted in synthesized alphaTab playback. */
   mutedTrackIndexes?: number[];
   vocalTrackIndex?: number;
+  /** Route the selected score drum track to the RC-600 over MIDI. */
+  rc600Drums?: boolean;
+  drumTrackIndex?: number;
   metronome: boolean;
   countIn: boolean;
   scoreAudio: boolean;
@@ -214,6 +217,7 @@ function parseSongMusic(raw: unknown): SetlistSongMusic | undefined {
         ))]
       : [];
     const vocalTrack = Math.round(Number(music.vocalTrackIndex));
+    const drumTrack = Math.round(Number(music.drumTrackIndex));
     return {
       kind: "score",
       ...base,
@@ -224,6 +228,10 @@ function parseSongMusic(raw: unknown): SetlistSongMusic | undefined {
       ...(mutedTrackIndexes.length ? { mutedTrackIndexes } : {}),
       ...(Number.isInteger(vocalTrack) && vocalTrack >= 0 && vocalTrack < 256
         ? { vocalTrackIndex: vocalTrack }
+        : {}),
+      ...(music.rc600Drums === true ? { rc600Drums: true } : {}),
+      ...(Number.isInteger(drumTrack) && drumTrack >= 0 && drumTrack < 256
+        ? { drumTrackIndex: drumTrack }
         : {}),
       metronome: music.metronome === true,
       countIn: music.countIn === true,

@@ -45,6 +45,9 @@ export function SetlistPanel({
   defaultMidiChannel,
   onRecallMemory,
   onSendControlChange,
+  onPlayNotes,
+  onSilenceDrums,
+  onRequestMidi,
 }: {
   midiLive: boolean;
   usbStorageActive: boolean;
@@ -53,6 +56,9 @@ export function SetlistPanel({
   defaultMidiChannel: number;
   onRecallMemory: (slot: number) => Promise<void>;
   onSendControlChange: (action: SetlistMidiAction) => void;
+  onPlayNotes: (notes: readonly number[], velocity: number, down: boolean) => void;
+  onSilenceDrums: () => void;
+  onRequestMidi: () => void;
 }) {
   const [setlists, setSetlists] = useState<Setlist[]>(() => userSetlistStore.list());
   const [selectedId, setSelectedId] = useState<string | null>(() => setlists[0]?.id ?? null);
@@ -343,6 +349,10 @@ export function SetlistPanel({
               }
               onCurrentChord={setLiveChord}
               onVoiceTarget={setVoiceTarget}
+              midiLive={midiLive}
+              onDrumNotes={onPlayNotes}
+              onSilenceDrums={onSilenceDrums}
+              onRequestMidi={onRequestMidi}
             >
               {activeSong.voiceToneMatch?.enabled && activeSong.music.key ? (
                 <VoiceToneMonitor
