@@ -1,0 +1,228 @@
+{
+  "type": "rc600-setlists",
+  "version": 2,
+  "exportedAt": "2026-09-16T14:30:00.000Z",
+  "setlists": {
+    "version": 2,
+    "setlists": [
+      {
+        "id": "setlist-heavy-metal-demo",
+        "name": "Heavy Metal — Extreme Demo",
+        "updatedAt": "2026-09-16T14:30:00.000Z",
+        "songs": [
+          {
+            "id": "song-steel-overture",
+            "name": "Steel Overture",
+            "memorySlot": 1,
+            "memoryName": "METAL INTRO",
+            "beforeChange": [
+              {
+                "id": "cc-stop-rhythm-1",
+                "channel": 1,
+                "controller": 84,
+                "value": 127,
+                "delayMs": 100
+              }
+            ],
+            "afterChange": [
+              {
+                "id": "cc-start-rhythm-1",
+                "channel": 1,
+                "controller": 80,
+                "value": 127,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-track-fx-on-1",
+                "channel": 1,
+                "controller": 81,
+                "value": 127,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-input-fx-on-1",
+                "channel": 1,
+                "controller": 82,
+                "value": 127,
+                "delayMs": 0
+              }
+            ]
+          },
+          {
+            "id": "song-breakdown-protocol",
+            "name": "Breakdown Protocol",
+            "memorySlot": 2,
+            "memoryName": "BREAKDOWN",
+            "beforeChange": [
+              {
+                "id": "cc-fill-before-breakdown",
+                "channel": 1,
+                "controller": 83,
+                "value": 127,
+                "delayMs": 700
+              },
+              {
+                "id": "cc-track-fx-punch",
+                "channel": 1,
+                "controller": 81,
+                "value": 127,
+                "delayMs": 300
+              }
+            ],
+            "afterChange": [
+              {
+                "id": "cc-start-rhythm-2",
+                "channel": 1,
+                "controller": 80,
+                "value": 127,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-input-fx-burst-on",
+                "channel": 1,
+                "controller": 82,
+                "value": 127,
+                "delayMs": 500
+              },
+              {
+                "id": "cc-input-fx-burst-off",
+                "channel": 1,
+                "controller": 82,
+                "value": 0,
+                "delayMs": 0
+              }
+            ]
+          },
+          {
+            "id": "song-final-detonation",
+            "name": "Final Detonation",
+            "memorySlot": 3,
+            "memoryName": "METAL FINALE",
+            "beforeChange": [
+              {
+                "id": "cc-long-fill-finale",
+                "channel": 1,
+                "controller": 83,
+                "value": 127,
+                "delayMs": 900
+              },
+              {
+                "id": "cc-stop-before-finale",
+                "channel": 1,
+                "controller": 84,
+                "value": 127,
+                "delayMs": 100
+              }
+            ],
+            "afterChange": [
+              {
+                "id": "cc-start-rhythm-3",
+                "channel": 1,
+                "controller": 80,
+                "value": 127,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-track-fx-finale-on",
+                "channel": 1,
+                "controller": 81,
+                "value": 127,
+                "delayMs": 1200
+              },
+              {
+                "id": "cc-track-fx-finale-off",
+                "channel": 1,
+                "controller": 81,
+                "value": 0,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-all-start-finale",
+                "channel": 1,
+                "controller": 85,
+                "value": 127,
+                "delayMs": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "setlist-classic-rock-demo",
+        "name": "Classic Rock — Club Set",
+        "updatedAt": "2026-09-16T14:30:00.000Z",
+        "songs": [
+          {
+            "id": "song-vintage-drive",
+            "name": "Vintage Drive",
+            "memorySlot": 4,
+            "memoryName": "CLASSIC DRIVE",
+            "beforeChange": [
+              {
+                "id": "cc-stop-before-vintage",
+                "channel": 1,
+                "controller": 84,
+                "value": 127,
+                "delayMs": 50
+              }
+            ],
+            "afterChange": [
+              {
+                "id": "cc-start-vintage",
+                "channel": 1,
+                "controller": 80,
+                "value": 127,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-clean-input-fx",
+                "channel": 1,
+                "controller": 82,
+                "value": 0,
+                "delayMs": 0
+              }
+            ]
+          },
+          {
+            "id": "song-stadium-solo",
+            "name": "Stadium Solo",
+            "memorySlot": 5,
+            "memoryName": "CLASSIC SOLO",
+            "beforeChange": [
+              {
+                "id": "cc-fill-before-solo",
+                "channel": 1,
+                "controller": 83,
+                "value": 127,
+                "delayMs": 450
+              }
+            ],
+            "afterChange": [
+              {
+                "id": "cc-start-solo",
+                "channel": 1,
+                "controller": 80,
+                "value": 127,
+                "delayMs": 0
+              },
+              {
+                "id": "cc-solo-fx-on",
+                "channel": 1,
+                "controller": 81,
+                "value": 127,
+                "delayMs": 800
+              },
+              {
+                "id": "cc-solo-fx-off",
+                "channel": 1,
+                "controller": 81,
+                "value": 0,
+                "delayMs": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -47,6 +47,8 @@ import { TrackFxTab } from "./components/TrackFxTab";
 import { AudioTab } from "./components/AudioTab";
 import { SystemTab } from "./components/SystemTab";
 import { PlayDrumTab } from "./components/PlayDrumTab";
+import { SetlistPanel } from "./components/SetlistPanel";
+import { TunerTab } from "./components/TunerTab";
 import { LicenseScreen } from "./components/LicenseScreen";
 import { PlatformSelect } from "./components/PlatformSelect";
 import { MemoryCopyModal } from "./components/MemoryCopyModal";
@@ -101,8 +103,9 @@ import {
 } from "./presets/memoryDrafts";
 import { usePersistedTab } from "./uiTabs";
 import { MemoryChainBar } from "./components/MemoryChainView";
+import type { SetlistMidiAction } from "./presets/playlist";
 
-const WORKSPACES = ["memory", "system", "play-drum"] as const;
+const WORKSPACES = ["memory", "system", "play-drum", "setlists", "tuner"] as const;
 type Workspace = (typeof WORKSPACES)[number];
 
 const MEMORY_TABS = [
@@ -1015,6 +1018,73 @@ export function App() {
       `Recalled memory ${String(targetSlot).padStart(2, "0")} on Rx CH ${sendChannelsRef.current.map((c) => c + 1).join("/")} so pads use that kit.`,
     );
   }
+
+  async function recallMemoryBySlot(targetSlot: number): Promise<void> {
+    const safeSlot = Math.max(1, Math.min(99, Math.round(targetSlot)));
+    const a = files.get(slotFileName(safeSlot, "A"));
+    const b = files.get(slotFileName(safeSlot, "B"));
+    if (a || b) {
+      const xml = a && b ? pickActiveXml(a, b).xml : (a || b)!;
+      loadSlot(safeSlot, files);
+      recallPedalMemory(safeSlot, xml);
+      await new Promise((resolve) => window.setTimeout(resolve, MEMORY_RELOAD_SETTLE_MS + 80));
+      return;
+    }
+    if (
+      !shouldSyncPedalOnMemorySelect({
+        midiConnected: Boolean(midiRef.current.connectedName || connected),
+        usbStorageOpen: Boolean(dirHandleRef.current),
+      })
+    ) {
+      return;
+    }
+    if (!midiRef.current.connectedName && outId) {
+      midiRef.current.channel = midiCh;
+      midiRef.current.listenChannels = sendChannelsRef.current;
+      if (midiRef.current.connect(outId)) setConnected(midiRef.current.connectedName);
+    }
+    if (!midiRef.current.connectedName) return;
+    ignoreIncomingPcUntilRef.current = Date.now() + MEMORY_RELOAD_SETTLE_MS + 250;
+    for (const ch of sendChannelsRef.current) midiRef.current.allNotesOff(ch);
+    midiRef.current.reloadMemory(safeSlot, sendChannelsRef.current);
+    setStatus(
+      `Recalled memory ${String(safeSlot).padStart(2, "0")} on Rx CH ${sendChannelsRef.current.map((c) => c + 1).join("/")}.`,
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, MEMORY_RELOAD_SETTLE_MS + 40));
+  }
+
+  function sendSetlistControlChange(action: SetlistMidiAction) {
+    if (
+      !shouldSyncPedalOnMemorySelect({
+        midiConnected: Boolean(midiRef.current.connectedName || connected),
+        usbStorageOpen: Boolean(dirHandleRef.current),
+      })
+    ) {
+      return;
+    }
+    const channel = Math.max(1, Math.min(16, action.channel)) - 1;
+    midiRef.current.controlChange(action.controller, action.value, true, [channel]);
+  }
+
+  async function changeSetlistMemory(targetSlot: number): Promise<void> {
+    const safeSlot = Math.max(1, Math.min(99, Math.round(targetSlot)));
+    const a = files.get(slotFileName(safeSlot, "A"));
+    const b = files.get(slotFileName(safeSlot, "B"));
+    if (a || b) loadSlot(safeSlot, files);
+    if (
+      !shouldSyncPedalOnMemorySelect({
+        midiConnected: Boolean(midiRef.current.connectedName || connected),
+        usbStorageOpen: Boolean(dirHandleRef.current),
+      })
+    ) {
+      return;
+    }
+    for (const ch of sendChannelsRef.current) midiRef.current.allNotesOff(ch);
+    midiRef.current.programChange(safeSlot, undefined, midiCh);
+    setStatus(`Setlist selected memory ${String(safeSlot).padStart(2, "0")} on MIDI Ch.${midiCh + 1}.`);
+    await new Promise((resolve) => window.setTimeout(resolve, 40));
+  }
+
   recallPedalMemoryRef.current = recallPedalMemory;
 
   const applyMidiPortsRef = useRef(applyMidiPorts);
@@ -1382,8 +1452,34 @@ export function App() {
                 <Icon name="note" size={14} />
                 Play Drum
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "setlists"}
+                className={`tab ${workspace === "setlists" ? "active" : ""}`}
+                onClick={() => setWorkspace("setlists")}
+              >
+                <Icon name="scene" size={14} />
+                Setlists
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "tuner"}
+                className={`tab ${workspace === "tuner" ? "active" : ""}`}
+                onClick={() => setWorkspace("tuner")}
+              >
+                <Icon name="guitar" size={14} />
+                Tuner
+              </button>
             </div>
-            {workspace === "play-drum" ? (
+            {workspace === "tuner" ? (
+              <TunerTab
+                usbStorageActive={hasDirHandle}
+                onEjectUsb={() => void ejectUsb()}
+                onExit={() => setWorkspace("memory")}
+              />
+            ) : workspace === "play-drum" ? (
               <PlayDrumTab
                 midiLinked={Boolean(connected)}
                 midiOutHint={connected ?? undefined}
@@ -1393,6 +1489,18 @@ export function App() {
                 onPlayNotes={playDrumNotes}
                 onSilence={silenceRhythm}
                 onRequestMidi={() => void requestMidi(true)}
+                currentSlot={slot}
+                onSelectMemory={recallMemoryBySlot}
+              />
+            ) : workspace === "setlists" ? (
+              <SetlistPanel
+                midiLive={Boolean(connected) && !hasDirHandle}
+                usbStorageActive={hasDirHandle}
+                memories={[]}
+                currentSlot={slot}
+                defaultMidiChannel={midiCh + 1}
+                onRecallMemory={changeSetlistMemory}
+                onSendControlChange={sendSetlistControlChange}
               />
             ) : workspace === "system" ? (
               <div className="empty-state">
@@ -1498,6 +1606,26 @@ export function App() {
                 <Icon name="note" size={14} />
                 Play Drum
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "setlists"}
+                className={`tab ${workspace === "setlists" ? "active" : ""}`}
+                onClick={() => setWorkspace("setlists")}
+              >
+                <Icon name="scene" size={14} />
+                Setlists
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspace === "tuner"}
+                className={`tab ${workspace === "tuner" ? "active" : ""}`}
+                onClick={() => setWorkspace("tuner")}
+              >
+                <Icon name="guitar" size={14} />
+                Tuner
+              </button>
               {sysBaseXml && (workspace === "system" || sysDirty) ? (
                 <>
                   <span className="status-pill" style={{ marginLeft: "auto" }}>
@@ -1516,7 +1644,13 @@ export function App() {
               ) : null}
             </div>
 
-            {workspace === "play-drum" ? (
+            {workspace === "tuner" ? (
+              <TunerTab
+                usbStorageActive={hasDirHandle}
+                onEjectUsb={() => void ejectUsb()}
+                onExit={() => setWorkspace("memory")}
+              />
+            ) : workspace === "play-drum" ? (
               <PlayDrumTab
                 midiLinked={Boolean(connected)}
                 midiOutHint={connected ?? undefined}
@@ -1528,7 +1662,17 @@ export function App() {
                 onRequestMidi={() => void requestMidi(true)}
                 memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
                 currentSlot={slot}
-                onSelectMemory={(s) => loadSlot(s, files, { syncPedal: true })}
+                onSelectMemory={recallMemoryBySlot}
+              />
+            ) : workspace === "setlists" ? (
+              <SetlistPanel
+                midiLive={Boolean(connected) && !hasDirHandle}
+                usbStorageActive={hasDirHandle}
+                memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
+                currentSlot={slot}
+                defaultMidiChannel={midiCh + 1}
+                onRecallMemory={changeSetlistMemory}
+                onSendControlChange={sendSetlistControlChange}
               />
             ) : workspace === "memory" ? (
               <div className="memory-layout">

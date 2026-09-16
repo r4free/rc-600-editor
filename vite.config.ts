@@ -22,7 +22,7 @@ export default defineConfig({
     host: "127.0.0.1",
     allowedHosts: ["rc.test", "localhost"],
     headers: {
-      "Permissions-Policy": "midi=(self)",
+      "Permissions-Policy": "midi=(self), microphone=(self)",
     },
     proxy: {
       "/api": {

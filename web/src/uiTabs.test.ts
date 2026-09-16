@@ -38,7 +38,10 @@ describe("ui tabs prefs", () => {
       saveUiTab("workspace", "system");
       saveUiTab("memory", "mixer");
       saveUiTab("loopTrack", 4);
-      assert.equal(readUiTab("workspace", "memory", ["memory", "system", "play-drum"]), "system");
+      assert.equal(
+        readUiTab("workspace", "memory", ["memory", "system", "play-drum", "setlists", "tuner"]),
+        "system",
+      );
       assert.equal(readUiTab("memory", "loop", ["info", "loop", "mixer"]), "mixer");
       assert.equal(readUiTab("loopTrack", 1, [1, 2, 3, 4, 5, 6]), 4);
       assert.equal(readUiTab("memory", "loop", ["info", "loop"]), "loop");
