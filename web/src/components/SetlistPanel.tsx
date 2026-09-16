@@ -7,16 +7,23 @@ import {
   reorderSetlistSong,
   type Setlist,
   type SetlistMidiAction,
+  type SetlistScoreGuide,
+  type SetlistScrollGuide,
   type SetlistSong,
 } from "../presets/playlist";
 import {
-  createSetlistTransfer,
+  createSetlistTransferArchive,
   mergeImportedSetlists,
-  parseSetlistTransfer,
-  setlistTransferToJson,
+  parseSetlistTransferFile,
 } from "../presets/playlistTransfer";
 import { userSetlistStore } from "../presets/userPlaylistStore";
+import { scoreAssetStore } from "../setlists/scoreAssetStore";
 import { Icon } from "./Icon";
+import { SetlistSongMusicEditor } from "./SetlistSongMusicEditor";
+import { SetlistChartViewer } from "./SetlistChartViewer";
+import { VoiceToneMonitor } from "./VoiceToneMonitor";
+import { transposeKeyRoot } from "../setlists/chordChart";
+import { AlphaTabScoreViewer, type AlphaTabVoiceTarget } from "./AlphaTabScoreViewer";
 
 interface MemoryOption {
   slot: number;
@@ -56,6 +63,8 @@ export function SetlistPanel({
   const [songName, setSongName] = useState("");
   const [songMemory, setSongMemory] = useState(1);
   const [status, setStatus] = useState<string | null>(null);
+  const [liveChord, setLiveChord] = useState<string | null>(null);
+  const [voiceTarget, setVoiceTarget] = useState<AlphaTabVoiceTarget | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const runTokenRef = useRef(0);
 
@@ -66,6 +75,8 @@ export function SetlistPanel({
   }, [selectedId, setlists]);
 
   const selected = setlists.find((setlist) => setlist.id === selectedId) ?? null;
+  const activeSong =
+    selected && activeIndex >= 0 ? selected.songs[activeIndex] ?? null : null;
   const memoryBySlot = useMemo(
     () => new Map(memories.map((memory) => [memory.slot, memory.name])),
     [memories],
@@ -74,6 +85,16 @@ export function SetlistPanel({
   function commit(next: Setlist[]) {
     userSetlistStore.replace(next);
     setSetlists(next);
+    const referenced = new Set(next.flatMap((setlist) =>
+      setlist.songs.flatMap((song) =>
+        song.music?.kind === "score" ? [song.music.assetId] : [],
+      ),
+    ));
+    void scoreAssetStore.list().then((assets) =>
+      Promise.all(assets.filter((asset) => !referenced.has(asset.id)).map((asset) =>
+        scoreAssetStore.delete(asset.id),
+      )),
+    );
   }
 
   function updateSelected(patch: (setlist: Setlist) => Setlist) {
@@ -170,11 +191,17 @@ export function SetlistPanel({
 
   const runSong = useCallback(
     async (index: number) => {
-      if (!selected?.songs.length || !midiLive) return;
+      if (!selected?.songs.length) return;
       const wrapped = (index + selected.songs.length) % selected.songs.length;
       const song = selected.songs[wrapped]!;
       const token = ++runTokenRef.current;
       setActiveIndex(wrapped);
+      setLiveChord(null);
+      setVoiceTarget(null);
+      if (!midiLive || usbStorageActive) {
+        setStatus(`${song.name} · Live chart selected${usbStorageActive ? " · USB audio unavailable while Storage is active" : ""}`);
+        return;
+      }
       setStatus(`Changing to ${song.name}…`);
       const completed = await executeSetlistSong(song, {
         sendControlChange: onSendControlChange,
@@ -184,11 +211,11 @@ export function SetlistPanel({
       if (!completed) return;
       setStatus(`${song.name} · Memory ${String(song.memorySlot).padStart(2, "0")}`);
     },
-    [midiLive, onRecallMemory, onSendControlChange, selected],
+    [midiLive, onRecallMemory, onSendControlChange, selected, usbStorageActive],
   );
 
   useEffect(() => {
-    if (!midiLive || !viewerOpen || !selected?.songs.length) return;
+    if (!viewerOpen || !selected?.songs.length) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         runTokenRef.current++;
@@ -197,17 +224,17 @@ export function SetlistPanel({
       }
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, select, textarea, button, [contenteditable='true']")) return;
-      if (event.key === "ArrowRight" || event.key === "]") {
+      if (event.key === "]" || (event.key === "ArrowRight" && activeSong?.music?.kind !== "score")) {
         event.preventDefault();
         void runSong(activeIndex < 0 ? 0 : activeIndex + 1);
-      } else if (event.key === "ArrowLeft" || event.key === "[") {
+      } else if (event.key === "[" || (event.key === "ArrowLeft" && activeSong?.music?.kind !== "score")) {
         event.preventDefault();
         void runSong(activeIndex < 0 ? selected.songs.length - 1 : activeIndex - 1);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeIndex, midiLive, runSong, selected, viewerOpen]);
+  }, [activeIndex, activeSong?.music?.kind, runSong, selected, viewerOpen]);
 
   useEffect(() => {
     if (!midiLive || currentSlot == null || !selected) return;
@@ -215,21 +242,32 @@ export function SetlistPanel({
     if (match >= 0) setActiveIndex(match);
   }, [currentSlot, midiLive, selected]);
 
-  function exportSetlists() {
+  async function exportSetlists() {
     if (!setlists.length) return;
-    const json = setlistTransferToJson(createSetlistTransfer(setlists));
-    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `rc600-setlists-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setStatus(`Exported ${setlists.length} setlist${setlists.length === 1 ? "" : "s"}`);
+    try {
+      const archive = await createSetlistTransferArchive(setlists, scoreAssetStore);
+      const url = URL.createObjectURL(new Blob([new Uint8Array(archive)], { type: "application/zip" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `rc600-setlists-${new Date().toISOString().slice(0, 10)}.zip`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setStatus(`Exported ${setlists.length} setlist${setlists.length === 1 ? "" : "s"}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Export failed");
+    }
   }
 
   async function importSetlists(file: File) {
     try {
-      const imported = parseSetlistTransfer(JSON.parse(await file.text()));
+      const imported = await parseSetlistTransferFile(file);
+      for (const asset of imported.assets ?? []) {
+        const stored = await scoreAssetStore.put(asset.fileName, asset.bytes, asset.mediaType);
+        if (stored.id !== asset.id) {
+          await scoreAssetStore.delete(stored.id);
+          throw new Error(`Score checksum mismatch: ${asset.fileName}`);
+        }
+      }
       const next = mergeImportedSetlists(setlists, imported.setlists);
       commit(next);
       setSelectedId(imported.setlists[0]?.id ?? selectedId);
@@ -239,25 +277,17 @@ export function SetlistPanel({
     }
   }
 
-  const liveVisible = midiLive && !usbStorageActive;
-
-  useEffect(() => {
-    if (!liveVisible) setViewerOpen(false);
-  }, [liveVisible]);
-
   return (
     <div className="play-drum-body playlist-workspace">
-      <section className={`playlist-panel${liveVisible ? " is-live" : ""}`}>
+      <section className="playlist-panel is-live">
         <div className="playlist-panel-head">
           <div>
             <span className="playlist-eyebrow">Setlists</span>
-            <strong>{liveVisible ? "Choose a setlist to perform" : "Manage your setlists"}</strong>
+            <strong>Choose a setlist to perform</strong>
           </div>
-          {!liveVisible && !setlists.length ? (
-            <button type="button" className="btn" onClick={() => setManagerOpen(true)}>
-              <Icon name="scene" /> Manage
-            </button>
-          ) : null}
+          <button type="button" className="btn" onClick={() => setManagerOpen(true)}>
+            <Icon name="scene" /> Manage
+          </button>
         </div>
 
         {setlists.length ? (
@@ -277,17 +307,16 @@ export function SetlistPanel({
                   </div>
                   <button
                     type="button"
-                    className={liveVisible ? "btn primary" : "btn"}
+                    className="btn primary"
                     onClick={() => {
                       runTokenRef.current++;
                       setSelectedId(setlist.id);
                       setActiveIndex(-1);
-                      if (liveVisible) setViewerOpen(true);
-                      else setManagerOpen(true);
+                      setViewerOpen(true);
                     }}
                   >
-                    <Icon name={liveVisible ? "playCircle" : "scene"} />
-                    {liveVisible ? "View" : "Manage"}
+                    <Icon name="playCircle" />
+                    View
                   </button>
                 </article>
               );
@@ -297,7 +326,59 @@ export function SetlistPanel({
           <p className="playlist-empty">No setlists yet.</p>
         )}
 
-        {liveVisible && viewerOpen && selected ? (
+        {viewerOpen && selected ? (
+          activeSong?.music?.kind === "score" ? (
+            <AlphaTabScoreViewer
+              setlistName={selected.name}
+              song={activeSong as SetlistSong & { music: SetlistScoreGuide }}
+              index={activeIndex}
+              count={selected.songs.length}
+              onBack={() => setActiveIndex(-1)}
+              onPrevious={() => void runSong(activeIndex - 1)}
+              onNext={() => void runSong(activeIndex + 1)}
+              onGuideChange={(music) =>
+                updateSong(activeSong.id, (song) => ({ ...song, music }))
+              }
+              onCurrentChord={setLiveChord}
+              onVoiceTarget={setVoiceTarget}
+            >
+              {activeSong.voiceToneMatch?.enabled && activeSong.music.key ? (
+                <VoiceToneMonitor
+                  key={activeSong.id}
+                  targetKey={transposeKeyRoot(activeSong.music.key, activeSong.music.transpose)}
+                  mode={activeSong.music.mode}
+                  blocked={usbStorageActive}
+                  currentChord={liveChord}
+                  targetNote={voiceTarget}
+                />
+              ) : null}
+            </AlphaTabScoreViewer>
+          ) : activeSong?.music?.kind === "scroll" ? (
+            <SetlistChartViewer
+              setlistName={selected.name}
+              song={activeSong as SetlistSong & { music: SetlistScrollGuide }}
+              index={activeIndex}
+              count={selected.songs.length}
+              onBack={() => setActiveIndex(-1)}
+              onPrevious={() => void runSong(activeIndex - 1)}
+              onNext={() => void runSong(activeIndex + 1)}
+              onTranspose={(transpose) =>
+                updateSong(activeSong.id, (song) => ({
+                  ...song,
+                  music: song.music ? { ...song.music, transpose } : song.music,
+                }))
+              }
+            >
+              {activeSong.voiceToneMatch?.enabled && activeSong.music.key ? (
+                <VoiceToneMonitor
+                  key={activeSong.id}
+                  targetKey={transposeKeyRoot(activeSong.music.key, activeSong.music.transpose)}
+                  mode={activeSong.music.mode}
+                  blocked={usbStorageActive}
+                />
+              ) : null}
+            </SetlistChartViewer>
+          ) : (
           <section className="setlist-viewer" aria-label={`${selected.name} viewer`}>
             <div className="setlist-viewer-head">
               <div>
@@ -311,11 +392,10 @@ export function SetlistPanel({
             </div>
             {selected.songs.length ? (
             <>
-              <div className="setlist-song-pad-grid" role="list" aria-label="Setlist songs">
+              <div className="setlist-song-pad-grid" role="group" aria-label="Setlist songs">
                 {selected.songs.map((song, index) => (
                   <button
                     type="button"
-                    role="listitem"
                     key={song.id}
                     className={`setlist-song-pad${index === activeIndex ? " is-active" : ""}`}
                     onClick={() => void runSong(index)}
@@ -327,6 +407,12 @@ export function SetlistPanel({
                     <span className="setlist-song-memory">
                       Memory {String(song.memorySlot).padStart(2, "0")} · {memoryBySlot.get(song.memorySlot) || song.memoryName || "RC-600"}
                     </span>
+                    {song.music?.key ? (
+                      <span className="setlist-song-key">
+                        Key {song.music.key} {song.music.mode}
+                        {song.music.transpose ? ` · ${song.music.transpose > 0 ? "+" : ""}${song.music.transpose}` : ""}
+                      </span>
+                    ) : null}
                     <span className="setlist-song-summary">
                       <span><b>Before</b>{briefActions(song.beforeChange)}</span>
                       <span><b>After</b>{briefActions(song.afterChange)}</span>
@@ -342,6 +428,7 @@ export function SetlistPanel({
             </>
             ) : <p className="playlist-empty">This setlist has no songs.</p>}
           </section>
+          )
         ) : null}
         {status ? <p className="playlist-status" role="status">{status}</p> : null}
 
@@ -415,6 +502,12 @@ export function SetlistPanel({
                                 <button type="button" className="btn ghost danger" aria-label={`Remove ${song.name}`} onClick={() => updateSelected((setlist) => ({ ...setlist, songs: setlist.songs.filter((candidate) => candidate.id !== song.id) }))}><Icon name="deleteOutline" /></button>
                               </div>
                             </div>
+                            <SetlistSongMusicEditor
+                              song={song}
+                              onChange={(nextSong) =>
+                                updateSong(song.id, () => nextSong)
+                              }
+                            />
                             <div className="setlist-automation">
                               <MidiActionList title="Before memory change" actions={song.beforeChange} onAdd={() => addAction(song.id, "beforeChange")} onChange={(actionId, patch) => updateAction(song.id, "beforeChange", actionId, patch)} onMove={(actionId, direction) => moveAction(song.id, "beforeChange", actionId, direction)} onRemove={(actionId) => updateSong(song.id, (current) => ({ ...current, beforeChange: current.beforeChange.filter((action) => action.id !== actionId) }))} />
                               <MidiActionList title="After memory change" actions={song.afterChange} onAdd={() => addAction(song.id, "afterChange")} onChange={(actionId, patch) => updateAction(song.id, "afterChange", actionId, patch)} onMove={(actionId, direction) => moveAction(song.id, "afterChange", actionId, direction)} onRemove={(actionId) => updateSong(song.id, (current) => ({ ...current, afterChange: current.afterChange.filter((action) => action.id !== actionId) }))} />
@@ -431,9 +524,9 @@ export function SetlistPanel({
                 </div>
               </div>
               <div className="modal-foot">
-                <input ref={fileRef} className="playlist-file-input" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSetlists(file); event.target.value = ""; }} />
+                <input ref={fileRef} className="playlist-file-input" type="file" accept="application/json,application/zip,.json,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSetlists(file); event.target.value = ""; }} />
                 <button type="button" className="btn ghost" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Import</button>
-                <button type="button" className="btn ghost" onClick={exportSetlists} disabled={!setlists.length}><Icon name="download" /> Export</button>
+                <button type="button" className="btn ghost" onClick={() => void exportSetlists()} disabled={!setlists.length}><Icon name="download" /> Export</button>
                 <button type="button" className="btn primary" onClick={() => setManagerOpen(false)}>Close</button>
               </div>
             </div>

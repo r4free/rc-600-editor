@@ -13,3 +13,12 @@ services:
       # Leave unset/false for public beta. Set to "1" to require license keys.
       - key: RC600_REQUIRE_LICENSE
         value: "0"
+      # Set this secret to the same value used by the VG-800 editor.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_LIMIT_PER_IP_MINUTE
+        value: "3"
+      - key: AI_LIMIT_PER_IP_DAY
+        value: "5"
+      - key: AI_LIMIT_GLOBAL_DAY
+        value: "60"

@@ -17,6 +17,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@coderline/alphatab": "^1.8.4",
     "@hono/node-server": "^2.1.1",
     "@iconify/react": "^6.0.2",
     "@iconify/types": "^2.0.0",
@@ -27,6 +28,7 @@
     "tsx": "^4.19.3"
   },
   "devDependencies": {
+    "@coderline/alphatab-vite": "^1.8.4",
     "@iconify-json/mdi": "^1.2.3",
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
@@ -35,7 +37,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^10.0.5",
     "typescript": "^5.8.2",
-    "vite": "^6.2.2"
+    "vite": "^7.3.6"
   },
   "license": "MIT"
 }

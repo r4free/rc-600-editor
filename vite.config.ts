@@ -1,9 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { alphaTab } from "@coderline/alphatab-vite";
 import { resolve } from "node:path";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), alphaTab()],
   root: "web",
   publicDir: resolve(__dirname, "web/public"),
   resolve: {

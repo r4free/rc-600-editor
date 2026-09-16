@@ -181,6 +181,54 @@ export type ServerWaveTrackInfo = {
   size: number;
 };
 
+export interface AiLimits {
+  allowed: boolean;
+  remainingToday: number | null;
+  limitPerDay: number | null;
+  globalRemainingToday: number | null;
+  resetAt: string;
+  unlimited: boolean;
+  reason?: string;
+  retryAfterSec?: number;
+}
+
+export interface GeneratedSetlistChart {
+  kind: "chart" | "chords";
+  source: string;
+  suggestedKey: string;
+  mode: "major" | "minor";
+  title?: string;
+  artist?: string;
+  durationSeconds?: number;
+}
+
+export async function generateSetlistChart(
+  prompt: string,
+): Promise<{ chart: GeneratedSetlistChart; limits: AiLimits; model: string; provider: string }> {
+  const response = await fetch("/api/setlists/chart/generate", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  const data = await response.json().catch(() => ({})) as {
+    chart?: GeneratedSetlistChart;
+    limits?: AiLimits;
+    model?: string;
+    provider?: string;
+    error?: string;
+  };
+  if (!response.ok || !data.chart) {
+    throw new Error(data.error || "Could not generate the chart");
+  }
+  return {
+    chart: data.chart,
+    limits: data.limits!,
+    model: data.model ?? "",
+    provider: data.provider ?? "",
+  };
+}
+
 /** List WAVE files for a memory via the local API (Node reads the USB drive). */
 export async function fetchMemoryWaveFiles(
   slot: number,

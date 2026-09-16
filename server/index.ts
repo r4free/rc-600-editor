@@ -25,8 +25,16 @@ import {
 } from "./wave-files.js";
 import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-presets.js";
 import { createNativeKitFileStore, isNativeKitWriteAllowed } from "./drum-kits.js";
+import { AiRateLimiter, serializeAiLimit } from "./ai-rate-limit.js";
+import { generateChartWithAi } from "./chart-ai.js";
 
+try {
+  process.loadEnvFile?.();
+} catch {
+  /* Environment variables may be supplied directly by the host. */
+}
 const app = new Hono();
+const aiLimiter = new AiRateLimiter();
 const nativePresetStore = createNativePresetFileStore(
   resolve(process.cwd(), "web/public/play-drum/presets.json"),
 );
@@ -245,6 +253,50 @@ app.delete("/api/drum-kits/:id", async (c) => {
   const ok = await nativeKitStore.remove(id);
   if (!ok) return c.json({ error: "Kit not found" }, 404);
   return c.json({ ok: true });
+});
+
+app.get("/api/ai/limits", (c) => {
+  return c.json({ ok: true, limits: serializeAiLimit(aiLimiter.peek(c.req.raw)) });
+});
+
+app.post("/api/setlists/chart/generate", async (c) => {
+  let body: { prompt?: unknown };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) return c.json({ error: "Describe the song or chart you need" }, 400);
+  if (prompt.length > 20_000) return c.json({ error: "The AI request is too long" }, 400);
+
+  const quota = aiLimiter.consume(c.req.raw);
+  if (!quota.allowed) {
+    c.header("Retry-After", String(quota.retryAfterSec));
+    return c.json(
+      { error: quota.reason, limits: serializeAiLimit(quota) },
+      429,
+    );
+  }
+  try {
+    const result = await generateChartWithAi(prompt);
+    return c.json({
+      ok: true,
+      ...result,
+      limits: serializeAiLimit(quota),
+    });
+  } catch (error) {
+    const message =
+      error instanceof DOMException && error.name === "AbortError"
+        ? "AI generation timed out"
+        : error instanceof Error
+          ? error.message
+          : "Could not generate the chart";
+    return c.json(
+      { error: message, limits: serializeAiLimit(quota) },
+      502,
+    );
+  }
 });
 
 app.post("/api/assemble", requireAccess, async (c) => {

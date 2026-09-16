@@ -42,4 +42,12 @@ describe("tuner pitch", () => {
   it("ignores silence", () => {
     assert.equal(detectPitch(new Float32Array(8_192), 48_000), null);
   });
+
+  it("rejects low-level input noise", () => {
+    const noise = Float32Array.from(
+      { length: 8_192 },
+      (_, index) => ((((index * 1_103_515_245 + 12_345) >>> 8) % 2_048) / 2_048 - 0.5) * 0.002,
+    );
+    assert.equal(detectPitch(noise, 48_000), null);
+  });
 });

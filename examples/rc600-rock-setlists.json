@@ -1,9 +1,9 @@
 {
   "type": "rc600-setlists",
-  "version": 2,
+  "version": 3,
   "exportedAt": "2026-09-16T14:30:00.000Z",
   "setlists": {
-    "version": 2,
+    "version": 3,
     "setlists": [
       {
         "id": "setlist-heavy-metal-demo",
@@ -15,6 +15,31 @@
             "name": "Steel Overture",
             "memorySlot": 1,
             "memoryName": "METAL INTRO",
+            "music": {
+              "kind": "chart",
+              "source": "{title: Steel Overture}\n{key: E}\n{tempo: 120}\n{time: 4/4}\n\n{start_of_verse: Verse}\n[Em]Steel in the [C]night, we [G]rise into the [D]light\n{end_of_verse}",
+              "key": "E",
+              "mode": "minor",
+              "transpose": 0,
+              "autoScrollSeconds": 180,
+              "performanceNotes": "Start after a one-bar count-in.",
+              "tempoGuide": {
+                "mode": "original",
+                "bpm": 120,
+                "beatsPerBar": 4,
+                "beatUnit": 4,
+                "countInBars": 1,
+                "timeline": [
+                  { "chord": "Em", "beats": 4 },
+                  { "chord": "C", "beats": 4 },
+                  { "chord": "G", "beats": 4 },
+                  { "chord": "D", "beats": 4 }
+                ]
+              }
+            },
+            "voiceToneMatch": {
+              "enabled": true
+            },
             "beforeChange": [
               {
                 "id": "cc-stop-rhythm-1",

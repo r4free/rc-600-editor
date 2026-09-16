@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isLikelyRc600 } from "@rc600/midi/rc600-midi";
+import { useAudioInputSession } from "../audio/useAudioInputSession";
 import {
   detectPitch,
   frequencyToNote,
@@ -14,11 +14,10 @@ const NOTE_HOLD_MS = 250;
 
 interface TunerPrefs {
   a4: number;
-  deviceId: string;
 }
 
 function loadPrefs(): TunerPrefs {
-  const fallback = { a4: 440, deviceId: "" };
+  const fallback = { a4: 440 };
   if (typeof localStorage === "undefined") return fallback;
   try {
     const parsed = JSON.parse(localStorage.getItem(TUNER_PREFS_KEY) ?? "{}") as Partial<TunerPrefs>;
@@ -27,51 +26,19 @@ function loadPrefs(): TunerPrefs {
         typeof parsed.a4 === "number" && parsed.a4 >= 430 && parsed.a4 <= 450
           ? Math.round(parsed.a4)
           : fallback.a4,
-      deviceId: typeof parsed.deviceId === "string" ? parsed.deviceId : "",
     };
   } catch {
     return fallback;
   }
 }
 
-function savePrefs(prefs: TunerPrefs): void {
+function saveA4(a4: number): void {
   try {
-    localStorage.setItem(TUNER_PREFS_KEY, JSON.stringify(prefs));
+    const current = JSON.parse(localStorage.getItem(TUNER_PREFS_KEY) ?? "{}") as Record<string, unknown>;
+    localStorage.setItem(TUNER_PREFS_KEY, JSON.stringify({ ...current, a4 }));
   } catch {
     /* private mode / quota */
   }
-}
-
-function preferredInput(devices: readonly MediaDeviceInfo[]): MediaDeviceInfo | undefined {
-  return (
-    devices.find((device) => isLikelyRc600(device.label)) ??
-    devices.find((device) => /boss|roland/i.test(device.label)) ??
-    devices[0]
-  );
-}
-
-function inputConstraints(deviceId?: string): MediaTrackConstraints {
-  return {
-    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-    echoCancellation: false,
-    autoGainControl: false,
-    noiseSuppression: false,
-  };
-}
-
-function audioErrorMessage(error: unknown): string {
-  if (error instanceof DOMException) {
-    if (error.name === "NotAllowedError") {
-      return "Audio input permission was denied. Allow microphone access in the browser and try again.";
-    }
-    if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
-      return "The selected audio input is unavailable. Connect the RC-600 and choose its USB audio input.";
-    }
-    if (error.name === "NotReadableError") {
-      return "The audio input is busy in another app. Close the other app and try again.";
-    }
-  }
-  return error instanceof Error ? error.message : "Could not open the audio input.";
 }
 
 export function TunerTab({
@@ -85,107 +52,61 @@ export function TunerTab({
 }) {
   const initialPrefs = useRef(loadPrefs()).current;
   const [a4, setA4] = useState(initialPrefs.a4);
-  const [selectedDeviceId, setSelectedDeviceId] = useState(initialPrefs.deviceId);
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [listening, setListening] = useState(false);
-  const [starting, setStarting] = useState(false);
   const [note, setNote] = useState<DetectedNote | null>(null);
   const [level, setLevel] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const audio = useAudioInputSession({
+    preferenceKey: TUNER_PREFS_KEY,
+    blocked: usbStorageActive,
+  });
 
-  const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
   const animationRef = useRef<number | null>(null);
-  const startTokenRef = useRef(0);
   const a4Ref = useRef(a4);
 
   useEffect(() => {
     a4Ref.current = a4;
-    savePrefs({ a4, deviceId: selectedDeviceId });
-  }, [a4, selectedDeviceId]);
+    saveA4(a4);
+  }, [a4]);
 
-  const stopListening = useCallback(() => {
-    startTokenRef.current += 1;
+  const stopAnalysis = useCallback(() => {
     if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
     animationRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
     const context = contextRef.current;
     contextRef.current = null;
     if (context && context.state !== "closed") void context.close();
-    setListening(false);
-    setStarting(false);
     setNote(null);
     setLevel(0);
   }, []);
 
-  const startListening = useCallback(
-    async (requestedDeviceId = selectedDeviceId) => {
-      stopListening();
-      if (usbStorageActive) return;
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setError("Audio input is not supported in this browser. Use Chrome or Edge over HTTPS.");
-        return;
-      }
-
-      const token = startTokenRef.current;
-      setStarting(true);
-      setError(null);
-
-      let stream: MediaStream | null = null;
+  useEffect(() => {
+    if (!audio.stream) {
+      stopAnalysis();
+      return;
+    }
+    let cancelled = false;
+    const stream = audio.stream;
+    void (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: inputConstraints(requestedDeviceId || undefined),
-        });
-        if (token !== startTokenRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(
-          (device) => device.kind === "audioinput",
-        );
-        setDevices(inputs);
-
-        const currentId = stream.getAudioTracks()[0]?.getSettings().deviceId ?? "";
-        const preferred = requestedDeviceId
-          ? inputs.find((device) => device.deviceId === requestedDeviceId)
-          : preferredInput(inputs);
-
-        if (preferred && preferred.deviceId !== currentId) {
-          stream.getTracks().forEach((track) => track.stop());
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: inputConstraints(preferred.deviceId),
-          });
-        }
-        if (token !== startTokenRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        const activeDeviceId =
-          stream.getAudioTracks()[0]?.getSettings().deviceId ?? preferred?.deviceId ?? "";
-        setSelectedDeviceId(activeDeviceId);
-
         const context = new AudioContext();
         await context.resume();
+        if (cancelled) {
+          void context.close();
+          return;
+        }
         const source = context.createMediaStreamSource(stream);
         const analyser = context.createAnalyser();
         analyser.fftSize = 8_192;
         analyser.smoothingTimeConstant = 0;
         source.connect(analyser);
 
-        streamRef.current = stream;
         contextRef.current = context;
-        setListening(true);
-        setStarting(false);
 
         const samples = new Float32Array(analyser.fftSize);
         let lastAnalysisAt = 0;
         let lastPitchAt = 0;
 
         const analyse = (now: number) => {
-          if (token !== startTokenRef.current) return;
+          if (cancelled) return;
           animationRef.current = requestAnimationFrame(analyse);
           if (now - lastAnalysisAt < ANALYSIS_INTERVAL_MS) return;
           lastAnalysisAt = now;
@@ -202,40 +123,19 @@ export function TunerTab({
           }
         };
         animationRef.current = requestAnimationFrame(analyse);
-      } catch (cause) {
-        stream?.getTracks().forEach((track) => track.stop());
-        if (token === startTokenRef.current) {
-          setStarting(false);
-          setListening(false);
-          setError(audioErrorMessage(cause));
-        }
+      } catch {
+        audio.stop();
       }
-    },
-    [selectedDeviceId, stopListening, usbStorageActive],
-  );
-
-  useEffect(() => stopListening, [stopListening]);
-
-  useEffect(() => {
-    if (usbStorageActive) stopListening();
-  }, [stopListening, usbStorageActive]);
-
-  useEffect(() => {
-    if (!navigator.mediaDevices?.enumerateDevices) return;
-    void navigator.mediaDevices.enumerateDevices().then((allDevices) => {
-      setDevices(allDevices.filter((device) => device.kind === "audioinput"));
     });
-  }, []);
-
-  const changeDevice = (deviceId: string) => {
-    setSelectedDeviceId(deviceId);
-    savePrefs({ a4, deviceId });
-    if (listening) void startListening(deviceId);
-  };
+    return () => {
+      cancelled = true;
+      stopAnalysis();
+    };
+  }, [audio.stream, audio.stop, stopAnalysis]);
 
   const cents = note ? Math.max(-50, Math.min(50, note.cents)) : 0;
   const inTune = note !== null && Math.abs(note.cents) <= 5;
-  const audioSupported = Boolean(navigator.mediaDevices?.getUserMedia);
+  const listening = audio.active;
 
   return (
     <div className={`tuner-body${usbStorageActive ? " is-storage-blocked" : ""}`}>
@@ -266,11 +166,11 @@ export function TunerTab({
           <button
             type="button"
             className={`btn ${listening ? "warn" : "primary"}`}
-            disabled={usbStorageActive || starting || !audioSupported}
-            onClick={() => (listening ? stopListening() : void startListening())}
+            disabled={usbStorageActive || audio.starting || !audio.supported}
+            onClick={() => (listening ? audio.stop() : void audio.start())}
           >
             <Icon name={listening ? "stop" : "mic"} size={16} />
-            {starting ? "Starting…" : listening ? "Stop" : "Listen"}
+            {audio.starting ? "Starting…" : listening ? "Stop" : "Listen"}
           </button>
           <button type="button" className="btn ghost" onClick={onExit}>
             <Icon name="fullscreenExit" size={16} />
@@ -287,12 +187,12 @@ export function TunerTab({
           <div className="param-control">
             <select
               id="tuner-input"
-              value={selectedDeviceId}
-              disabled={usbStorageActive || starting}
-              onChange={(event) => changeDevice(event.target.value)}
+              value={audio.selectedDeviceId}
+              disabled={usbStorageActive || audio.starting}
+              onChange={(event) => audio.selectDevice(event.target.value)}
             >
               <option value="">Default audio input</option>
-              {devices.map((device, index) => (
+              {audio.devices.map((device, index) => (
                 <option key={device.deviceId || `input-${index}`} value={device.deviceId}>
                   {device.label || `Audio input ${index + 1}`}
                 </option>
@@ -319,10 +219,10 @@ export function TunerTab({
         </div>
       </div>
 
-      {error ? (
+      {audio.error ? (
         <div className="tuner-error" role="alert">
           <Icon name="alert" />
-          {error}
+          {audio.error}
         </div>
       ) : null}
 
