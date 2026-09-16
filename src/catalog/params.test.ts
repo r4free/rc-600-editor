@@ -54,9 +54,12 @@ import {
 import { parseMemory, parseSystem } from "../rc0/memory.js";
 import { patchSysSection } from "../rc0/writer.js";
 import {
+  ASSIGN_TARGETS,
   assignTargetLabel,
   assignTargetRange,
   formatAssignValue,
+  groupAssignTargets,
+  matchAssignTarget,
 } from "./assign-targets.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -360,6 +363,35 @@ describe("assign target catalog", () => {
     assert.equal(assignTargetLabel(86), "Input FX Bank Inc");
     assert.equal(assignTargetLabel(95), "Input FX C Control");
     assert.equal(assignTargetLabel(771), "Rhythm Variation");
+  });
+
+  it("categorizes and searches every target", () => {
+    assert.ok(ASSIGN_TARGETS.length > 900);
+    assert.ok(ASSIGN_TARGETS.every((target) => target.category.length > 0));
+
+    const rhythmMatches = ASSIGN_TARGETS.filter((target) =>
+      matchAssignTarget(target, "rhythm kit"),
+    );
+    assert.deepEqual(rhythmMatches.map((target) => target.label), ["Rhythm Kit"]);
+
+    const ccMatches = ASSIGN_TARGETS.filter((target) => matchAssignTarget(target, "cc#64"));
+    assert.deepEqual(ccMatches.map((target) => target.label), ["MIDI CC#64"]);
+  });
+
+  it("groups filtered targets in category order and skips empty categories", () => {
+    const targets = ASSIGN_TARGETS.filter(
+      (target) => target.label === "Track 1 Reverse" || target.label === "Rhythm Kit",
+    );
+    assert.deepEqual(
+      groupAssignTargets(targets).map((group) => [
+        group.category,
+        group.targets.map((target) => target.label),
+      ]),
+      [
+        ["Track 1", ["Track 1 Reverse"]],
+        ["Rhythm", ["Rhythm Kit"]],
+      ],
+    );
   });
 
   it("names Target Min/Max from the selected parameter", () => {

@@ -12,9 +12,38 @@ export type AssignValueRange =
 export interface AssignTarget {
   value: number;
   label: string;
+  category: AssignTargetCategory;
   info: string;
   range: AssignValueRange;
 }
+
+export const ASSIGN_TARGET_CATEGORIES = [
+  "Track 1",
+  "Track 2",
+  "Track 3",
+  "Track 4",
+  "Track 5",
+  "Track 6",
+  "Current Track",
+  "Tempo",
+  "Input FX",
+  "Input FX Slots",
+  "Input FX Banks",
+  "Input FX Current",
+  "Track FX",
+  "Track FX Slots",
+  "Track FX Banks",
+  "Track FX Current",
+  "Rhythm",
+  "Mixer",
+  "Input",
+  "Output",
+  "EQ",
+  "Pedal",
+  "MIDI CC",
+] as const;
+
+export type AssignTargetCategory = (typeof ASSIGN_TARGET_CATEGORIES)[number];
 
 const ON_OFF: AssignValueRange = {
   kind: "enum",
@@ -110,9 +139,10 @@ function midiCcLabel(cc: number): string {
 function buildAssignTargets(): AssignTarget[] {
   const out: AssignTarget[] = [];
   let value = 0;
+  let category: AssignTargetCategory = "Track 1";
 
   const push = (label: string, info: string, range: AssignValueRange) => {
-    out.push({ value: value++, label, info, range });
+    out.push({ value: value++, label, category, info, range });
   };
 
   const trackFns: { name: string; info: (t: string) => string; range: AssignValueRange }[] = [
@@ -150,16 +180,19 @@ function buildAssignTargets(): AssignTarget[] {
   ];
 
   for (let tr = 1; tr <= 6; tr++) {
+    category = `Track ${tr}` as AssignTargetCategory;
     const t = `Track ${tr}`;
     for (const fn of trackFns) push(`${t} ${fn.name}`, fn.info(t), fn.range);
   }
 
+  category = "Current Track";
   const cur = "the current track";
   for (const fn of trackFns) push(`Current Track ${fn.name}`, fn.info(cur), fn.range);
   push("Current Track Inc", "Switch the current track 1 → 2 → … → 6.", TRIGGER);
   push("Current Track Dec", "Switch the current track 6 → 5 → … → 1.", TRIGGER);
   push("Current Track Num", "Switch to the track set in Current Track.", TRACK_NUM);
 
+  category = "Tempo";
   push(
     "All Start/Stop",
     "Start all tracks together, or stop them if they are playing or recording.",
@@ -179,6 +212,7 @@ function buildAssignTargets(): AssignTarget[] {
         : "Cycle the effect type from Vinyl Flick toward LPF.";
 
     const pushSlotGroup = (slotLabel: (slot: string) => string) => {
+      category = `${kind} Slots`;
       for (const slot of SLOTS) {
         push(`${slotLabel(slot)}`, `Turn ${slotLabel(slot)} on/off.`, ON_OFF);
       }
@@ -229,6 +263,7 @@ function buildAssignTargets(): AssignTarget[] {
 
     const bankSlots = BANKS.flatMap((bank) => SLOTS.map((slot) => `${bank}-${slot}`));
     const pushBankGroup = () => {
+      category = `${kind} Banks`;
       for (const slot of bankSlots) {
         push(`${kind} ${slot}`, `Turn ${kind} ${slot} on/off.`, ON_OFF);
       }
@@ -273,6 +308,7 @@ function buildAssignTargets(): AssignTarget[] {
       }
     };
 
+    category = kind;
     push(kind, `Turn ${kind} on/off.`, ON_OFF);
     push(`${kind} Target Inc`, `Switch the ${kind} target A → D in the current bank.`, TRIGGER);
     push(`${kind} Target Dec`, `Switch the ${kind} target D → A in the current bank.`, TRIGGER);
@@ -285,6 +321,7 @@ function buildAssignTargets(): AssignTarget[] {
     );
     pushSlotGroup((slot) => `${kind} ${slot}`);
     pushBankGroup();
+    category = `${kind} Current`;
     push(`${kind} Current`, `Turn the currently selected ${kind} on/off.`, ON_OFF);
     push(`${kind} Current Control`, `Control intensity of the currently selected ${kind}.`, LEVEL_100);
     push(`${kind} Current Type`, `Switch the type of the currently selected ${kind}.`, FX_TYPE);
@@ -312,13 +349,16 @@ function buildAssignTargets(): AssignTarget[] {
   pushFxFamily("Input FX");
   pushFxFamily("Track FX");
 
+  category = "Rhythm";
   push("Rhythm Start/Stop", "Start or stop the rhythm.", TRIGGER);
   push("Rhythm Start", "Start the rhythm.", TRIGGER);
   push("Rhythm Stop", "Stop the rhythm.", TRIGGER);
   push("Rhythm Level", "Control Rhythm Out (0–200).", LEVEL_200);
+  category = "Input";
   push("Mic In Mute", "Mute MIC 1 and MIC 2.", ON_OFF);
   push("Mic 1 In Mute", "Mute MIC 1.", ON_OFF);
   push("Mic 2 In Mute", "Mute MIC 2.", ON_OFF);
+  category = "Mixer";
   for (let tr = 1; tr <= 6; tr++) {
     push(`Track ${tr} Fader`, `Control the volume of Track ${tr}.`, LEVEL_200);
   }
@@ -340,8 +380,10 @@ function buildAssignTargets(): AssignTarget[] {
   push("Dub Mode", "Control Dub Mode.", DUB_MODE);
   push("Auto Rec", "Turn Auto Rec on/off.", ON_OFF);
   push("Bounce", "Turn Bounce on/off.", ON_OFF);
+  category = "Rhythm";
   push("Rhythm Variation", "Switch the rhythm pattern variation.", VARIATION);
   push("Rhythm Kit", "Switch the drum kit.", KIT);
+  category = "Input";
   push("Mic 1 Level", "MIC 1 input level.", LEVEL_200);
   push("Mic 2 Level", "MIC 2 input level.", LEVEL_200);
   push("Inst 1 L Level", "INST 1 L input level.", LEVEL_200);
@@ -352,6 +394,7 @@ function buildAssignTargets(): AssignTarget[] {
   push("Inst 2 R Level", "INST 2 R input level.", LEVEL_200);
   push("Inst 2 L Mute", "Mute INST 2 L.", ON_OFF);
   push("Inst 2 R Mute", "Mute INST 2 R.", ON_OFF);
+  category = "Output";
   push("Loop Level", "Loop playback output level.", LEVEL_200);
   push("Main L Level", "MAIN L output level.", LEVEL_200);
   push("Main R Level", "MAIN R output level.", LEVEL_200);
@@ -361,22 +404,28 @@ function buildAssignTargets(): AssignTarget[] {
   push("Sub 2 R Level", "SUB 2 R output level.", LEVEL_200);
   push("Phones Level", "PHONES output level.", LEVEL_200);
   push("Master Level", "Overall MAIN / SUB 1 / SUB 2 output level.", LEVEL_200);
+  category = "Input";
   push("Inst 1 Gain", "INST 1 input gain.", LEVEL_100);
   push("Inst 2 Gain", "INST 2 input gain.", LEVEL_100);
+  category = "EQ";
   push("EQ Mic 1", "Equalizer on/off for MIC 1.", ON_OFF);
   push("EQ Mic 2", "Equalizer on/off for MIC 2.", ON_OFF);
   push("EQ Inst 1 L", "Equalizer on/off for INST 1 L.", ON_OFF);
   push("EQ Inst 1 R", "Equalizer on/off for INST 1 R.", ON_OFF);
   push("EQ Inst 2 L", "Equalizer on/off for INST 2 L.", ON_OFF);
   push("EQ Inst 2 R", "Equalizer on/off for INST 2 R.", ON_OFF);
+  category = "Input";
   push("Input Thru", "Input Thru for Input/Rhythm routing.", ON_OFF);
+  category = "EQ";
   push("EQ Main L", "Equalizer on/off for MAIN L.", ON_OFF);
   push("EQ Main R", "Equalizer on/off for MAIN R.", ON_OFF);
   push("EQ Sub 1 L", "Equalizer on/off for SUB 1 L.", ON_OFF);
   push("EQ Sub 1 R", "Equalizer on/off for SUB 1 R.", ON_OFF);
   push("EQ Sub 2 L", "Equalizer on/off for SUB 2 L.", ON_OFF);
   push("EQ Sub 2 R", "Equalizer on/off for SUB 2 R.", ON_OFF);
+  category = "Pedal";
   push("Pedal Mode", "Switch pedal mode.", PEDAL_MODE);
+  category = "MIDI CC";
   for (let cc = 1; cc <= 31; cc++) {
     push(midiCcLabel(cc), `Transmit ${midiCcLabel(cc)} from MIDI OUT.`, MIDI_7BIT);
   }
@@ -395,6 +444,24 @@ export const ASSIGN_TARGETS: AssignTarget[] = buildAssignTargets();
 
 export function assignTargetOptions(): EnumOption[] {
   return ASSIGN_TARGETS.map(({ value, label }) => ({ value, label }));
+}
+
+export function matchAssignTarget(target: AssignTarget, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+  return `${target.category} ${target.label}`.toLowerCase().includes(normalized);
+}
+
+export interface AssignTargetGroup {
+  category: AssignTargetCategory;
+  targets: AssignTarget[];
+}
+
+export function groupAssignTargets(targets: readonly AssignTarget[]): AssignTargetGroup[] {
+  return ASSIGN_TARGET_CATEGORIES.flatMap((category) => {
+    const matches = targets.filter((target) => target.category === category);
+    return matches.length ? [{ category, targets: matches }] : [];
+  });
 }
 
 export function assignTargetByValue(v: number): AssignTarget | undefined {

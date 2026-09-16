@@ -2,7 +2,6 @@ import { ASSIGN_PARAMS, assignSourceInfo, type ParamDef } from "@rc600/catalog/p
 import {
   assignRangeOptions,
   assignTargetInfo,
-  assignTargetOptions,
   assignTargetRange,
   clampAssignValue,
   formatAssignValue,
@@ -10,6 +9,7 @@ import {
 } from "@rc600/catalog/assign-targets";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import { InfoTip } from "./InfoTip";
+import { AssignTargetSelect } from "./AssignTargetSelect";
 import type { PatchHandler } from "./LoopTab";
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
@@ -21,14 +21,6 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
 
 function enumOptions(def: ParamDef, value: number) {
   const options = def.options ? [...def.options] : [];
-  if (!options.some((o) => o.value === value)) {
-    options.push({ value, label: `Value ${value}` });
-  }
-  return options;
-}
-
-function targetOptions(value: number) {
-  const options = assignTargetOptions();
   if (!options.some((o) => o.value === value)) {
     options.push({ value, label: `Value ${value}` });
   }
@@ -125,13 +117,10 @@ export function AssignTab({ model, onPatch }: { model: MemoryModel; onPatch: Pat
                     return (
                       <td key={p.tag}>
                         <div className="assign-enum">
-                          <select
-                            className="assign-target"
+                          <AssignTargetSelect
                             value={target}
-                            title={targetInfo}
-                            aria-label={`Target ${i + 1}`}
-                            onChange={(e) => {
-                              const next = Number(e.target.value);
+                            ariaLabel={`Target ${i + 1}`}
+                            onChange={(next) => {
                               const nextRange = assignTargetRange(next);
                               patch(i, {
                                 G: String(next),
@@ -139,17 +128,7 @@ export function AssignTab({ model, onPatch }: { model: MemoryModel; onPatch: Pat
                                 I: String(clampAssignValue(nextRange, num(asg, "I"))),
                               });
                             }}
-                          >
-                            {targetOptions(target).map((o) => (
-                              <option
-                                key={o.value}
-                                value={o.value}
-                                title={assignTargetInfo(o.value)}
-                              >
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
+                          />
                           {targetInfo ? <InfoTip label="Target" text={targetInfo} /> : null}
                         </div>
                       </td>
