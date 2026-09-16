@@ -53,6 +53,7 @@ import { LicenseScreen } from "./components/LicenseScreen";
 import { PlatformSelect } from "./components/PlatformSelect";
 import { MemoryCopyModal } from "./components/MemoryCopyModal";
 import { MemoryApplyTargetsModal } from "./components/MemoryApplyTargetsModal";
+import { UsbConnectModal } from "./components/UsbConnectModal";
 import {
   loadMemoryClipboard,
   loadSkipApplyConfirm,
@@ -168,6 +169,8 @@ export function App() {
   const [folderReady, setFolderReady] = useState(false);
   const [pendingHandle, setPendingHandle] = useState<DirectoryHandleLike | null>(null);
   const [usbEjectLocal, setUsbEjectLocal] = useState(false);
+  const [usbVolumePresent, setUsbVolumePresent] = useState(false);
+  const [usbConnectOpen, setUsbConnectOpen] = useState(false);
   const [ejecting, setEjecting] = useState(false);
   const [backupAck, setBackupAck] = useState(false);
   const [slot, setSlot] = useState<number | null>(null);
@@ -225,11 +228,24 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchUsbStatus().then((info) => {
-      if (!cancelled) setUsbEjectLocal(info.eject);
-    });
+    let inFlight = false;
+    async function refreshUsb() {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const info = await fetchUsbStatus();
+        if (cancelled) return;
+        setUsbEjectLocal(info.eject);
+        setUsbVolumePresent(info.connected);
+      } finally {
+        inFlight = false;
+      }
+    }
+    void refreshUsb();
+    const timer = window.setInterval(() => void refreshUsb(), 3000);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, []);
 
@@ -449,21 +465,30 @@ export function App() {
     setHasDirHandle(false);
   }
 
-  async function openDirectory() {
+  async function openDirectory(): Promise<boolean> {
     setError(null);
     try {
       const result = await pickRolandDirectory();
       if (!result) {
         setError("File System Access API is unavailable — use Files or ZIP.");
-        return;
+        return false;
       }
       await attachDirectoryHandle(result.handle, result.files.rootLabel);
       saveFolderMeta({ backupAck: false });
       applyRolandFiles(result.files.files, result.files.rootLabel, { backupAck: false });
+      return true;
     } catch (e) {
-      if ((e as Error).name === "AbortError") return;
+      if ((e as Error).name === "AbortError") return false;
       setError(String(e));
+      return false;
     }
+  }
+
+  async function confirmUsbConnect() {
+    const ok = await openDirectory();
+    if (!ok) return;
+    setUsbConnectOpen(false);
+    setWorkspace("memory");
   }
 
   async function openFiles(list: FileList | null) {
@@ -563,6 +588,7 @@ export function App() {
         const result = await ejectUsbStorage();
         setStatus(`${result.message}${reloadHint}`);
         if (!result.ok) setError(result.message);
+        else setUsbVolumePresent(false);
       } else {
         setStatus(
           `Folder released. Eject BOSS RC-600 in File Explorer, wait for DISCONNECTING…, then power off.${reloadHint}`,
@@ -1323,7 +1349,7 @@ export function App() {
           <button type="button" className="btn" disabled={!files.size} onClick={downloadZip}>
             Download ZIP
           </button>
-          {hasDirHandle || usbEjectLocal || pendingHandle ? (
+          {hasDirHandle || usbVolumePresent ? (
             <button
               type="button"
               className="btn"
@@ -1334,7 +1360,18 @@ export function App() {
               <Icon name="eject" size={14} />
               {ejecting ? "Ejecting…" : "Eject USB"}
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              className="btn primary"
+              disabled={ejecting}
+              onClick={() => setUsbConnectOpen(true)}
+              title="How to put the RC-600 in USB Storage, then open the ROLAND folder"
+            >
+              <Icon name="usb" size={14} />
+              Connect to USB
+            </button>
+          )}
           <button
             type="button"
             className="btn warn"
@@ -1534,14 +1571,14 @@ export function App() {
                   Forget saved folder
                 </button>
               </div>
-              {usbEjectLocal ? (
+              {usbVolumePresent ? (
                 <p className="hint">
                   When you are done, Eject USB tells the RC-600 to disconnect so you can power off.
                 </p>
               ) : (
                 <p className="hint">
-                  When you are done, Eject USB releases the folder so you can eject BOSS RC-600 in
-                  File Explorer and power off.
+                  If the pedal is not in CONNECTING yet, click Connect to USB for the MENU → USB →
+                  STORAGE steps, then Reconnect folder.
                 </p>
               )}
             </>
@@ -1549,9 +1586,10 @@ export function App() {
             <>
               <h2>Open the ROLAND folder</h2>
               <p>
-                Put the RC-600 in USB Storage (MENU → USB → STORAGE ON) or choose a backup on disk.
-                Prefer working on a <strong>copy</strong>. Chrome/Edge remember the folder after the
-                first pick.
+                Click <strong>Connect to USB</strong> for how to put the RC-600 in CONNECTING (MENU
+                → USB → STORAGE ON), then open the ROLAND folder. Or choose a backup on disk. Prefer
+                working on a <strong>copy</strong>. Chrome/Edge remember the folder after the first
+                pick.
               </p>
               <p>Chrome/Edge: Open folder. Firefox: ZIP or file picker.</p>
               <div className="row-actions" style={{ justifyContent: "center" }}>
@@ -1898,6 +1936,10 @@ export function App() {
           </section>
         </div>
       )}
+
+      {usbConnectOpen ? (
+        <UsbConnectModal onClose={() => setUsbConnectOpen(false)} onOpenFolder={confirmUsbConnect} />
+      ) : null}
 
       {discardAllOpen ? (
         <div

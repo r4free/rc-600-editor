@@ -4,6 +4,18 @@ import { existsSync, readdirSync } from "node:fs";
 
 const execFileAsync = promisify(execFile);
 
+type RunCommand = (
+  file: string,
+  args?: readonly string[] | null,
+  options?: { windowsHide?: boolean; timeout?: number },
+) => Promise<{ stdout?: string | Buffer; stderr?: string | Buffer }>;
+
+const WIN_LIST_PS =
+  "$ErrorActionPreference = 'SilentlyContinue'; " +
+  "$drives = @(Get-CimInstance -ClassName Win32_LogicalDisk -Filter 'DriveType=2' | Where-Object { Test-Path -LiteralPath ($_.DeviceID + '\\ROLAND\\DATA') }); " +
+  "if ($drives.Count -eq 0) { Write-Output 'NONE'; exit 0 }; " +
+  "foreach ($d in $drives) { Write-Output $d.DeviceID }";
+
 const WIN_EJECT_PS =
   "$ErrorActionPreference = 'Stop'; " +
   "$drives = @(Get-CimInstance -ClassName Win32_LogicalDisk -Filter 'DriveType=2' | Where-Object { Test-Path -LiteralPath ($_.DeviceID + '\\ROLAND\\DATA') }); " +
@@ -43,9 +55,29 @@ export function listMacRolandVolumes(
   return found;
 }
 
+export async function listConnectedRolandVolumes(
+  platform: NodeJS.Platform = process.platform,
+  run: RunCommand = execFileAsync,
+): Promise<string[]> {
+  if (platform === "win32") {
+    try {
+      const { stdout } = await run(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", WIN_LIST_PS],
+        { windowsHide: true, timeout: 15000 },
+      );
+      return parseEjectStdout(String(stdout ?? ""));
+    } catch {
+      return [];
+    }
+  }
+  if (platform === "darwin") return listMacRolandVolumes();
+  return [];
+}
+
 export async function ejectRc600Usb(
   platform: NodeJS.Platform = process.platform,
-  run: typeof execFileAsync = execFileAsync,
+  run: RunCommand = execFileAsync,
 ): Promise<{ ok: boolean; ejected: string[]; message: string }> {
   if (platform === "win32") {
     const { stdout } = await run(

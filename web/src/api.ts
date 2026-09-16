@@ -118,16 +118,16 @@ export async function lockSession(): Promise<SessionInfo | null> {
   }
 }
 
-export type UsbStatus = { eject: boolean };
+export type UsbStatus = { eject: boolean; connected: boolean };
 
 export async function fetchUsbStatus(): Promise<UsbStatus> {
   try {
     const res = await fetch("/api/usb", { credentials: "include" });
-    if (!res.ok) return { eject: false };
-    const data = (await res.json()) as { eject?: boolean };
-    return { eject: data.eject === true };
+    if (!res.ok) return { eject: false, connected: false };
+    const data = (await res.json()) as { eject?: boolean; connected?: boolean };
+    return { eject: data.eject === true, connected: data.connected === true };
   } catch {
-    return { eject: false };
+    return { eject: false, connected: false };
   }
 }
 

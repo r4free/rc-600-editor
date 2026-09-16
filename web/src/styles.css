@@ -1173,6 +1173,18 @@ textarea {
   flex: 1;
 }
 
+.usb-connect-steps {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.usb-connect-steps li + li {
+  margin-top: 0.4rem;
+}
+
 .modal-sheet p {
   margin: 0 0 1rem;
   color: var(--muted);

@@ -17,7 +17,7 @@ import {
   licensePublic,
   requireLicenseEnabled,
 } from "./licenses.js";
-import { ejectRc600Usb, isLocalUsbHost } from "./usb-eject.js";
+import { ejectRc600Usb, isLocalUsbHost, listConnectedRolandVolumes } from "./usb-eject.js";
 import {
   findTrackWaveFile,
   listMemoryWaveFiles,
@@ -83,8 +83,15 @@ app.post("/api/lock", (c) => {
   return c.json(readSessionInfo(c));
 });
 
-app.get("/api/usb", (c) => {
-  return c.json({ eject: isLocalUsbHost(c.req.header("host")) });
+app.get("/api/usb", async (c) => {
+  const eject = isLocalUsbHost(c.req.header("host"));
+  if (!eject) return c.json({ eject: false, connected: false });
+  try {
+    const volumes = await listConnectedRolandVolumes();
+    return c.json({ eject: true, connected: volumes.length > 0 });
+  } catch {
+    return c.json({ eject: true, connected: false });
+  }
 });
 
 /** List WAVE files for a memory slot from the connected RC-600 USB (local editor only). */
