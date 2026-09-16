@@ -6,17 +6,19 @@ export function Modal({
   onClose,
   wide = false,
   foot,
+  className,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   foot?: ReactNode;
+  className?: string;
 }) {
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div
-        className={`modal-sheet${wide ? " modal-sheet-wide" : ""}`}
+        className={`modal-sheet${wide ? " modal-sheet-wide" : ""}${className ? ` ${className}` : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

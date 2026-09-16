@@ -64,6 +64,7 @@ const ICONS = {
   pause: "mdi:pause",
   fullscreen: "mdi:fullscreen",
   fullscreenExit: "mdi:fullscreen-exit",
+  heart: "mdi:heart",
 } as const;
 
 export type IconName = keyof typeof ICONS;
