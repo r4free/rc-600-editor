@@ -2308,9 +2308,16 @@ body:has(.play-drum-body.is-stage) {
 }
 
 .setlist-viewer {
-  margin-top: 0.8rem;
-  border-top: 1px solid var(--line);
-  padding-top: 0.75rem;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+  padding: 1rem;
+  overflow: hidden;
 }
 
 .setlist-viewer-head {
@@ -2328,8 +2335,16 @@ body:has(.play-drum-body.is-stage) {
 .setlist-song-pad-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  align-content: start;
+  flex: 1;
+  min-height: 0;
   gap: 0.65rem;
   margin-top: 0.7rem;
+  overflow: auto;
+}
+
+body:has(.setlist-viewer) {
+  overflow: hidden;
 }
 
 .setlist-song-pad {

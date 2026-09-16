@@ -188,8 +188,13 @@ export function SetlistPanel({
   );
 
   useEffect(() => {
-    if (!midiLive || !selected?.songs.length) return;
+    if (!midiLive || !viewerOpen || !selected?.songs.length) return;
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        runTokenRef.current++;
+        setViewerOpen(false);
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, select, textarea, button, [contenteditable='true']")) return;
       if (event.key === "ArrowRight" || event.key === "]") {
@@ -202,7 +207,7 @@ export function SetlistPanel({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeIndex, midiLive, runSong, selected]);
+  }, [activeIndex, midiLive, runSong, selected, viewerOpen]);
 
   useEffect(() => {
     if (!midiLive || currentSlot == null || !selected) return;
