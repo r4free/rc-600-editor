@@ -470,7 +470,7 @@ export function App() {
     try {
       const result = await pickRolandDirectory();
       if (!result) {
-        setError("File System Access API is unavailable — use Files or ZIP.");
+        setError("File System Access API is unavailable — use Import folder or Import ZIP.");
         return false;
       }
       await attachDirectoryHandle(result.handle, result.files.rootLabel);
@@ -674,7 +674,7 @@ export function App() {
           `Saved MEMORY${String(slot).padStart(3, "0")}A/B. On the pedal, switch to another memory and back so it loads the new kit. USB Storage cannot change the kit that is already in RAM.`,
         );
       } else {
-        setStatus(`Updated MEMORY${String(slot).padStart(3, "0")}A/B — download ZIP to write`);
+        setStatus(`Updated MEMORY${String(slot).padStart(3, "0")}A/B — Export ZIP to copy onto the pedal`);
       }
     } catch (e) {
       setError(String(e));
@@ -721,7 +721,7 @@ export function App() {
       setStatus(
         dirHandleRef.current
           ? `Saved ${savedCount} memor${savedCount === 1 ? "y" : "ies"} (A and B). On the pedal, switch memory and back so the new kit loads.`
-          : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — download ZIP to write`,
+          : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — Export ZIP to copy onto the pedal`,
       );
     } catch (e) {
       setError(String(e));
@@ -784,7 +784,7 @@ export function App() {
       setStatus(
         dirHandleRef.current
           ? "Saved SYSTEM1.RC0 and SYSTEM2.RC0"
-          : "System updated — download ZIP",
+          : "System updated — Export ZIP to copy onto the pedal",
       );
     } catch (e) {
       setError(String(e));
@@ -799,7 +799,7 @@ export function App() {
   function downloadZip() {
     if (anyMemoryDirty || sysDirty) {
       setError(
-        "Unsaved edits are not in the ZIP yet. Save memory/system first (needs the server), then download.",
+        "Unsaved edits are not in the ZIP yet. Save memory/system first (needs the server), then Export ZIP.",
       );
       return;
     }
@@ -1317,16 +1317,24 @@ export function App() {
           </div>
         </div>
         <div className="topbar-actions">
-          <button type="button" className="btn primary" onClick={openDirectory}>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={openDirectory}
+            title="Open the ROLAND folder on USB or disk with write access. Save writes straight back to those files."
+          >
             <Icon name="folderOpen" size={14} />
             Open folder
           </button>
           <button type="button" className="btn" onClick={loadDemoFixtures}>
             Demo fixtures
           </button>
-          <label className="btn">
+          <label
+            className="btn"
+            title="Load a ROLAND folder from disk without writing back. After Save, use Export ZIP to copy the files onto the pedal."
+          >
             <Icon name="folderOpen" size={14} />
-            Files
+            Import folder
             <input
               type="file"
               multiple
@@ -1336,9 +1344,12 @@ export function App() {
               onChange={(e) => openFiles(e.target.files)}
             />
           </label>
-          <label className="btn">
+          <label
+            className="btn"
+            title="Load a ZIP backup of the ROLAND folder. After Save, use Export ZIP to copy the files onto the pedal."
+          >
             <Icon name="archive" size={14} />
-            ZIP
+            Import ZIP
             <input
               type="file"
               accept=".zip"
@@ -1346,8 +1357,15 @@ export function App() {
               onChange={(e) => openZip(e.target.files?.[0] ?? null)}
             />
           </label>
-          <button type="button" className="btn" disabled={!files.size} onClick={downloadZip}>
-            Download ZIP
+          <button
+            type="button"
+            className="btn"
+            disabled={!files.size}
+            onClick={downloadZip}
+            title="Download a ZIP backup of the loaded memories. Copy it onto the pedal if you did not use Open folder."
+          >
+            <Icon name="download" size={14} />
+            Export ZIP
           </button>
           {hasDirHandle || usbVolumePresent ? (
             <button
@@ -1591,7 +1609,7 @@ export function App() {
                 working on a <strong>copy</strong>. Chrome/Edge remember the folder after the first
                 pick.
               </p>
-              <p>Chrome/Edge: Open folder. Firefox: ZIP or file picker.</p>
+              <p>Chrome/Edge: Open folder. Firefox: Import folder or Import ZIP.</p>
               <div className="row-actions" style={{ justifyContent: "center" }}>
                 <button type="button" className="btn primary" onClick={() => void openDirectory()}>
                   <Icon name="folderOpen" size={14} />
