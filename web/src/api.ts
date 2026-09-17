@@ -6,6 +6,7 @@ const viteEnv =
         import.meta as {
           env?: {
             VITE_GM_EDITOR_URL?: string;
+            VITE_GT_EDITOR_URL?: string;
             VITE_VG_EDITOR_URL?: string;
             VITE_RC_EDITOR_URL?: string;
             VITE_TONEX_EDITOR_URL?: string;
@@ -24,6 +25,12 @@ export const GM_EDITOR_URL = editorUrl(
   viteEnv?.VITE_GM_EDITOR_URL,
   "https://gm-800-editor.onrender.com",
   "https://gm.test",
+);
+
+export const GT_EDITOR_URL = editorUrl(
+  viteEnv?.VITE_GT_EDITOR_URL,
+  "https://gt-1000-editor.onrender.com",
+  "https://gt.test",
 );
 
 /** Local Herd alias; production Render URL unless `VITE_VG_EDITOR_URL` overrides. */

@@ -1,0 +1,22 @@
+﻿---
+description: Keep the bilingual stakeholder feature registry in sync when shipping or changing user-visible features
+alwaysApply: true
+---
+
+# Feature registry (stakeholders)
+
+Whenever you **add, materially change, or remove** a user-visible capability, update `docs/FEATURES.md` in the same change.
+
+## What to update
+
+1. The matching section under the feature catalog — **English and Portuguese**, same meaning.
+2. Status if it moved (Shipped / Partial / Internal).
+3. A new dated entry at the top of **Changelog** (newest first), also bilingual. Date = today from user_info.
+4. **Known limitations** if a gap was closed or a new one shipped.
+
+Do not invent features that are not actually in the product. Internal refactors with no UX/API change do **not** need a changelog line.
+
+## Tone
+
+Write for interested non-engineers (product, testers, musicians). Prefer what the user can do over file names. Keep both languages in the same file; never update only one language.
+

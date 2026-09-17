@@ -4,6 +4,8 @@ Editor web para o Boss RC-600: abre a pasta `ROLAND` (USB Storage ou backup), ed
 
 Gravar `.RC0` (Save / Copy) passa por uma API no servidor que monta o XML. Sem o servidor online, a tela ainda edita; o arquivo da pedaleira não é materializado.
 
+**Guidelines:** [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) · [docs/FEATURES.md](./docs/FEATURES.md) · shared: [boss-editor-guidelines](https://github.com/r4free/boss-editor-guidelines)
+
 ## Rodar (dev)
 
 ```bash

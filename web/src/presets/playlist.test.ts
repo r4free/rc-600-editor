@@ -151,6 +151,16 @@ describe("setlist", () => {
           ...setlist.songs[0],
           music: {
             kind: "score",
+            liveView: "scroll",
+            scrollGuide: {
+              kind: "scroll",
+              format: "chart",
+              source: "[D]Lyrics",
+              key: "D",
+              mode: "major",
+              transpose: 0,
+              autoScrollSeconds: 200,
+            },
             assetId: "abc123",
             fileName: "song.gp",
             byteLength: 2048,
@@ -178,6 +188,11 @@ describe("setlist", () => {
     assert.equal(music?.kind === "score" ? music.vocalTrackIndex : null, 2);
     assert.equal(music?.kind === "score" ? music.rc600Drums : false, true);
     assert.equal(music?.kind === "score" ? music.drumTrackIndex : null, 3);
+    assert.equal(music?.kind === "score" ? music.liveView : null, "scroll");
+    assert.equal(
+      music?.kind === "score" ? music.scrollGuide?.source : null,
+      "[D]Lyrics",
+    );
   });
 
   it("reorders songs without wrapping", () => {

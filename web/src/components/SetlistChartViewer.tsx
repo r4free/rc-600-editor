@@ -13,6 +13,7 @@ export function SetlistChartViewer({
   onPrevious,
   onNext,
   onTranspose,
+  onSwitchToScore,
   children,
 }: {
   setlistName: string;
@@ -23,6 +24,7 @@ export function SetlistChartViewer({
   onPrevious: () => void;
   onNext: () => void;
   onTranspose: (semitones: number) => void;
+  onSwitchToScore?: () => void;
   children?: React.ReactNode;
 }) {
   const music = song.music;
@@ -78,6 +80,11 @@ export function SetlistChartViewer({
       </header>
 
       <div className="setlist-chart-toolbar">
+        {onSwitchToScore ? (
+          <button type="button" className="btn primary" onClick={onSwitchToScore}>
+            <Icon name="scene" /> View score
+          </button>
+        ) : null}
         <button type="button" className="btn ghost" onClick={() => onTranspose(music.transpose - 1)} disabled={music.transpose <= -12}>Key −</button>
         <button type="button" className="btn ghost" onClick={() => onTranspose(music.transpose + 1)} disabled={music.transpose >= 12}>Key +</button>
         <button type="button" className="btn ghost" onClick={() => setFontScale((value) => Math.max(0.75, value - 0.1))}>A−</button>

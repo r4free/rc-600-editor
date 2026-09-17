@@ -335,7 +335,53 @@ export function SetlistPanel({
         )}
 
         {viewerOpen && selected ? (
-          activeSong?.music?.kind === "score" ? (
+          activeSong?.music?.kind === "score" &&
+          activeSong.music.liveView === "scroll" &&
+          activeSong.music.scrollGuide ? (
+            <SetlistChartViewer
+              setlistName={selected.name}
+              song={{
+                ...activeSong,
+                music: activeSong.music.scrollGuide,
+              }}
+              index={activeIndex}
+              count={selected.songs.length}
+              onBack={() => setActiveIndex(-1)}
+              onPrevious={() => void runSong(activeIndex - 1)}
+              onNext={() => void runSong(activeIndex + 1)}
+              onSwitchToScore={() =>
+                updateSong(activeSong.id, (song) => ({
+                  ...song,
+                  music: song.music?.kind === "score"
+                    ? { ...song.music, liveView: "score" }
+                    : song.music,
+                }))
+              }
+              onTranspose={(transpose) =>
+                updateSong(activeSong.id, (song) => ({
+                  ...song,
+                  music: song.music?.kind === "score" && song.music.scrollGuide
+                    ? {
+                        ...song.music,
+                        scrollGuide: { ...song.music.scrollGuide, transpose },
+                      }
+                    : song.music,
+                }))
+              }
+            >
+              {activeSong.voiceToneMatch?.enabled && activeSong.music.scrollGuide.key ? (
+                <VoiceToneMonitor
+                  key={activeSong.id}
+                  targetKey={transposeKeyRoot(
+                    activeSong.music.scrollGuide.key,
+                    activeSong.music.scrollGuide.transpose,
+                  )}
+                  mode={activeSong.music.scrollGuide.mode}
+                  blocked={usbStorageActive}
+                />
+              ) : null}
+            </SetlistChartViewer>
+          ) : activeSong?.music?.kind === "score" ? (
             <AlphaTabScoreViewer
               setlistName={selected.name}
               song={activeSong as SetlistSong & { music: SetlistScoreGuide }}
@@ -347,6 +393,14 @@ export function SetlistPanel({
               onGuideChange={(music) =>
                 updateSong(activeSong.id, (song) => ({ ...song, music }))
               }
+              onSwitchToChart={activeSong.music.scrollGuide
+                ? () => updateSong(activeSong.id, (song) => ({
+                    ...song,
+                    music: song.music?.kind === "score"
+                      ? { ...song.music, liveView: "scroll" }
+                      : song.music,
+                  }))
+                : undefined}
               onCurrentChord={setLiveChord}
               onVoiceTarget={setVoiceTarget}
               midiLive={midiLive}

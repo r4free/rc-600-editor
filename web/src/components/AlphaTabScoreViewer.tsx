@@ -39,6 +39,7 @@ export function AlphaTabScoreViewer({
   onBack,
   onPrevious,
   onNext,
+  onSwitchToChart,
   onGuideChange,
   onCurrentChord,
   onVoiceTarget,
@@ -55,6 +56,7 @@ export function AlphaTabScoreViewer({
   onBack: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onSwitchToChart?: () => void;
   onGuideChange: (guide: SetlistScoreGuide) => void;
   onCurrentChord: (chord: string | null) => void;
   onVoiceTarget: (target: AlphaTabVoiceTarget | null) => void;
@@ -272,6 +274,11 @@ export function AlphaTabScoreViewer({
       </header>
 
       <div className="alphatab-toolbar">
+        {onSwitchToChart ? (
+          <button type="button" className="btn ghost" onClick={onSwitchToChart}>
+            <Icon name="scene" /> View chart
+          </button>
+        ) : null}
         <button type="button" className="btn primary" disabled={!ready} onClick={() => apiRef.current?.playPause()}>
           <Icon name={playing ? "pause" : "play"} /> {playing ? "Pause" : "Play"}
         </button>

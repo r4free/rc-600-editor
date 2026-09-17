@@ -1,0 +1,45 @@
+﻿---
+description: Keep the local rc-600 editor stack running; do not restart it after every chat
+alwaysApply: true
+---
+
+# Local editor stack: leave it running (watch / HMR)
+
+The user keeps `npm run editor` (API) and `npm run ui` (Vite) in their own terminals. **Do not stop, kill, or restart them** at the end of a chat or after code changes.
+
+## What already hot-reloads
+
+- **API (`npm run editor`)** — `tsx watch` (or the project equivalent). Restarts itself when server/catalog sources change.
+- **UI (`npm run ui`)** — Vite HMR on `web/`. The browser picks up UI changes without a process restart.
+
+## When to start (only)
+
+If ports **5191** or **5190** are free (nothing listening), start the missing process in the background from the repo root:
+
+1. `npm run editor` → wait for the API ready log
+2. `npm run ui` → wait for Vite `Local:`
+
+If they are already running, leave them alone — even if this chat changed API or UI code.
+
+## When to restart (only if asked, or truly stuck)
+
+Restart (stop listeners on 5191 / 5190, then start the two scripts) **only** when:
+
+- The user explicitly asks to restart, **or**
+- A process crashed / the port is wedged and watch did not recover, **or**
+- You changed the `editor` / `ui` npm scripts themselves (one-time pick-up of new flags)
+
+Do **not** restart for ordinary source, catalog, or `web/` edits. Do **not** restart after docs-only changes. Do **not** restart to “refresh the UI.”
+
+Killing the stack drops in-flight MIDI/USB sessions and is slow; watch/HMR is the refresh path.
+
+## Local URL (do not confuse with sibling projects)
+
+- Open the editor at **https://rc.test** (Laravel Herd HTTPS proxy → Vite on :5190).
+- Internal ports are **5191** (API) and **5190** (Vite).
+- Never tell the user to open raw `localhost:5190` or `localhost:5191` as the primary app URL when a Herd alias exists.
+
+
+## Scripts note (RC-600)
+
+This repo may use `npm run ui` plus a Node server on port 5191 rather than `npm run editor`. Start whichever API process the README documents; still do not kill a healthy stack after ordinary edits.

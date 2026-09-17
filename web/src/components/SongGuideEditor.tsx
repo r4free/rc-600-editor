@@ -40,7 +40,12 @@ export function SetlistSongMusicEditor({
   const [assetBusy, setAssetBusy] = useState(false);
   const scoreInputRef = useRef<HTMLInputElement>(null);
   const music = song.music;
-  const scroll = music?.kind === "scroll" ? music : null;
+  const scroll =
+    music?.kind === "scroll"
+      ? music
+      : music?.kind === "score"
+        ? music.scrollGuide ?? null
+        : null;
   const score = music?.kind === "score" ? music : null;
   const parsed = scroll ? parseSongMusic(scroll.format, scroll.source) : null;
   const suggestions = parsed ? suggestKeys(parsed.chords) : [];
@@ -58,6 +63,26 @@ export function SetlistSongMusicEditor({
     setMusic({ ...music, ...patch } as SetlistSongMusic);
   };
 
+  const updateScroll = (patch: Partial<SetlistScrollGuide>) => {
+    if (!scroll) return;
+    const nextScroll = { ...scroll, ...patch } as SetlistScrollGuide;
+    if (score) setMusic({ ...score, scrollGuide: nextScroll });
+    else setMusic(nextScroll);
+  };
+
+  const updateKeyMode = (patch: { key?: string; mode?: SongKeyMode }) => {
+    if (!music) return;
+    if (score) {
+      setMusic({
+        ...score,
+        ...patch,
+        ...(scroll ? { scrollGuide: { ...scroll, ...patch } } : {}),
+      });
+    } else {
+      setMusic({ ...music, ...patch } as SetlistSongMusic);
+    }
+  };
+
   const generateWithAi = async () => {
     const prompt = aiPrompt.trim();
     if (!prompt || aiBusy) return;
@@ -66,7 +91,7 @@ export function SetlistSongMusicEditor({
     try {
       const result = await generateSetlistChart(prompt);
       setAiLimits(result.limits);
-      setMusic({
+      const generated: SetlistScrollGuide = {
         kind: "scroll",
         format: result.chart.kind,
         source: result.chart.source,
@@ -74,7 +99,15 @@ export function SetlistSongMusicEditor({
         mode: result.chart.mode,
         transpose: 0,
         autoScrollSeconds: result.chart.durationSeconds ?? 240,
-      });
+      };
+      setMusic(score
+        ? {
+            ...score,
+            key: generated.key || score.key,
+            mode: generated.mode,
+            scrollGuide: generated,
+          }
+        : generated);
     } catch (error) {
       setAiError(error instanceof Error ? error.message : "Could not generate the chart");
     } finally {
@@ -112,6 +145,7 @@ export function SetlistSongMusicEditor({
         countIn: true,
         scoreAudio: false,
         playbackSpeed: 1,
+        ...(scroll ? { scrollGuide: scroll } : {}),
       };
       setMusic(next);
     } catch (error) {
@@ -129,7 +163,12 @@ export function SetlistSongMusicEditor({
           <button
             type="button"
             className={`btn ${scroll ? "primary" : "ghost"}`}
-            onClick={() => setMusic(scroll ?? emptyScrollGuide())}
+            onClick={() => {
+              if (scroll) return;
+              const nextScroll = emptyScrollGuide();
+              if (score) setMusic({ ...score, scrollGuide: nextScroll });
+              else setMusic(nextScroll);
+            }}
           >
             Scrolling chart
           </button>
@@ -190,7 +229,7 @@ export function SetlistSongMusicEditor({
           <div className="song-music-fields">
             <label className="playlist-field">
               <span>Confirmed key</span>
-              <select value={music.key} onChange={(event) => updateMusic({ key: event.target.value })}>
+              <select value={music.key} onChange={(event) => updateKeyMode({ key: event.target.value })}>
                 <option value="">Choose key…</option>
                 {KEY_ROOTS.map((root) => <option key={root} value={root}>{root}</option>)}
               </select>
@@ -199,7 +238,7 @@ export function SetlistSongMusicEditor({
               <span>Mode</span>
               <select
                 value={music.mode}
-                onChange={(event) => updateMusic({ mode: event.target.value as SongKeyMode })}
+                onChange={(event) => updateKeyMode({ mode: event.target.value as SongKeyMode })}
               >
                 <option value="major">Major</option>
                 <option value="minor">Minor</option>
@@ -215,7 +254,7 @@ export function SetlistSongMusicEditor({
                     max={3600}
                     value={scroll.autoScrollSeconds ?? ""}
                     onChange={(event) =>
-                      updateMusic({
+                      updateScroll({
                         autoScrollSeconds: event.target.value
                           ? Math.max(15, Math.min(3600, Number(event.target.value)))
                           : undefined,
@@ -226,9 +265,9 @@ export function SetlistSongMusicEditor({
                 <div className="playlist-field">
                   <span>Transpose</span>
                   <div className="song-transpose">
-                    <button type="button" className="btn ghost" onClick={() => updateMusic({ transpose: Math.max(-12, music.transpose - 1) })}>−</button>
-                    <b>{music.transpose > 0 ? `+${music.transpose}` : music.transpose}</b>
-                    <button type="button" className="btn ghost" onClick={() => updateMusic({ transpose: Math.min(12, music.transpose + 1) })}>+</button>
+                    <button type="button" className="btn ghost" onClick={() => updateScroll({ transpose: Math.max(-12, scroll.transpose - 1) })}>−</button>
+                    <b>{scroll.transpose > 0 ? `+${scroll.transpose}` : scroll.transpose}</b>
+                    <button type="button" className="btn ghost" onClick={() => updateScroll({ transpose: Math.min(12, scroll.transpose + 1) })}>+</button>
                   </div>
                 </div>
               </>
@@ -243,7 +282,7 @@ export function SetlistSongMusicEditor({
                   type="button"
                   className="btn ghost"
                   key={`${suggestion.root}-${suggestion.mode}`}
-                  onClick={() => updateMusic({ key: suggestion.root, mode: suggestion.mode })}
+                  onClick={() => updateKeyMode({ key: suggestion.root, mode: suggestion.mode })}
                 >
                   {suggestion.root} {suggestion.mode}
                 </button>
@@ -259,7 +298,7 @@ export function SetlistSongMusicEditor({
                   rows={scroll.format === "chart" ? 10 : 3}
                   value={scroll.source}
                   spellCheck={false}
-                  onChange={(event) => updateMusic({ source: event.target.value })}
+                  onChange={(event) => updateScroll({ source: event.target.value })}
                 />
               </details>
               {scroll.source.trim() ? (

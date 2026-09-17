@@ -27,6 +27,9 @@ export interface SetlistScrollGuide extends SetlistMusicBase {
 
 export interface SetlistScoreGuide extends SetlistMusicBase {
   kind: "score";
+  /** Optional lyrics/chords guide kept alongside the exact score. */
+  scrollGuide?: SetlistScrollGuide;
+  liveView?: "score" | "scroll";
   assetId: string;
   fileName: string;
   byteLength: number;
@@ -218,9 +221,14 @@ function parseSongMusic(raw: unknown): SetlistSongMusic | undefined {
       : [];
     const vocalTrack = Math.round(Number(music.vocalTrackIndex));
     const drumTrack = Math.round(Number(music.drumTrackIndex));
+    const alternateGuide = parseSongMusic(music.scrollGuide);
+    const scrollGuide =
+      alternateGuide?.kind === "scroll" ? alternateGuide : undefined;
     return {
       kind: "score",
       ...base,
+      ...(scrollGuide ? { scrollGuide } : {}),
+      ...(music.liveView === "scroll" && scrollGuide ? { liveView: "scroll" as const } : {}),
       assetId,
       fileName,
       byteLength,
