@@ -36,6 +36,7 @@ import {
   type SessionInfo,
 } from "./api";
 import { MidiBar } from "./components/MidiBar";
+import { IosMidiNotice } from "./components/IosMidiNotice";
 import { LoopTab } from "./components/LoopTab";
 import { ControlTab } from "./components/ControlTab";
 import { AssignTab } from "./components/AssignTab";
@@ -1451,6 +1452,8 @@ export function App() {
           </span>
         </div>
       </header>
+
+      {env.blockReason === "ios" ? <IosMidiNotice /> : null}
 
       {!backupAck && files.size > 0 && (
         <div className="warn-banner">

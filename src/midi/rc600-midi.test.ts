@@ -4,6 +4,7 @@ import {
   adjacentMemorySlot,
   isLikelyRc600,
   isSecondaryUsbMidiPort,
+  IOS_WEB_MIDI_BROWSER_URL,
   loadMidiPrefs,
   midiEnvironment,
   preferRc600Output,
@@ -17,6 +18,25 @@ import {
   initialMidiChannel,
   parseCtlProgramChange,
 } from "./rc600-midi.js";
+
+function withNavigator(stub: Record<string, unknown>, run: () => void): void {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    enumerable: true,
+    value: stub,
+    writable: true,
+  });
+  try {
+    run();
+  } finally {
+    if (previous === undefined) {
+      Reflect.deleteProperty(globalThis, "navigator");
+    } else {
+      Object.defineProperty(globalThis, "navigator", previous);
+    }
+  }
+}
 
 describe("rc600 midi helpers", () => {
   it("detects RC-600 port names", () => {
@@ -39,6 +59,61 @@ describe("rc600 midi helpers", () => {
   it("reports environment in node as unavailable or insecure", () => {
     const env = midiEnvironment();
     assert.ok(env.blockReason === "unavailable" || env.blockReason === "insecure" || env.blockReason === "ok");
+  });
+
+  it("flags iOS without Web MIDI and points to Web MIDI Browser", () => {
+    withNavigator(
+      {
+        userAgent:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        platform: "iPhone",
+        maxTouchPoints: 5,
+      },
+      () => {
+        const env = midiEnvironment();
+        assert.equal(env.isIOS, true);
+        assert.equal(env.blockReason, "ios");
+        assert.equal(env.supported, false);
+        assert.match(env.help, /Web MIDI Browser/);
+        assert.match(IOS_WEB_MIDI_BROWSER_URL, /web-midi-browser/);
+      },
+    );
+  });
+
+  it("allows MIDI on iOS when requestMIDIAccess exists", () => {
+    withNavigator(
+      {
+        userAgent:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        platform: "iPhone",
+        maxTouchPoints: 5,
+        requestMIDIAccess: async () => ({}),
+      },
+      () => {
+        const env = midiEnvironment();
+        assert.equal(env.isIOS, true);
+        assert.notEqual(env.blockReason, "ios");
+        assert.equal(env.supported, true);
+        assert.equal(env.blockReason, "ok");
+      },
+    );
+  });
+
+  it("reports unavailable on non-iOS browsers without Web MIDI", () => {
+    withNavigator(
+      {
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        platform: "Win32",
+        maxTouchPoints: 0,
+      },
+      () => {
+        const env = midiEnvironment();
+        assert.equal(env.isIOS, false);
+        assert.equal(env.blockReason, "unavailable");
+        assert.equal(env.supported, false);
+      },
+    );
   });
 
   it("picks a neighbor slot so same-memory Program Change can reload the kit", () => {

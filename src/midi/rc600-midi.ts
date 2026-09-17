@@ -1,5 +1,9 @@
 /** Web MIDI helpers for RC-600 (PC / CC / transport — no SysEx param map). */
 
+/** App Store listing for the iOS browser that exposes Web MIDI. */
+export const IOS_WEB_MIDI_BROWSER_URL =
+  "https://apps.apple.com/app/web-midi-browser/id953846217";
+
 export interface MidiPortInfo {
   id: string;
   name: string;
@@ -47,14 +51,14 @@ export function midiEnvironment(): MidiEnvironment {
   const hasApi = typeof navigator !== "undefined" && typeof navigator.requestMIDIAccess === "function";
 
   let blockReason: MidiBlockReason = "ok";
-  if (isIOS) blockReason = "ios";
+  if (isIOS && !hasApi) blockReason = "ios";
   else if (isIdePreview) blockReason = "ide";
   else if (!secureContext) blockReason = "insecure";
   else if (!hasApi) blockReason = "unavailable";
 
   const help =
     blockReason === "ios"
-      ? "Chrome on iPhone/iPad has no Web MIDI. Use a computer (Chrome/Edge)."
+      ? "Safari and Chrome on iPhone/iPad have no Web MIDI. Open this site in Web MIDI Browser, or use a computer."
       : blockReason === "ide"
         ? "The Cursor preview does not allow MIDI. Open http://127.0.0.1:5190 in Chrome or Edge."
         : blockReason === "insecure"
@@ -64,7 +68,7 @@ export function midiEnvironment(): MidiEnvironment {
             : "Allow MIDI, choose the RC-600 port, then Connect.";
 
   return {
-    supported: hasApi && secureContext && !isIOS && !isIdePreview,
+    supported: hasApi && secureContext && !isIdePreview,
     secureContext,
     isIOS,
     isIdePreview,
