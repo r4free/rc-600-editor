@@ -2453,11 +2453,37 @@ body:has(.play-drum-body.is-stage) {
   justify-content: space-between;
 }
 
+.playlist-modal-head {
+  align-items: flex-start;
+  flex: 0 0 auto;
+  padding: 0.55rem 1.25rem 0;
+  gap: 0.75rem;
+}
+
 .playlist-panel-head > div:first-child,
 .playlist-modal-head > div:first-child {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+}
+
+.playlist-modal-head > div:first-child {
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.playlist-modal-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.playlist-modal-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .playlist-eyebrow {
@@ -2526,7 +2552,7 @@ body:has(.play-drum-body.is-stage) {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  margin: 0.8rem 0;
+  margin: 0.55rem 1.25rem 0.8rem;
 }
 
 .setlist-card > div {
@@ -2738,8 +2764,8 @@ body:has(.setlist-viewer) {
   overflow: auto;
 }
 
-.playlist-modal-head p {
-  margin-bottom: 0;
+.playlist-modal .modal-foot {
+  padding-inline: 1.25rem;
 }
 
 .playlist-manager {
@@ -2785,7 +2811,7 @@ body:has(.setlist-viewer) {
   flex-direction: column;
   gap: 0.25rem;
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
   color: var(--muted);
   font-size: 0.7rem;
 }
@@ -2794,16 +2820,23 @@ body:has(.setlist-viewer) {
   flex: 0 0 9rem;
 }
 
+.playlist-add-row .playlist-field {
+  flex: 1;
+}
+
 .playlist-add-row {
   align-items: flex-end;
-  margin-top: 0.65rem;
+  margin-top: 0;
 }
 
 .playlist-edit-list {
   display: grid;
+  align-content: start;
   gap: 0.3rem;
-  margin-top: 0.65rem;
-  max-height: 45vh;
+  margin-top: 0;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
 }
 
@@ -2836,6 +2869,7 @@ body:has(.setlist-viewer) {
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-chain) 70%, var(--bg-panel));
   padding: 0.45rem;
+  height: fit-content;
 }
 
 .setlist-song-editor .playlist-edit-item {
@@ -2843,17 +2877,44 @@ body:has(.setlist-viewer) {
   padding: 0;
 }
 
+.setlist-song-body {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-panel) 75%, var(--bg-chain));
+  padding: 0.55rem;
+}
+
+.setlist-song-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--bg-chain);
+  padding: 0.5rem;
+}
+
+.setlist-song-section-title {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 .setlist-automation {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.45rem;
-  margin: 0.45rem 0 0 2.45rem;
+  margin: 0;
 }
 
 .setlist-action-list {
   min-width: 0;
-  border-top: 1px solid var(--line);
-  padding-top: 0.4rem;
+  border-top: 0;
+  padding-top: 0;
 }
 
 .setlist-action-list > small {
@@ -2922,7 +2983,7 @@ body:has(.setlist-viewer) {
 }
 
 .playlist-delete {
-  margin-top: 0.8rem;
+  margin-right: auto;
 }
 
 .playlist-file-input {
@@ -3301,6 +3362,8 @@ body:has(.setlist-viewer) {
 }
 
 .song-chart-ai {
+  width: 100%;
+  min-width: 0;
   margin-top: 0.55rem;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
   background: color-mix(in srgb, var(--bg-raised) 88%, transparent);
@@ -3309,13 +3372,18 @@ body:has(.setlist-viewer) {
 
 .song-chart-ai-row {
   display: flex;
+  flex-direction: row;
+  align-items: flex-end;
   gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .song-chart-ai-row input,
 .song-chart-ai-row textarea {
   min-width: 0;
   flex: 1;
+  width: auto;
 }
 
 .song-chart-ai-row textarea {
@@ -3323,7 +3391,8 @@ body:has(.setlist-viewer) {
 }
 
 .song-chart-ai-row .btn {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  align-self: flex-end;
 }
 
 .song-chart-ai-status,
@@ -4122,6 +4191,14 @@ body:has(.setlist-viewer) {
   .song-chart-ai-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .song-chart-ai-row textarea {
+    width: 100%;
+  }
+
+  .song-chart-ai-row .btn {
+    align-self: stretch;
   }
 
   .setlist-chart-stage-head {

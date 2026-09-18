@@ -96,7 +96,7 @@ export function SetlistPanel({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [editorOpen, setEditorOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [expandedSongIds, setExpandedSongIds] = useState<Set<string>>(() => new Set());
+  const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [songName, setSongName] = useState("");
   const [songMemory, setSongMemory] = useState(1);
@@ -261,6 +261,7 @@ export function SetlistPanel({
     setActiveIndex(-1);
     setViewerOpen(false);
     setEditorOpen(true);
+    setExpandedSongId(null);
   }
 
   function openEditor(setlistId: string) {
@@ -269,6 +270,7 @@ export function SetlistPanel({
     setActiveIndex(-1);
     setViewerOpen(false);
     setEditorOpen(true);
+    setExpandedSongId(null);
   }
 
   function openViewer(setlistId: string) {
@@ -301,7 +303,7 @@ export function SetlistPanel({
       afterChange: [],
     };
     updateSelected((setlist) => ({ ...setlist, songs: [...setlist.songs, song] }));
-    setExpandedSongIds((current) => new Set(current).add(song.id));
+    setExpandedSongId(song.id);
     setSongName("");
     setStatus(`Added ${song.name}`);
   }
@@ -774,6 +776,75 @@ export function SetlistPanel({
                     onBlur={() => updateSelected((setlist) => ({ ...setlist, name: normalizeSetlistName(setlist.name) }))}
                   />
                 </label>
+                <div className="playlist-edit-list">
+                    {selected.songs.map((song, index) => {
+                      const isOpen = expandedSongId === song.id;
+                      return (
+                      <div className={`setlist-song-editor${isOpen ? " is-open" : ""}`} key={song.id}>
+                        <div className="playlist-edit-item">
+                          <span className="playlist-live-index">{String(index + 1).padStart(2, "0")}</span>
+                          <input aria-label={`Song ${index + 1} name`} value={song.name} onChange={(event) => updateSong(song.id, (current) => ({ ...current, name: event.target.value.slice(0, 80) }))} />
+                          <select
+                            aria-label={`Memory for ${song.name}`}
+                            value={song.memorySlot}
+                            onChange={(event) => {
+                              const memorySlot = Number(event.target.value);
+                              updateSong(song.id, (current) => ({ ...current, memorySlot, memoryName: memoryBySlot.get(memorySlot) ?? "" }));
+                            }}
+                          >
+                            {Array.from({ length: 99 }, (_, slot) => slot + 1).map((slot) => (
+                              <option key={slot} value={slot}>{String(slot).padStart(2, "0")} {memoryBySlot.get(slot) ?? ""}</option>
+                            ))}
+                          </select>
+                          <div className="playlist-reorder">
+                            <button type="button" className="btn ghost" aria-label={`Move ${song.name} up`} disabled={index === 0} onClick={() => updateSelected((setlist) => ({ ...setlist, songs: reorderSetlistSong(setlist.songs, song.id, -1) }))}>↑</button>
+                            <button type="button" className="btn ghost" aria-label={`Move ${song.name} down`} disabled={index === selected.songs.length - 1} onClick={() => updateSelected((setlist) => ({ ...setlist, songs: reorderSetlistSong(setlist.songs, song.id, 1) }))}>↓</button>
+                            <button
+                              type="button"
+                              className="btn ghost danger"
+                              aria-label={`Remove ${song.name}`}
+                              onClick={() => {
+                                setExpandedSongId((current) => (current === song.id ? null : current));
+                                updateSelected((setlist) => ({ ...setlist, songs: setlist.songs.filter((candidate) => candidate.id !== song.id) }));
+                              }}
+                            >
+                              <Icon name="deleteOutline" />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              aria-expanded={isOpen}
+                              aria-label={`${isOpen ? "Collapse" : "Expand"} ${song.name}`}
+                              onClick={() => setExpandedSongId(isOpen ? null : song.id)}
+                            >
+                              <Icon name={isOpen ? "chevronDown" : "chevronRight"} />
+                            </button>
+                          </div>
+                        </div>
+                        {isOpen ? (
+                          <div className="setlist-song-body">
+                            <section className="setlist-song-section" aria-label="Music guide">
+                              <SetlistSongMusicEditor
+                                song={song}
+                                onChange={(nextSong) =>
+                                  updateSong(song.id, () => nextSong)
+                                }
+                              />
+                            </section>
+                            <section className="setlist-song-section" aria-label="Memory change triggers">
+                              <strong className="setlist-song-section-title">Triggers</strong>
+                              <div className="setlist-automation">
+                                <MidiActionList title="Before memory change" actions={song.beforeChange} onAdd={() => addAction(song.id, "beforeChange")} onChange={(actionId, patch) => updateAction(song.id, "beforeChange", actionId, patch)} onMove={(actionId, direction) => moveAction(song.id, "beforeChange", actionId, direction)} onRemove={(actionId) => updateSong(song.id, (current) => ({ ...current, beforeChange: current.beforeChange.filter((action) => action.id !== actionId) }))} />
+                                <MidiActionList title="After memory change" actions={song.afterChange} onAdd={() => addAction(song.id, "afterChange")} onChange={(actionId, patch) => updateAction(song.id, "afterChange", actionId, patch)} onMove={(actionId, direction) => moveAction(song.id, "afterChange", actionId, direction)} onRemove={(actionId) => updateSong(song.id, (current) => ({ ...current, afterChange: current.afterChange.filter((action) => action.id !== actionId) }))} />
+                              </div>
+                            </section>
+                          </div>
+                        ) : null}
+                      </div>
+                      );
+                    })}
+                    {!selected.songs.length ? <p className="playlist-empty">No songs yet.</p> : null}
+                </div>
                 <div className="playlist-add-row">
                   <label className="playlist-field">
                     <span>Song name</span>
@@ -789,69 +860,11 @@ export function SetlistPanel({
                   </label>
                   <button type="button" className="btn" onClick={addSong}>Add song</button>
                 </div>
-                <div className="playlist-edit-list">
-                  {selected.songs.map((song, index) => (
-                    <div className="setlist-song-editor" key={song.id}>
-                      <div className="playlist-edit-item">
-                        <span className="playlist-live-index">{String(index + 1).padStart(2, "0")}</span>
-                        <input aria-label={`Song ${index + 1} name`} value={song.name} onChange={(event) => updateSong(song.id, (current) => ({ ...current, name: event.target.value.slice(0, 80) }))} />
-                        <select
-                          aria-label={`Memory for ${song.name}`}
-                          value={song.memorySlot}
-                          onChange={(event) => {
-                            const memorySlot = Number(event.target.value);
-                            updateSong(song.id, (current) => ({ ...current, memorySlot, memoryName: memoryBySlot.get(memorySlot) ?? "" }));
-                          }}
-                        >
-                          {Array.from({ length: 99 }, (_, slot) => slot + 1).map((slot) => (
-                            <option key={slot} value={slot}>{String(slot).padStart(2, "0")} {memoryBySlot.get(slot) ?? ""}</option>
-                          ))}
-                        </select>
-                        <div className="playlist-reorder">
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            aria-expanded={expandedSongIds.has(song.id)}
-                            aria-label={`${expandedSongIds.has(song.id) ? "Collapse" : "Expand"} ${song.name}`}
-                            onClick={() =>
-                              setExpandedSongIds((current) => {
-                                const next = new Set(current);
-                                if (next.has(song.id)) next.delete(song.id);
-                                else next.add(song.id);
-                                return next;
-                              })
-                            }
-                          >
-                            <Icon name={expandedSongIds.has(song.id) ? "chevronDown" : "chevronRight"} />
-                          </button>
-                          <button type="button" className="btn ghost" aria-label={`Move ${song.name} up`} disabled={index === 0} onClick={() => updateSelected((setlist) => ({ ...setlist, songs: reorderSetlistSong(setlist.songs, song.id, -1) }))}>↑</button>
-                          <button type="button" className="btn ghost" aria-label={`Move ${song.name} down`} disabled={index === selected.songs.length - 1} onClick={() => updateSelected((setlist) => ({ ...setlist, songs: reorderSetlistSong(setlist.songs, song.id, 1) }))}>↓</button>
-                          <button type="button" className="btn ghost danger" aria-label={`Remove ${song.name}`} onClick={() => updateSelected((setlist) => ({ ...setlist, songs: setlist.songs.filter((candidate) => candidate.id !== song.id) }))}><Icon name="deleteOutline" /></button>
-                        </div>
-                      </div>
-                      {expandedSongIds.has(song.id) ? (
-                        <>
-                          <SetlistSongMusicEditor
-                            song={song}
-                            onChange={(nextSong) =>
-                              updateSong(song.id, () => nextSong)
-                            }
-                          />
-                          <div className="setlist-automation">
-                            <MidiActionList title="Before memory change" actions={song.beforeChange} onAdd={() => addAction(song.id, "beforeChange")} onChange={(actionId, patch) => updateAction(song.id, "beforeChange", actionId, patch)} onMove={(actionId, direction) => moveAction(song.id, "beforeChange", actionId, direction)} onRemove={(actionId) => updateSong(song.id, (current) => ({ ...current, beforeChange: current.beforeChange.filter((action) => action.id !== actionId) }))} />
-                            <MidiActionList title="After memory change" actions={song.afterChange} onAdd={() => addAction(song.id, "afterChange")} onChange={(actionId, patch) => updateAction(song.id, "afterChange", actionId, patch)} onMove={(actionId, direction) => moveAction(song.id, "afterChange", actionId, direction)} onRemove={(actionId) => updateSong(song.id, (current) => ({ ...current, afterChange: current.afterChange.filter((action) => action.id !== actionId) }))} />
-                          </div>
-                        </>
-                      ) : null}
-                    </div>
-                  ))}
-                  {!selected.songs.length ? <p className="playlist-empty">No songs yet.</p> : null}
-                </div>
+              </div>
+              <div className="modal-foot">
                 <button type="button" className="btn danger playlist-delete" onClick={() => setDeleteOpen(true)}>
                   <Icon name="deleteOutline" /> Delete setlist
                 </button>
-              </div>
-              <div className="modal-foot">
                 <button type="button" className="btn ghost" onClick={() => openViewer(selected.id)}>
                   <Icon name="view" /> View
                 </button>
