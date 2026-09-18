@@ -36,6 +36,12 @@ export function AlphaTabScoreViewer({
   song,
   index,
   count,
+  keepPlaying = false,
+  minimized = false,
+  onKeepPlayingChange,
+  onPlayingChange,
+  onPlaybackEnded,
+  playbackRef,
   onBack,
   onPrevious,
   onNext,
@@ -53,6 +59,12 @@ export function AlphaTabScoreViewer({
   song: SetlistSong & { music: SetlistScoreGuide };
   index: number;
   count: number;
+  keepPlaying?: boolean;
+  minimized?: boolean;
+  onKeepPlayingChange?: (keepPlaying: boolean) => void;
+  onPlayingChange?: (playing: boolean) => void;
+  onPlaybackEnded?: () => void;
+  playbackRef?: React.MutableRefObject<{ stop: () => void } | null>;
   onBack: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -78,6 +90,8 @@ export function AlphaTabScoreViewer({
     onVoiceTarget,
     onDrumNotes,
     onSilenceDrums,
+    onPlayingChange,
+    onPlaybackEnded,
   });
   callbacksRef.current = {
     onGuideChange,
@@ -85,6 +99,8 @@ export function AlphaTabScoreViewer({
     onVoiceTarget,
     onDrumNotes,
     onSilenceDrums,
+    onPlayingChange,
+    onPlaybackEnded,
   };
   const [tracks, setTracks] = useState<ScoreTrackInfo[]>([]);
   const [ready, setReady] = useState(false);
@@ -179,7 +195,15 @@ export function AlphaTabScoreViewer({
         if (cancelled) return;
         const nextPlaying = Boolean(args?.state === 1 || args?.state === "playing");
         setPlaying(nextPlaying);
+        callbacksRef.current.onPlayingChange?.(nextPlaying);
         if (!nextPlaying) callbacksRef.current.onSilenceDrums();
+      });
+      api.playerFinished.on(() => {
+        if (cancelled) return;
+        callbacksRef.current.onSilenceDrums();
+        setPlaying(false);
+        callbacksRef.current.onPlayingChange?.(false);
+        callbacksRef.current.onPlaybackEnded?.();
       });
       api.playerPositionChanged.on((args: any) => {
         if (cancelled) return;
@@ -247,6 +271,22 @@ export function AlphaTabScoreViewer({
     }
     onGuideChange({ ...guide, selectedTrackIndexes });
   };
+
+  const handleStop = () => {
+    apiRef.current?.stop();
+    callbacksRef.current.onSilenceDrums();
+    setPlaying(false);
+    callbacksRef.current.onPlayingChange?.(false);
+  };
+
+  useEffect(() => {
+    if (!playbackRef) return;
+    playbackRef.current = { stop: handleStop };
+    return () => {
+      playbackRef.current = null;
+    };
+  });
+
   const detectedDrumTrack =
     tracks.find((track) => track.index === guide.drumTrackIndex) ??
     tracks.find((track) => track.isPercussion);
@@ -258,7 +298,13 @@ export function AlphaTabScoreViewer({
   ).length;
 
   return (
-    <section className="setlist-chart-stage alphatab-stage" aria-label={`${song.name} score`}>
+    <section
+      className={`setlist-chart-stage alphatab-stage${minimized ? " is-minimized" : ""}`}
+      aria-label={`${song.name} score`}
+      aria-hidden={minimized || undefined}
+    >
+      {!minimized ? (
+        <>
       <header className="setlist-chart-stage-head">
         <button type="button" className="btn ghost" onClick={onBack}>
           <Icon name="back" /> Songs
@@ -282,7 +328,7 @@ export function AlphaTabScoreViewer({
         <button type="button" className="btn primary" disabled={!ready} onClick={() => apiRef.current?.playPause()}>
           <Icon name={playing ? "pause" : "play"} /> {playing ? "Pause" : "Play"}
         </button>
-        <button type="button" className="btn ghost" disabled={!ready} onClick={() => apiRef.current?.stop()}>
+        <button type="button" className="btn ghost" disabled={!ready} onClick={handleStop}>
           <Icon name="stop" /> Restart
         </button>
         <span>{formatTime(position)} / {formatTime(duration)}</span>
@@ -298,9 +344,16 @@ export function AlphaTabScoreViewer({
         />
         <Toggle label="Metronome" checked={guide.metronome} onChange={(metronome) => onGuideChange({ ...guide, metronome })} />
         <Toggle label="Score audio" checked={guide.scoreAudio} onChange={(scoreAudio) => onGuideChange({ ...guide, scoreAudio })} />
+        <Toggle
+          label="Keep playing"
+          checked={keepPlaying}
+          onChange={(next) => onKeepPlayingChange?.(next)}
+        />
       </div>
+        </>
+      ) : null}
 
-      {tracks.length ? (
+      {!minimized && tracks.length ? (
         <div className="alphatab-track-controls">
           <details className="alphatab-multiselect">
             <summary>Visible tracks · {guide.selectedTrackIndexes.length}</summary>
@@ -399,18 +452,20 @@ export function AlphaTabScoreViewer({
         </div>
       ) : null}
 
-      {error ? <p className="voice-tone-warning" role="alert">{error}</p> : null}
-      {!ready && !error ? <p className="playlist-status">Loading score…</p> : null}
+      {error && !minimized ? <p className="voice-tone-warning" role="alert">{error}</p> : null}
+      {!ready && !error && !minimized ? <p className="playlist-status">Loading score…</p> : null}
       <div className="alphatab-scroll" ref={scrollRef}>
         <div className="alphatab-host" ref={hostRef} />
       </div>
 
-      {children}
+      {!minimized ? children : null}
 
+      {!minimized ? (
       <footer className="setlist-chart-stage-foot">
         <button type="button" className="btn ghost" onClick={onPrevious}>Previous</button>
         <button type="button" className="btn primary" onClick={onNext}>Next</button>
       </footer>
+      ) : null}
     </section>
   );
 }

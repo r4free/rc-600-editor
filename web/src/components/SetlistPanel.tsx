@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   executeSetlistSong,
   newSetlistId,
@@ -30,6 +31,32 @@ interface MemoryOption {
   name: string;
 }
 
+interface BackgroundScoreSession {
+  setlistId: string;
+  setlistName: string;
+  songId: string;
+  songName: string;
+  songIndex: number;
+}
+
+const KEEP_PLAYING_STORAGE_KEY = "rc600.setlist.keepPlaying";
+
+function readKeepPlayingPreference(): boolean {
+  try {
+    return localStorage.getItem(KEEP_PLAYING_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeKeepPlayingPreference(value: boolean): void {
+  try {
+    localStorage.setItem(KEEP_PLAYING_STORAGE_KEY, value ? "1" : "0");
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
 function briefActions(actions: readonly SetlistMidiAction[]): string {
   if (!actions.length) return "None";
   const shown = actions.slice(0, 3).map((action) => `CC${action.controller}`);
@@ -48,6 +75,8 @@ export function SetlistPanel({
   onPlayNotes,
   onSilenceDrums,
   onRequestMidi,
+  onBackgroundPlaybackChange,
+  onRequestShowSetlists,
 }: {
   midiLive: boolean;
   usbStorageActive: boolean;
@@ -59,6 +88,8 @@ export function SetlistPanel({
   onPlayNotes: (notes: readonly number[], velocity: number, down: boolean) => void;
   onSilenceDrums: () => void;
   onRequestMidi: () => void;
+  onBackgroundPlaybackChange?: (active: boolean) => void;
+  onRequestShowSetlists?: () => void;
 }) {
   const [setlists, setSetlists] = useState<Setlist[]>(() => userSetlistStore.list());
   const [selectedId, setSelectedId] = useState<string | null>(() => setlists[0]?.id ?? null);
@@ -72,8 +103,12 @@ export function SetlistPanel({
   const [status, setStatus] = useState<string | null>(null);
   const [liveChord, setLiveChord] = useState<string | null>(null);
   const [voiceTarget, setVoiceTarget] = useState<AlphaTabVoiceTarget | null>(null);
+  const [keepPlaying, setKeepPlaying] = useState(readKeepPlayingPreference);
+  const [scorePlaying, setScorePlaying] = useState(false);
+  const [backgroundSession, setBackgroundSession] = useState<BackgroundScoreSession | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const runTokenRef = useRef(0);
+  const scorePlaybackRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     if (selectedId && setlists.some((setlist) => setlist.id === selectedId)) return;
@@ -88,6 +123,109 @@ export function SetlistPanel({
     () => new Map(memories.map((memory) => [memory.slot, memory.name])),
     [memories],
   );
+
+  const backgroundActive = Boolean(backgroundSession);
+  useEffect(() => {
+    onBackgroundPlaybackChange?.(backgroundActive);
+  }, [backgroundActive, onBackgroundPlaybackChange]);
+
+  const playbackTarget = useMemo(() => {
+    if (!backgroundSession) return null;
+    const setlist = setlists.find((item) => item.id === backgroundSession.setlistId);
+    if (!setlist) return null;
+    const songIndex = setlist.songs.findIndex((song) => song.id === backgroundSession.songId);
+    const song = songIndex >= 0 ? setlist.songs[songIndex] : null;
+    if (!song || song.music?.kind !== "score") return null;
+    return {
+      setlist,
+      song: song as SetlistSong & { music: SetlistScoreGuide },
+      songIndex,
+    };
+  }, [backgroundSession, setlists]);
+
+  const viewingScore =
+    viewerOpen &&
+    activeSong?.music?.kind === "score" &&
+    activeSong.music.liveView !== "scroll";
+
+  const scoreSong = viewingScore
+    ? (activeSong as SetlistSong & { music: SetlistScoreGuide })
+    : playbackTarget?.song ?? null;
+  const scoreSetlistName = viewingScore
+    ? selected!.name
+    : playbackTarget?.setlist.name ?? "";
+  const scoreIndex = viewingScore
+    ? activeIndex
+    : playbackTarget?.songIndex ?? 0;
+  const scoreCount = viewingScore
+    ? selected!.songs.length
+    : playbackTarget?.setlist.songs.length ?? 0;
+  const scoreMinimized = Boolean(scoreSong) && !viewingScore;
+
+  function clearBackgroundSession() {
+    setBackgroundSession(null);
+  }
+
+  function captureBackgroundSession(
+    setlist: Setlist,
+    song: SetlistSong,
+    songIndex: number,
+  ) {
+    setBackgroundSession({
+      setlistId: setlist.id,
+      setlistName: setlist.name,
+      songId: song.id,
+      songName: song.name,
+      songIndex,
+    });
+  }
+
+  function handleScorePlayingChange(playing: boolean) {
+    setScorePlaying(playing);
+    if (playing && keepPlaying && selected && activeSong?.music?.kind === "score") {
+      captureBackgroundSession(selected, activeSong, activeIndex);
+    }
+  }
+
+  function handleKeepPlayingChange(next: boolean) {
+    setKeepPlaying(next);
+    writeKeepPlayingPreference(next);
+    if (!next) {
+      clearBackgroundSession();
+      return;
+    }
+    if (scorePlaying && selected && activeSong?.music?.kind === "score") {
+      captureBackgroundSession(selected, activeSong, activeIndex);
+    }
+  }
+
+  function closeLiveView() {
+    if (keepPlaying && scorePlaying && selected && activeSong?.music?.kind === "score") {
+      captureBackgroundSession(selected, activeSong, activeIndex);
+      setViewerOpen(false);
+      return;
+    }
+    if (!keepPlaying && scorePlaying) {
+      scorePlaybackRef.current?.stop();
+      clearBackgroundSession();
+    }
+    runTokenRef.current++;
+    setViewerOpen(false);
+  }
+
+  function restoreBackgroundViewer() {
+    if (!backgroundSession) return;
+    onRequestShowSetlists?.();
+    setSelectedId(backgroundSession.setlistId);
+    setActiveIndex(backgroundSession.songIndex);
+    setEditorOpen(false);
+    setViewerOpen(true);
+  }
+
+  function stopBackgroundPlayback() {
+    scorePlaybackRef.current?.stop();
+    clearBackgroundSession();
+  }
 
   function commit(next: Setlist[]) {
     userSetlistStore.replace(next);
@@ -245,8 +383,7 @@ export function SetlistPanel({
     if (!viewerOpen || !selected?.songs.length) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        runTokenRef.current++;
-        setViewerOpen(false);
+        closeLiveView();
         return;
       }
       const target = event.target as HTMLElement | null;
@@ -392,6 +529,72 @@ export function SetlistPanel({
           <p className="playlist-empty">No setlists yet. Create one to start arranging songs.</p>
         )}
 
+        {scoreSong ? (
+          <AlphaTabScoreViewer
+            key={scoreSong.id}
+            setlistName={scoreSetlistName}
+            song={scoreSong}
+            index={scoreIndex}
+            count={scoreCount}
+            minimized={scoreMinimized}
+            keepPlaying={keepPlaying}
+            onKeepPlayingChange={handleKeepPlayingChange}
+            onPlayingChange={handleScorePlayingChange}
+            onPlaybackEnded={clearBackgroundSession}
+            playbackRef={scorePlaybackRef}
+            onBack={() => {
+              if (keepPlaying && scorePlaying) {
+                if (selected && scoreSong) {
+                  captureBackgroundSession(
+                    selected.id === backgroundSession?.setlistId
+                      ? selected
+                      : setlists.find((item) => item.id === backgroundSession?.setlistId) ?? selected,
+                    scoreSong,
+                    scoreIndex,
+                  );
+                }
+                setActiveIndex(-1);
+                return;
+              }
+              if (!keepPlaying && scorePlaying) {
+                scorePlaybackRef.current?.stop();
+                clearBackgroundSession();
+              }
+              setActiveIndex(-1);
+            }}
+            onPrevious={() => void runSong(scoreIndex - 1)}
+            onNext={() => void runSong(scoreIndex + 1)}
+            onGuideChange={(music) =>
+              updateSong(scoreSong.id, (song) => ({ ...song, music }))
+            }
+            onSwitchToChart={scoreSong.music.scrollGuide
+              ? () => updateSong(scoreSong.id, (song) => ({
+                  ...song,
+                  music: song.music?.kind === "score"
+                    ? { ...song.music, liveView: "scroll" }
+                    : song.music,
+                }))
+              : undefined}
+            onCurrentChord={setLiveChord}
+            onVoiceTarget={setVoiceTarget}
+            midiLive={midiLive}
+            onDrumNotes={onPlayNotes}
+            onSilenceDrums={onSilenceDrums}
+            onRequestMidi={onRequestMidi}
+          >
+            {!scoreMinimized && scoreSong.voiceToneMatch?.enabled && scoreSong.music.key ? (
+              <VoiceToneMonitor
+                key={scoreSong.id}
+                targetKey={transposeKeyRoot(scoreSong.music.key, scoreSong.music.transpose)}
+                mode={scoreSong.music.mode}
+                blocked={usbStorageActive}
+                currentChord={liveChord}
+                targetNote={voiceTarget}
+              />
+            ) : null}
+          </AlphaTabScoreViewer>
+        ) : null}
+
         {viewerOpen && selected ? (
           activeSong?.music?.kind === "score" &&
           activeSong.music.liveView === "scroll" &&
@@ -439,45 +642,7 @@ export function SetlistPanel({
                 />
               ) : null}
             </SetlistChartViewer>
-          ) : activeSong?.music?.kind === "score" ? (
-            <AlphaTabScoreViewer
-              setlistName={selected.name}
-              song={activeSong as SetlistSong & { music: SetlistScoreGuide }}
-              index={activeIndex}
-              count={selected.songs.length}
-              onBack={() => setActiveIndex(-1)}
-              onPrevious={() => void runSong(activeIndex - 1)}
-              onNext={() => void runSong(activeIndex + 1)}
-              onGuideChange={(music) =>
-                updateSong(activeSong.id, (song) => ({ ...song, music }))
-              }
-              onSwitchToChart={activeSong.music.scrollGuide
-                ? () => updateSong(activeSong.id, (song) => ({
-                    ...song,
-                    music: song.music?.kind === "score"
-                      ? { ...song.music, liveView: "scroll" }
-                      : song.music,
-                  }))
-                : undefined}
-              onCurrentChord={setLiveChord}
-              onVoiceTarget={setVoiceTarget}
-              midiLive={midiLive}
-              onDrumNotes={onPlayNotes}
-              onSilenceDrums={onSilenceDrums}
-              onRequestMidi={onRequestMidi}
-            >
-              {activeSong.voiceToneMatch?.enabled && activeSong.music.key ? (
-                <VoiceToneMonitor
-                  key={activeSong.id}
-                  targetKey={transposeKeyRoot(activeSong.music.key, activeSong.music.transpose)}
-                  mode={activeSong.music.mode}
-                  blocked={usbStorageActive}
-                  currentChord={liveChord}
-                  targetNote={voiceTarget}
-                />
-              ) : null}
-            </AlphaTabScoreViewer>
-          ) : activeSong?.music?.kind === "scroll" ? (
+          ) : activeSong?.music?.kind === "score" ? null : activeSong?.music?.kind === "scroll" ? (
             <SetlistChartViewer
               setlistName={selected.name}
               song={activeSong as SetlistSong & { music: SetlistScrollGuide }}
@@ -509,10 +674,7 @@ export function SetlistPanel({
                 <span className="playlist-eyebrow">Live Setlist</span>
                 <h2>{selected.name}</h2>
               </div>
-              <button type="button" className="btn ghost" onClick={() => {
-                runTokenRef.current++;
-                setViewerOpen(false);
-              }}>Close view</button>
+              <button type="button" className="btn ghost" onClick={closeLiveView}>Close view</button>
             </div>
             {selected.songs.length ? (
             <>
@@ -554,6 +716,35 @@ export function SetlistPanel({
           </section>
           )
         ) : null}
+
+        {backgroundSession && scoreMinimized
+          ? createPortal(
+              <div className="setlist-mini-player" role="status">
+                <button
+                  type="button"
+                  className="setlist-mini-player-main"
+                  onClick={restoreBackgroundViewer}
+                  aria-label={`Return to ${backgroundSession.songName}`}
+                >
+                  <Icon name={scorePlaying ? "pause" : "playCircle"} />
+                  <span>
+                    <strong>{backgroundSession.songName}</strong>
+                    <small>{backgroundSession.setlistName}</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost setlist-mini-player-stop"
+                  aria-label="Stop score playback"
+                  onClick={stopBackgroundPlayback}
+                >
+                  <Icon name="stop" />
+                </button>
+              </div>,
+              document.body,
+            )
+          : null}
+
         {status ? <p className="playlist-status" role="status">{status}</p> : null}
 
         {editorOpen && selected ? (

@@ -180,6 +180,7 @@ export function App() {
   const [drafts, setDrafts] = useState<DraftMap>(() => new Map());
   const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS);
   const [workspace, setWorkspace] = usePersistedTab<Workspace>("workspace", "memory", WORKSPACES);
+  const [setlistBackground, setSetlistBackground] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -1550,19 +1551,27 @@ export function App() {
                 currentSlot={slot}
                 onSelectMemory={recallMemoryBySlot}
               />
-            ) : workspace === "setlists" ? (
-              <SetlistPanel
-                midiLive={Boolean(connected) && !hasDirHandle}
-                usbStorageActive={hasDirHandle}
-                memories={[]}
-                currentSlot={slot}
-                defaultMidiChannel={midiCh + 1}
-                onRecallMemory={changeSetlistMemory}
-                onSendControlChange={sendSetlistControlChange}
-                onPlayNotes={playDrumNotes}
-                onSilenceDrums={silenceRhythm}
-                onRequestMidi={() => void requestMidi(true)}
-              />
+            ) : workspace === "setlists" || setlistBackground ? (
+              <div
+                className="setlist-panel-host"
+                hidden={workspace !== "setlists"}
+                aria-hidden={workspace !== "setlists"}
+              >
+                <SetlistPanel
+                  midiLive={Boolean(connected) && !hasDirHandle}
+                  usbStorageActive={hasDirHandle}
+                  memories={[]}
+                  currentSlot={slot}
+                  defaultMidiChannel={midiCh + 1}
+                  onRecallMemory={changeSetlistMemory}
+                  onSendControlChange={sendSetlistControlChange}
+                  onPlayNotes={playDrumNotes}
+                  onSilenceDrums={silenceRhythm}
+                  onRequestMidi={() => void requestMidi(true)}
+                  onBackgroundPlaybackChange={setSetlistBackground}
+                  onRequestShowSetlists={() => setWorkspace("setlists")}
+                />
+              </div>
             ) : workspace === "system" ? (
               <div className="empty-state">
                 <h2>Open the ROLAND folder to edit System</h2>
@@ -1726,19 +1735,27 @@ export function App() {
                 currentSlot={slot}
                 onSelectMemory={recallMemoryBySlot}
               />
-            ) : workspace === "setlists" ? (
-              <SetlistPanel
-                midiLive={Boolean(connected) && !hasDirHandle}
-                usbStorageActive={hasDirHandle}
-                memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
-                currentSlot={slot}
-                defaultMidiChannel={midiCh + 1}
-                onRecallMemory={changeSetlistMemory}
-                onSendControlChange={sendSetlistControlChange}
-                onPlayNotes={playDrumNotes}
-                onSilenceDrums={silenceRhythm}
-                onRequestMidi={() => void requestMidi(true)}
-              />
+            ) : workspace === "setlists" || setlistBackground ? (
+              <div
+                className="setlist-panel-host"
+                hidden={workspace !== "setlists"}
+                aria-hidden={workspace !== "setlists"}
+              >
+                <SetlistPanel
+                  midiLive={Boolean(connected) && !hasDirHandle}
+                  usbStorageActive={hasDirHandle}
+                  memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
+                  currentSlot={slot}
+                  defaultMidiChannel={midiCh + 1}
+                  onRecallMemory={changeSetlistMemory}
+                  onSendControlChange={sendSetlistControlChange}
+                  onPlayNotes={playDrumNotes}
+                  onSilenceDrums={silenceRhythm}
+                  onRequestMidi={() => void requestMidi(true)}
+                  onBackgroundPlaybackChange={setSetlistBackground}
+                  onRequestShowSetlists={() => setWorkspace("setlists")}
+                />
+              </div>
             ) : workspace === "memory" ? (
               <div className="memory-layout">
                 <aside className="sidebar">

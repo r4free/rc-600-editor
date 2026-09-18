@@ -3832,6 +3832,80 @@ body:has(.setlist-viewer) {
   min-height: 100%;
 }
 
+.alphatab-stage.is-minimized {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 800px;
+  height: 600px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.setlist-panel-host[hidden] {
+  display: none !important;
+}
+
+.setlist-mini-player {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  border: 1px solid var(--line);
+  background: var(--bg-chain);
+  padding: 0.45rem 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.setlist-mini-player-main {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.15rem 0.25rem;
+}
+
+.setlist-mini-player-main span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.setlist-mini-player-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.setlist-mini-player-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.setlist-mini-player-stop {
+  flex-shrink: 0;
+  min-width: 2.2rem;
+  padding-inline: 0.45rem;
+}
+
 .alphatab-stage .at-cursor-bar {
   background: rgba(32, 178, 170, 0.2);
 }
