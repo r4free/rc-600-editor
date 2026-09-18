@@ -247,6 +247,7 @@ describe("setlist", () => {
       ),
     };
     const bundle = createSetlistTransfer([withMusic]);
+    assert.equal(bundle.type, "boss-setlists");
     assert.equal(bundle.version, 4);
     const parsed = parseSetlistTransfer(JSON.parse(JSON.stringify(bundle)));
     assert.equal(parsed.setlists[0]?.songs[0]?.beforeChange.length, 1);
@@ -264,6 +265,16 @@ describe("setlist", () => {
       version: 2,
       exportedAt: "2026-01-01T00:00:00.000Z",
       setlists: { version: 2, setlists: [setlist] },
+    });
+    assert.equal(parsed.setlists[0]?.songs[0]?.name, "Opening Song");
+  });
+
+  it("accepts a boss-setlists transfer bundle", () => {
+    const parsed = parseSetlistTransfer({
+      type: "boss-setlists",
+      version: 4,
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      setlists: { version: 4, setlists: [setlist] },
     });
     assert.equal(parsed.setlists[0]?.songs[0]?.name, "Opening Song");
   });

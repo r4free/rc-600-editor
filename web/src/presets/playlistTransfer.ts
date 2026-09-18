@@ -17,7 +17,7 @@ export interface SetlistTransferAsset {
 }
 
 export interface SetlistTransferBundle {
-  type: "rc600-setlists";
+  type: "boss-setlists" | "rc600-setlists";
   version: 4;
   exportedAt: string;
   setlists: ReturnType<typeof serializeSetlistCatalog>;
@@ -29,9 +29,11 @@ export interface ParsedSetlistTransfer {
   assets?: ScoreAsset[];
 }
 
+const TRANSFER_TYPES = new Set(["boss-setlists", "rc600-setlists"]);
+
 export function createSetlistTransfer(setlists: readonly Setlist[]): SetlistTransferBundle {
   return {
-    type: "rc600-setlists",
+    type: "boss-setlists",
     version: 4,
     exportedAt: new Date().toISOString(),
     setlists: serializeSetlistCatalog(setlists),
@@ -50,7 +52,8 @@ export function parseSetlistTransfer(raw: unknown): ParsedSetlistTransfer {
     setlists?: unknown;
   };
   if (
-    bundle.type !== "rc600-setlists" ||
+    typeof bundle.type !== "string" ||
+    !TRANSFER_TYPES.has(bundle.type) ||
     (bundle.version !== 2 && bundle.version !== 3 && bundle.version !== 4)
   ) {
     throw new Error("Unsupported setlist file");

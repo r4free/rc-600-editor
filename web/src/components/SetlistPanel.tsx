@@ -257,7 +257,7 @@ export function SetlistPanel({
       const url = URL.createObjectURL(new Blob([new Uint8Array(archive)], { type: "application/zip" }));
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `rc600-setlists-${new Date().toISOString().slice(0, 10)}.zip`;
+      anchor.download = `boss-setlists-${new Date().toISOString().slice(0, 10)}.zip`;
       anchor.click();
       URL.revokeObjectURL(url);
       setStatus(`Exported ${setlists.length} setlist${setlists.length === 1 ? "" : "s"}`);
