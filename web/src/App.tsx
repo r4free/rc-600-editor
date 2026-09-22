@@ -30,11 +30,23 @@ import { copyTrackWavFolder } from "@rc600/files/wave";
 import {
   assembleRemote,
   ejectUsbStorage,
+  fetchEntitlements,
   fetchSession,
   fetchUsbStatus,
   lockSession,
+  revokePlanDevice,
   type SessionInfo,
 } from "./api";
+import {
+  ensureDeviceId,
+  featureUnlocked,
+  initialEntitlements,
+  normalizeEntitlements,
+  readStoredPlanKey,
+  writeStoredPlanKey,
+  type ClientEntitlements,
+} from "./entitlements";
+import { FullPlanUnlock, type UnlockSubmitResult } from "./components/FullPlanUnlock";
 import { MidiBar } from "./components/MidiBar";
 import { IosMidiNotice } from "./components/IosMidiNotice";
 import { LoopTab } from "./components/LoopTab";
@@ -181,6 +193,9 @@ export function App() {
   const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS);
   const [workspace, setWorkspace] = usePersistedTab<Workspace>("workspace", "memory", WORKSPACES);
   const [setlistBackground, setSetlistBackground] = useState(false);
+  const [entitlements, setEntitlements] = useState<ClientEntitlements>(initialEntitlements);
+  const [hasStoredPlanKey, setHasStoredPlanKey] = useState(() => Boolean(readStoredPlanKey()));
+  const allowSetlists = featureUnlocked(entitlements, "setlists");
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -227,6 +242,120 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchEntitlements()
+      .then((data) => {
+        if (!cancelled) {
+          setEntitlements(normalizeEntitlements(data));
+          setHasStoredPlanKey(Boolean(readStoredPlanKey()));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setEntitlements(initialEntitlements());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!allowSetlists && setlistBackground) setSetlistBackground(false);
+  }, [allowSetlists, setlistBackground]);
+
+  const refreshEntitlements = useCallback(async () => {
+    try {
+      const data = await fetchEntitlements();
+      setEntitlements(normalizeEntitlements(data));
+      setHasStoredPlanKey(Boolean(readStoredPlanKey()));
+    } catch {
+      setEntitlements(initialEntitlements());
+    }
+  }, []);
+
+  const onSubmitFullPlanKey = useCallback(async (key: string): Promise<UnlockSubmitResult> => {
+    ensureDeviceId();
+    const trimmed = key.trim() || readStoredPlanKey();
+    if (!trimmed) {
+      return { ok: false, reason: "invalid_key", message: "That access key is not valid" };
+    }
+    writeStoredPlanKey(trimmed);
+    setHasStoredPlanKey(true);
+    const data = await fetchEntitlements();
+    const next = normalizeEntitlements(data);
+    setEntitlements(next);
+
+    if (next.unlocked || next.features.setlists) {
+      return { ok: true, entitlements: next };
+    }
+
+    if (next.keyValid && next.deviceLimitReached) {
+      return {
+        ok: false,
+        reason: "device_limit",
+        message:
+          "This access key is already used on 3 devices. Remove one below to free a seat for this browser.",
+        devices: next.devices,
+        entitlements: next,
+      };
+    }
+
+    writeStoredPlanKey("");
+    setHasStoredPlanKey(false);
+    return {
+      ok: false,
+      reason: "invalid_key",
+      message: "That access key is not valid",
+      entitlements: next,
+    };
+  }, []);
+
+  const onRevokePlanDevice = useCallback(async (deviceId: string): Promise<UnlockSubmitResult> => {
+    ensureDeviceId();
+    try {
+      const res = await revokePlanDevice(deviceId);
+      const next = normalizeEntitlements(res.entitlements);
+      setEntitlements(next);
+      if (!res.ok) {
+        return {
+          ok: false,
+          reason: "other",
+          message: res.error || "Could not remove device",
+          devices: next.devices,
+          entitlements: next,
+        };
+      }
+      return { ok: true, entitlements: next };
+    } catch (e) {
+      return {
+        ok: false,
+        reason: "other",
+        message: String(e instanceof Error ? e.message : e),
+      };
+    }
+  }, []);
+
+  const onForgetThisDevice = useCallback(async () => {
+    const deviceId = ensureDeviceId();
+    try {
+      if (readStoredPlanKey()) {
+        await revokePlanDevice(deviceId);
+      }
+    } catch {
+      /* still clear locally */
+    }
+    writeStoredPlanKey("");
+    setHasStoredPlanKey(false);
+    setEntitlements(initialEntitlements());
+    await refreshEntitlements();
+  }, [refreshEntitlements]);
+
+  const onClearFullPlanKey = useCallback(async () => {
+    writeStoredPlanKey("");
+    setHasStoredPlanKey(false);
+    await refreshEntitlements();
+  }, [refreshEntitlements]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1441,6 +1570,16 @@ export function App() {
               Clear license
             </button>
           ) : null}
+          <FullPlanUnlock
+            unlocked={entitlements.unlocked}
+            hasStoredKey={hasStoredPlanKey}
+            devices={entitlements.devices}
+            maxDevices={entitlements.maxDevices}
+            onSubmitKey={onSubmitFullPlanKey}
+            onRevokeDevice={onRevokePlanDevice}
+            onForgetThisDevice={onForgetThisDevice}
+            onClearKeyFromBrowser={onClearFullPlanKey}
+          />
           <span className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}>
             {rootLabel ?? "no folder"}
             {session.license
@@ -1515,7 +1654,8 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "setlists"}
-                className={`tab ${workspace === "setlists" ? "active" : ""}`}
+                className={`tab ${workspace === "setlists" ? "active" : ""}${!allowSetlists ? " locked" : ""}`}
+                title={!allowSetlists ? "Setlists require Full plan" : undefined}
                 onClick={() => setWorkspace("setlists")}
               >
                 <Icon name="scene" size={14} />
@@ -1551,26 +1691,46 @@ export function App() {
                 currentSlot={slot}
                 onSelectMemory={recallMemoryBySlot}
               />
-            ) : workspace === "setlists" || setlistBackground ? (
+            ) : workspace === "setlists" || (allowSetlists && setlistBackground) ? (
               <div
                 className="setlist-panel-host"
                 hidden={workspace !== "setlists"}
                 aria-hidden={workspace !== "setlists"}
               >
-                <SetlistPanel
-                  midiLive={Boolean(connected) && !hasDirHandle}
-                  usbStorageActive={hasDirHandle}
-                  memories={[]}
-                  currentSlot={slot}
-                  defaultMidiChannel={midiCh + 1}
-                  onRecallMemory={changeSetlistMemory}
-                  onSendControlChange={sendSetlistControlChange}
-                  onPlayNotes={playDrumNotes}
-                  onSilenceDrums={silenceRhythm}
-                  onRequestMidi={() => void requestMidi(true)}
-                  onBackgroundPlaybackChange={setSetlistBackground}
-                  onRequestShowSetlists={() => setWorkspace("setlists")}
-                />
+                {allowSetlists ? (
+                  <SetlistPanel
+                    midiLive={Boolean(connected) && !hasDirHandle}
+                    usbStorageActive={hasDirHandle}
+                    memories={[]}
+                    currentSlot={slot}
+                    defaultMidiChannel={midiCh + 1}
+                    onRecallMemory={changeSetlistMemory}
+                    onSendControlChange={sendSetlistControlChange}
+                    onPlayNotes={playDrumNotes}
+                    onSilenceDrums={silenceRhythm}
+                    onRequestMidi={() => void requestMidi(true)}
+                    onBackgroundPlaybackChange={setSetlistBackground}
+                    onRequestShowSetlists={() => setWorkspace("setlists")}
+                  />
+                ) : (
+                  <div className="full-plan-gate">
+                    <h2>Setlists — Full plan</h2>
+                    <p>
+                      Setlists, live charts, and score guides are part of the Full plan. Unlock with your access key
+                      (up to 3 browsers per key), or support via GitHub Sponsors.
+                    </p>
+                    <FullPlanUnlock
+                      unlocked={entitlements.unlocked}
+                      hasStoredKey={hasStoredPlanKey}
+                      devices={entitlements.devices}
+                      maxDevices={entitlements.maxDevices}
+                      onSubmitKey={onSubmitFullPlanKey}
+                      onRevokeDevice={onRevokePlanDevice}
+                      onForgetThisDevice={onForgetThisDevice}
+                      onClearKeyFromBrowser={onClearFullPlanKey}
+                    />
+                  </div>
+                )}
               </div>
             ) : workspace === "system" ? (
               <div className="empty-state">
@@ -1681,7 +1841,8 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "setlists"}
-                className={`tab ${workspace === "setlists" ? "active" : ""}`}
+                className={`tab ${workspace === "setlists" ? "active" : ""}${!allowSetlists ? " locked" : ""}`}
+                title={!allowSetlists ? "Setlists require Full plan" : undefined}
                 onClick={() => setWorkspace("setlists")}
               >
                 <Icon name="scene" size={14} />
@@ -1735,26 +1896,46 @@ export function App() {
                 currentSlot={slot}
                 onSelectMemory={recallMemoryBySlot}
               />
-            ) : workspace === "setlists" || setlistBackground ? (
+            ) : workspace === "setlists" || (allowSetlists && setlistBackground) ? (
               <div
                 className="setlist-panel-host"
                 hidden={workspace !== "setlists"}
                 aria-hidden={workspace !== "setlists"}
               >
-                <SetlistPanel
-                  midiLive={Boolean(connected) && !hasDirHandle}
-                  usbStorageActive={hasDirHandle}
-                  memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
-                  currentSlot={slot}
-                  defaultMidiChannel={midiCh + 1}
-                  onRecallMemory={changeSetlistMemory}
-                  onSendControlChange={sendSetlistControlChange}
-                  onPlayNotes={playDrumNotes}
-                  onSilenceDrums={silenceRhythm}
-                  onRequestMidi={() => void requestMidi(true)}
-                  onBackgroundPlaybackChange={setSetlistBackground}
-                  onRequestShowSetlists={() => setWorkspace("setlists")}
-                />
+                {allowSetlists ? (
+                  <SetlistPanel
+                    midiLive={Boolean(connected) && !hasDirHandle}
+                    usbStorageActive={hasDirHandle}
+                    memories={summaries.map((s) => ({ slot: s.slot, name: s.name }))}
+                    currentSlot={slot}
+                    defaultMidiChannel={midiCh + 1}
+                    onRecallMemory={changeSetlistMemory}
+                    onSendControlChange={sendSetlistControlChange}
+                    onPlayNotes={playDrumNotes}
+                    onSilenceDrums={silenceRhythm}
+                    onRequestMidi={() => void requestMidi(true)}
+                    onBackgroundPlaybackChange={setSetlistBackground}
+                    onRequestShowSetlists={() => setWorkspace("setlists")}
+                  />
+                ) : (
+                  <div className="full-plan-gate">
+                    <h2>Setlists — Full plan</h2>
+                    <p>
+                      Setlists, live charts, and score guides are part of the Full plan. Unlock with your access key
+                      (up to 3 browsers per key), or support via GitHub Sponsors.
+                    </p>
+                    <FullPlanUnlock
+                      unlocked={entitlements.unlocked}
+                      hasStoredKey={hasStoredPlanKey}
+                      devices={entitlements.devices}
+                      maxDevices={entitlements.maxDevices}
+                      onSubmitKey={onSubmitFullPlanKey}
+                      onRevokeDevice={onRevokePlanDevice}
+                      onForgetThisDevice={onForgetThisDevice}
+                      onClearKeyFromBrowser={onClearFullPlanKey}
+                    />
+                  </div>
+                )}
               </div>
             ) : workspace === "memory" ? (
               <div className="memory-layout">

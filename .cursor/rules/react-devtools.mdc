@@ -1,0 +1,10 @@
+---
+description: Use React DevTools MCP when debugging the running editor UI
+alwaysApply: true
+---
+
+# React DevTools MCP (local editor UI)
+
+When inspecting or debugging the **running** editor UI (wrong state, missing updates, re-renders, live props/hooks), use MCP namespace `user-react-devtools`. Discover tools, call `connect`, then inspect the component tree. Do not guess runtime state from source if the app is up.
+
+Vite injects the backend in **dev only** (`/__react-devtools` → `127.0.0.1:8097`). Production builds do not include it. The MCP must be running in Cursor (port 8097).

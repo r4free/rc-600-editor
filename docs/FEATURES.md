@@ -1,6 +1,6 @@
 # RC-600 Editor — Feature registry / Registro de funcionalidades
 
-**Version:** pre-release · **Updated:** 2026-09-18
+**Version:** pre-release · **Updated:** 2026-09-21
 
 Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature-registry.mdc`).
 
@@ -12,7 +12,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - Horizontal editor tabs and English-only UI (see Cursor rules).
 - Links to sibling VG / GM / GT / TONEX editors.
 - On iPhone/iPad browsers without Web MIDI, a dismissible warning recommends opening the site in **Web MIDI Browser** (App Store), and MIDI Connect is enabled when that API is present.
-- **Setlists:** each setlist card has icon-only **Edit** and **View**. Clicking the card (or View) opens live view; Edit opens that setlist alone. New / Import / Export sit in the panel header. In Edit, songs list first with **Add song** below; only one song expands at a time; expanded songs show Music guide and Triggers in nested panels; **Delete setlist** sits in the modal footer.
+- **Setlists (Full plan):** live charts, score guides, and setlist editing unlock with a Full plan access key (up to 3 browsers per key). The rest of the editor stays free. Local development unlocks Setlists without a key. Setlists already saved in this browser are kept and return when unlocked.
 - **Keep playing** on alphaTab scores (opt-in): audio keeps going after you close the live viewer or leave Setlists. A floating mini-player shows the song on any screen and restores the viewer; the toggle is remembered in this browser. Stop, turning Keep playing off, or the end of the piece clears the session (playback itself does not resume after a full page reload).
 
 ### Partial
@@ -22,6 +22,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 ### Known limitations
 
 - Safari and Chrome on iOS do not expose Web MIDI; live pedal control needs Web MIDI Browser (or a desktop Chrome/Edge session).
+- On the public hosted site, Setlists need a Full plan key; without it the Setlists tab shows the unlock panel.
 
 ## PT
 
@@ -31,7 +32,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - Abas horizontais e UI só em inglês (ver Cursor rules).
 - Links para os editores irmãos VG / GM / GT / TONEX.
 - Em iPhone/iPad sem Web MIDI, um aviso dispensável recomenda abrir o site no **Web MIDI Browser** (App Store), e o Connect MIDI é liberado quando essa API existe.
-- **Setlists:** cada card tem **Edit** e **View** só com ícone. Clicar no card (ou em View) abre a view ao vivo; Edit abre só aquela setlist. New / Import / Export ficam no cabeçalho. No Edit, as músicas listam primeiro com **Add song** abaixo; só uma música expande por vez; abertas mostram Music guide e Triggers em painéis internos; **Delete setlist** fica no footer do modal.
+- **Setlists (plano Full):** charts ao vivo, partituras e edição de setlist desbloqueiam com uma chave do plano Full (até 3 navegadores por chave). O restante do editor continua grátis. No desenvolvimento local, Setlists ficam liberados sem chave. Setlists já salvos neste navegador são mantidos e voltam ao desbloquear.
 - **Keep playing** nas partituras alphaTab (opcional): o áudio continua depois de fechar a view ao vivo ou sair de Setlists. Um mini-player flutuante mostra a música em qualquer tela e restaura o viewer; o toggle fica lembrado neste navegador. Stop, desligar Keep playing ou o fim da peça limpam a sessão (a reprodução em si não retoma após um reload completo).
 
 ### Parcial
@@ -41,8 +42,14 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 ### Limitações conhecidas
 
 - Safari e Chrome no iOS não expõem Web MIDI; o controle ao vivo do pedal exige o Web MIDI Browser (ou Chrome/Edge no computador).
+- No site público hospedado, Setlists pedem chave do plano Full; sem ela a aba mostra o painel de desbloqueio.
 
 ## Changelog
+
+### 2026-09-21
+
+- **EN:** Setlists are a Full plan feature (same unlock model as the GM-800): editor stays free; unlock with an access key bound to up to 3 browsers. Local development keeps Setlists on.
+- **PT:** Setlists passam a ser recurso do plano Full (mesmo modelo de desbloqueio do GM-800): o editor continua grátis; desbloqueio com chave em até 3 navegadores. No desenvolvimento local, Setlists seguem liberados.
 
 ### 2026-09-18
 

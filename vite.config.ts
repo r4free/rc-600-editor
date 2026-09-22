@@ -2,9 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { alphaTab } from "@coderline/alphatab-vite";
 import { resolve } from "node:path";
+import { reactDevtoolsMcp } from "./vite-react-devtools-mcp";
 
 export default defineConfig({
-  plugins: [react(), alphaTab()],
+  plugins: [reactDevtoolsMcp(), react(), alphaTab()],
   root: "web",
   publicDir: resolve(__dirname, "web/public"),
   resolve: {

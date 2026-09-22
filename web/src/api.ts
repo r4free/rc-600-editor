@@ -1,4 +1,5 @@
 import type { AssembleRequest, AssembleResponse } from "@rc600/rc0/ops";
+import { planKeyHeaders } from "./entitlements";
 
 const viteEnv =
   typeof import.meta !== "undefined"
@@ -9,6 +10,7 @@ const viteEnv =
             VITE_GT_EDITOR_URL?: string;
             VITE_VG_EDITOR_URL?: string;
             VITE_RC_EDITOR_URL?: string;
+            VITE_GR_EDITOR_URL?: string;
             VITE_TONEX_EDITOR_URL?: string;
             PROD?: boolean;
           };
@@ -45,6 +47,13 @@ export const RC_EDITOR_URL = editorUrl(
   viteEnv?.VITE_RC_EDITOR_URL,
   "https://rc-600-editor.onrender.com",
   "https://rc.test",
+);
+
+/** Local Herd alias; production Render URL unless `VITE_GR_EDITOR_URL` overrides. */
+export const GR_EDITOR_URL = editorUrl(
+  viteEnv?.VITE_GR_EDITOR_URL,
+  "https://gr-55-editor.onrender.com",
+  "https://gr.test",
 );
 
 /** Local Herd alias; production Render URL unless `VITE_TONEX_EDITOR_URL` overrides. */
@@ -209,13 +218,75 @@ export interface GeneratedSetlistChart {
   durationSeconds?: number;
 }
 
+export type EntitlementsResponse = {
+  ok: boolean;
+  localDev: boolean;
+  fullPlan: boolean;
+  unlocked: boolean;
+  features: { setlists: boolean };
+  keyValid?: boolean;
+  deviceBound?: boolean;
+  deviceLimitReached?: boolean;
+  maxDevices?: number;
+  devices?: Array<{
+    id: string;
+    label: string;
+    lastSeenAt: string;
+    current: boolean;
+  }>;
+};
+
+export async function fetchEntitlements(): Promise<EntitlementsResponse> {
+  const res = await fetch("/api/entitlements", {
+    credentials: "include",
+    headers: { ...planKeyHeaders() },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return (await res.json()) as EntitlementsResponse;
+}
+
+export async function revokePlanDevice(deviceId: string): Promise<{
+  ok: boolean;
+  error?: string;
+  entitlements: EntitlementsResponse;
+}> {
+  const res = await fetch("/api/entitlements/devices/revoke", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...planKeyHeaders(),
+    },
+    body: JSON.stringify({ deviceId }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    entitlements?: EntitlementsResponse;
+  };
+  if (!res.ok || !data.entitlements) {
+    throw new Error(data.error || "Could not remove device");
+  }
+  return {
+    ok: data.ok !== false,
+    error: data.error,
+    entitlements: data.entitlements,
+  };
+}
+
 export async function generateSetlistChart(
   prompt: string,
 ): Promise<{ chart: GeneratedSetlistChart; limits: AiLimits; model: string; provider: string }> {
   const response = await fetch("/api/setlists/chart/generate", {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...planKeyHeaders(),
+    },
     body: JSON.stringify({ prompt }),
   });
   const data = await response.json().catch(() => ({})) as {

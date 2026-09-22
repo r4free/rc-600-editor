@@ -21,3 +21,6 @@
 
 - `feature-registry.mdc` — keep [FEATURES.md](./FEATURES.md) in sync
 - `restart-services.mdc` — do not kill a healthy stack
+- `react-devtools.mdc` — inspect the running UI via Cursor MCP
+
+Local Vite injects React DevTools (`/__react-devtools`) for Cursor agents. Production builds skip it. See family `shared/development.md`.

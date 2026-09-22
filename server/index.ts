@@ -27,6 +27,11 @@ import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-
 import { createNativeKitFileStore, isNativeKitWriteAllowed } from "./drum-kits.js";
 import { AiRateLimiter, serializeAiLimit } from "./ai-rate-limit.js";
 import { generateChartWithAi } from "./chart-ai.js";
+import {
+  featureAllowed,
+  resolveEntitlements,
+  revokeDeviceForRequest,
+} from "./entitlements.js";
 
 try {
   process.loadEnvFile?.();
@@ -51,6 +56,44 @@ app.get("/api/health", (c) => {
     ok: true,
     mode: requireLicenseEnabled() ? "license" : "open",
     hasDist: existsSync(resolve(process.cwd(), "dist/web")),
+    entitlements: resolveEntitlements(c.req.raw),
+  });
+});
+
+app.get("/api/entitlements", (c) => {
+  return c.json({ ok: true, ...resolveEntitlements(c.req.raw) });
+});
+
+app.post("/api/entitlements/devices/revoke", async (c) => {
+  let body: { deviceId?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      {
+        ok: false,
+        error: "Invalid JSON",
+        entitlements: resolveEntitlements(c.req.raw),
+      },
+      400,
+    );
+  }
+  const target = typeof body.deviceId === "string" ? body.deviceId.trim() : "";
+  if (!target) {
+    return c.json(
+      {
+        ok: false,
+        error: "deviceId is required",
+        entitlements: resolveEntitlements(c.req.raw),
+      },
+      400,
+    );
+  }
+  const result = revokeDeviceForRequest(c.req.raw, target);
+  return c.json({
+    ok: result.ok,
+    ...(result.error ? { error: result.error } : {}),
+    entitlements: result.entitlements,
   });
 });
 
@@ -260,6 +303,16 @@ app.get("/api/ai/limits", (c) => {
 });
 
 app.post("/api/setlists/chart/generate", async (c) => {
+  if (!featureAllowed(c.req.raw, "setlists")) {
+    return c.json(
+      {
+        ok: false,
+        error: "Setlists require Full plan (or local development)",
+        entitlements: resolveEntitlements(c.req.raw),
+      },
+      403,
+    );
+  }
   let body: { prompt?: unknown };
   try {
     body = await c.req.json();
