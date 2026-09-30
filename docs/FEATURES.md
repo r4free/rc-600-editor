@@ -1,6 +1,6 @@
 # RC-600 Editor — Feature registry / Registro de funcionalidades
 
-**Version:** pre-release · **Updated:** 2026-09-21
+**Version:** pre-release · **Updated:** 2026-09-30
 
 Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature-registry.mdc`).
 
@@ -8,6 +8,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Shipped
 
+- **User guide:** the Guide link opens an English beginner walkthrough in a new tab, with real editor screenshots, all main tabs and sub-tabs, file/MIDI workflows, troubleshooting, light/dark themes and browser printing to PDF.
 - Memory / looper oriented web editor for the Boss RC-600.
 - Horizontal editor tabs and English-only UI (see Cursor rules).
 - Links to sibling VG / GM / GT / TONEX editors.
@@ -28,6 +29,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Entregue
 
+- **Guia de uso:** o link Guide abre em nova aba um passo a passo em inglês para iniciantes, com capturas reais do editor, abas e subabas, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro e impressão em PDF pelo navegador.
 - Editor web orientado a memória / looper para o Boss RC-600.
 - Abas horizontais e UI só em inglês (ver Cursor rules).
 - Links para os editores irmãos VG / GM / GT / TONEX.
@@ -45,6 +47,11 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - No site público hospedado, Setlists pedem chave do plano Full; sem ela a aba mostra o painel de desbloqueio.
 
 ## Changelog
+
+### 2026-09-30
+
+- **EN:** Added the RC-600 user guide and top-bar Guide link, following the GM-800 guide design with device-specific instructions and screenshots.
+- **PT:** Adicionados o guia do RC-600 e o link Guide no topo, seguindo o visual do guia GM-800 com instruções e capturas específicas deste editor.
 
 ### 2026-09-21
 

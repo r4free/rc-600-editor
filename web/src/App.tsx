@@ -1448,6 +1448,9 @@ export function App() {
           </div>
         </div>
         <div className="topbar-actions">
+          <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
+            <Icon name="help" size={14} /> Guide
+          </a>
           <button
             type="button"
             className="btn primary"
