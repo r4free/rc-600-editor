@@ -10,9 +10,12 @@ services:
         value: production
       - key: RC600_SESSION_SECRET
         generateValue: true
-      # Leave unset/false for public beta. Set to "1" to require license keys.
+      # Paid editor: activation page until a license key is accepted.
       - key: RC600_REQUIRE_LICENSE
-        value: "0"
+        value: "1"
+      # Secret key from the Stripe account that owns the payment link. Not the GitHub Sponsors account.
+      - key: STRIPE_SECRET_KEY
+        sync: false
       # Set this secret to the same value used by the VG-800 editor.
       - key: OPENAI_API_KEY
         sync: false

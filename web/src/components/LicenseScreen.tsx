@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { STRIPE_PAYMENT_LINK } from "@rc600/buy-link";
 import { activateLicense, type SessionInfo } from "../api";
 import { Icon } from "./Icon";
 
@@ -23,10 +24,10 @@ export function LicenseScreen({ onActivated }: { onActivated: (session: SessionI
   return (
     <div className="empty-state editor-panel unlock-panel">
       <h2>Enter license key</h2>
-      <p>
-        This build requires a license to save memories and system settings. Editing on screen still
-        works without one.
-      </p>
+      <p>Enter your license key to open the RC-600 editor. After payment, the key is sent by email.</p>
+      <a className="unlock-buy" href={STRIPE_PAYMENT_LINK}>
+        Buy license
+      </a>
       <form className="unlock-form" onSubmit={(e) => void submit(e)}>
         <label className="param-label" htmlFor="license-key">
           License key
@@ -47,6 +48,11 @@ export function LicenseScreen({ onActivated }: { onActivated: (session: SessionI
           {busy ? "Checking…" : "Activate"}
         </button>
       </form>
+      <p>
+        <a href="./guia.html" target="_blank" rel="noopener noreferrer">
+          Guide
+        </a>
+      </p>
     </div>
   );
 }

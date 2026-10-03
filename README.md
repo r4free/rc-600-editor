@@ -19,24 +19,24 @@ Sobe a API em **http://127.0.0.1:5191** e o Vite em **http://127.0.0.1:5190** (p
 
 O select da barra superior abre o VG-800, GM-800 ou TONEX Pedal (`https://vg.test` / `https://gm.test` / `https://tonex-pedal-editor.test` no local; `https://vg-800-editor.onrender.com` / `https://gm-800-editor.onrender.com` / `https://tonex-pedal-editor.onrender.com` em produção).
 
-**Modo público (padrão):** assemble aberto, sem tela de unlock. Ideal enquanto divulga o beta.
+**Desenvolvimento local:** com `RC600_REQUIRE_LICENSE=1` no `.env`, o Vite e a API pedem a mesma chave do site hospedado. Sem cookie de sessão, a tela de ativação aparece. Com a chave, o editor abre.
 
-## License keys (quando quiser fechar)
+## License keys (editor pago)
 
 ```bash
 # gera uma key de teste (14 dias)
 npm run license:create -- --days 14 --note "beta alice"
 ```
 
-As keys vão hasheadas em `data/licenses.json` (gitignored). Formato: `RC600-XXXX-XXXX-XXXX`.
+As keys vão hasheadas em `data/licenses.json` (gitignored). Formato: `RC600-XXXX-XXXX-XXXX`. No Render, esse arquivo precisa existir no serviço — ele não entra no git.
 
-Para **exigir** license no Save:
+No servidor que entrega o site (`npm start` com a flag), a primeira tela é só a ativação. HTML, JavaScript, guia e o restante do editor só saem depois que a chave cria a sessão.
 
 ```bash
 RC600_REQUIRE_LICENSE=1 RC600_SESSION_SECRET=… npm start
 ```
 
-Com a flag ligada, a UI pede a key e a sessão respeita a data de expiração.
+No `.env` local, `RC600_REQUIRE_LICENSE=1` faz o Vite e a API usarem essa tela. Gere a chave na mesma pasta do projeto, porque a validação lê `data/licenses.json` daqui.
 
 ## Produção (Render)
 
@@ -52,7 +52,7 @@ Ou use o [`render.yaml`](render.yaml) do repo.
 ```bash
 npm run build
 RC600_SESSION_SECRET=… npm start
-# opcional: RC600_REQUIRE_LICENSE=1
+# RC600_REQUIRE_LICENSE=1  (ligado no render.yaml)
 ```
 
 O processo escuta `0.0.0.0:$PORT` e serve `dist/web` + `/api`. Web MIDI precisa de HTTPS (ou localhost).
@@ -61,7 +61,7 @@ Copiar só a pasta estática **não** basta: Save/Copy exigem a API.
 
 ## Fluxo
 
-1. Abrir o editor (público) ou ativar license (se `RC600_REQUIRE_LICENSE=1`)
+1. No site hospedado, informar a license key na tela de ativação. No desenvolvimento local, abrir o editor direto.
 2. Backup da pasta `ROLAND` do looper
 3. **Abrir pasta** (ou ZIP) no editor
 4. Edite tracks / FX / ASSIGN / system (local, instantâneo)

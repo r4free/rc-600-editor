@@ -9,7 +9,7 @@ import {
   type LicensePublic,
 } from "./licenses.js";
 
-const COOKIE = "rc600_session";
+export const SESSION_COOKIE = "rc600_session";
 const MAX_AGE_SEC = 60 * 60 * 24 * 7; // 7 days
 
 function secret(): string {
@@ -55,7 +55,7 @@ export function verifyLicenseSessionToken(
 }
 
 export function setSessionCookie(c: Context, token: string): void {
-  setCookie(c, COOKIE, token, {
+  setCookie(c, SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "Lax",
     path: "/",
@@ -65,7 +65,7 @@ export function setSessionCookie(c: Context, token: string): void {
 }
 
 export function clearSessionCookie(c: Context): void {
-  deleteCookie(c, COOKIE, { path: "/" });
+  deleteCookie(c, SESSION_COOKIE, { path: "/" });
 }
 
 export type SessionInfo = {
@@ -80,7 +80,7 @@ export function readSessionInfo(c: Context): SessionInfo {
   if (!requireLicense) {
     return { ok: true, mode: "open", requireLicense: false, license: null };
   }
-  const verified = verifyLicenseSessionToken(getCookie(c, COOKIE));
+  const verified = verifyLicenseSessionToken(getCookie(c, SESSION_COOKIE));
   if (!verified) {
     return { ok: false, mode: "license", requireLicense: true, license: null };
   }

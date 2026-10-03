@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { AssembleRequest } from "../src/rc0/ops.js";
@@ -27,11 +27,15 @@ import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-
 import { createNativeKitFileStore, isNativeKitWriteAllowed } from "./drum-kits.js";
 import { AiRateLimiter, serializeAiLimit } from "./ai-rate-limit.js";
 import { generateChartWithAi } from "./chart-ai.js";
+import { resolveEntitlements, revokeDeviceForRequest } from "./entitlements.js";
 import {
-  featureAllowed,
-  resolveEntitlements,
-  revokeDeviceForRequest,
-} from "./entitlements.js";
+  activationPageHtml,
+  appShellAllowed,
+  decidePaidShell,
+  isFormActivation,
+  isPublicApiPath,
+} from "./shell-gate.js";
+import { fulfillStripeCheckout, paidLicensePageHtml } from "./stripe-license.js";
 
 try {
   process.loadEnvFile?.();
@@ -39,6 +43,13 @@ try {
   /* Environment variables may be supplied directly by the host. */
 }
 const app = new Hono();
+
+app.use("/api/*", async (c, next) => {
+  if (!requireLicenseEnabled()) return next();
+  if (isPublicApiPath(c.req.path)) return next();
+  return requireAccess(c, next);
+});
+
 const aiLimiter = new AiRateLimiter();
 const nativePresetStore = createNativePresetFileStore(
   resolve(process.cwd(), "web/public/play-drum/presets.json"),
@@ -97,9 +108,11 @@ app.post("/api/entitlements/devices/revoke", async (c) => {
   });
 });
 
-/** Activate a license key (only meaningful when RC600_REQUIRE_LICENSE is on). */
+/** Activate a license key. A browser form gets the activation page or a redirect; JSON clients keep the API shape. */
 app.post("/api/license", async (c) => {
+  const form = isFormActivation(c.req.header("content-type"));
   if (!requireLicenseEnabled()) {
+    if (form) return c.redirect("/", 303);
     return c.json({
       ok: true,
       mode: "open" as const,
@@ -108,25 +121,54 @@ app.post("/api/license", async (c) => {
       message: "Public mode — license not required",
     });
   }
-  let body: { key?: string };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON" }, 400);
+  let key = "";
+  if (form) {
+    try {
+      const body = await c.req.parseBody();
+      key = typeof body.key === "string" ? body.key : "";
+    } catch {
+      c.header("Cache-Control", "no-store");
+      return c.html(activationPageHtml("Invalid or expired license key"), 401);
+    }
+  } else {
+    let body: { key?: string };
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON" }, 400);
+    }
+    key = String(body.key ?? "");
   }
-  const key = String(body.key ?? "");
   const lic = findValidLicense(key);
   if (!lic) {
+    if (form) {
+      c.header("Cache-Control", "no-store");
+      return c.html(activationPageHtml("Invalid or expired license key"), 401);
+    }
     return c.json({ error: "Invalid or expired license key" }, 401);
   }
   const token = createLicenseSessionToken(lic.id, lic.expiresAt);
   setSessionCookie(c, token);
+  if (form) return c.redirect("/", 303);
   return c.json({
     ok: true,
     mode: "license" as const,
     requireLicense: true,
     license: licensePublic(lic),
   });
+});
+
+/** Stripe redirects here after checkout. The session id is checked with Stripe before a key is issued. */
+app.get("/api/license/paid", async (c) => {
+  const sessionId = c.req.query("session_id")?.trim() ?? "";
+  const result = await fulfillStripeCheckout(sessionId);
+  c.header("Cache-Control", "no-store");
+  c.header("X-Content-Type-Options", "nosniff");
+  if (result.ok) {
+    setSessionCookie(c, createLicenseSessionToken(result.licenseId, result.expiresAt));
+  }
+  const status = result.ok ? 200 : result.status;
+  return c.html(paidLicensePageHtml(result, sessionId), status);
 });
 
 app.post("/api/lock", (c) => {
@@ -303,16 +345,6 @@ app.get("/api/ai/limits", (c) => {
 });
 
 app.post("/api/setlists/chart/generate", async (c) => {
-  if (!featureAllowed(c.req.raw, "setlists")) {
-    return c.json(
-      {
-        ok: false,
-        error: "Setlists require Full plan (or local development)",
-        entitlements: resolveEntitlements(c.req.raw),
-      },
-      403,
-    );
-  }
   let body: { prompt?: unknown };
   try {
     body = await c.req.json();
@@ -392,17 +424,32 @@ app.post("/api/assemble", requireAccess, async (c) => {
 });
 
 const distWeb = resolve(process.cwd(), "dist/web");
-if (existsSync(distWeb)) {
-  // Never let the SPA catch /api/* — assemble must hit the JSON handlers above.
-  app.use("*", async (c, next) => {
-    if (c.req.path.startsWith("/api")) return next();
-    return serveStatic({ root: distWeb })(c, next);
-  });
-  app.get("*", async (c, next) => {
-    if (c.req.path.startsWith("/api")) return next();
-    return serveStatic({ root: distWeb, path: "index.html" })(c, next);
-  });
+
+function sendShellGate(c: Context) {
+  const decision = decidePaidShell(c.req.path, appShellAllowed(c.req.header("cookie")));
+  if (decision.action === "next") return null;
+  c.header("Cache-Control", "no-store");
+  c.header("X-Content-Type-Options", "nosniff");
+  if (decision.action === "page") return c.html(decision.html, 200);
+  return c.body(null, 404);
 }
+
+// Never let the SPA catch /api/* — assemble must hit the JSON handlers above.
+// Without a license session the activation page is the only document; editor files stay on the server.
+app.use("*", async (c, next) => {
+  if (c.req.path.startsWith("/api")) return next();
+  const gated = sendShellGate(c);
+  if (gated) return gated;
+  if (!existsSync(distWeb)) return next();
+  return serveStatic({ root: distWeb })(c, next);
+});
+app.get("*", async (c, next) => {
+  if (c.req.path.startsWith("/api")) return next();
+  const gated = sendShellGate(c);
+  if (gated) return gated;
+  if (!existsSync(distWeb)) return next();
+  return serveStatic({ root: distWeb, path: "index.html" })(c, next);
+});
 
 const port = Number(process.env.PORT || 5191);
 const hostname = process.env.HOST || "0.0.0.0";

@@ -3,9 +3,16 @@ import react from "@vitejs/plugin-react";
 import { alphaTab } from "@coderline/alphatab-vite";
 import { resolve } from "node:path";
 import { reactDevtoolsMcp } from "./vite-react-devtools-mcp";
+import { paidShellPlugin } from "./vite-paid-shell";
+
+try {
+  process.loadEnvFile?.();
+} catch {
+  /* Optional .env; the API process loads the same file. */
+}
 
 export default defineConfig({
-  plugins: [reactDevtoolsMcp(), react(), alphaTab()],
+  plugins: [paidShellPlugin(), reactDevtoolsMcp(), react(), alphaTab()],
   root: "web",
   publicDir: resolve(__dirname, "web/public"),
   resolve: {
