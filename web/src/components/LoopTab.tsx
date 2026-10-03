@@ -1,3 +1,4 @@
+import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { usePersistedTab } from "../uiTabs";
 import {
   PLAY_ALL_START_BITS,
@@ -12,6 +13,7 @@ import {
   rhythmPatternOptions,
   setBit,
 } from "@rc600/catalog/params";
+import type { TrackInputBit } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
@@ -37,6 +39,137 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
 }
 
 export type PatchHandler = (ops: PatchOp | PatchOp[]) => void;
+
+export function paintTrackRange(
+  mask: number,
+  items: TrackInputBit[],
+  fromIndex: number,
+  toIndex: number,
+  on: boolean,
+): number {
+  const start = Math.min(fromIndex, toIndex);
+  const end = Math.max(fromIndex, toIndex);
+  let nextMask = mask;
+  for (let index = start; index <= end; index += 1) {
+    const item = items[index];
+    if (item) nextMask = setBit(nextMask, item.bit, on);
+  }
+  return nextMask;
+}
+
+function TrackPaintButtons({
+  items,
+  mask,
+  onChange,
+  ariaLabel,
+}: {
+  items: TrackInputBit[];
+  mask: number;
+  onChange: (mask: number) => void;
+  ariaLabel: string;
+}) {
+  const dragRef = useRef<{
+    pointerId: number;
+    paintOn: boolean;
+    mask: number;
+    lastIndex: number;
+  } | null>(null);
+
+  function buttonIndexAt(clientX: number, clientY: number): number | null {
+    const element = document.elementFromPoint(clientX, clientY);
+    const button = element?.closest<HTMLElement>("[data-track-paint-index]");
+    const index = Number(button?.dataset.trackPaintIndex);
+    return Number.isInteger(index) ? index : null;
+  }
+
+  function finishDrag(e: ReactPointerEvent<HTMLDivElement>) {
+    if (dragRef.current?.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }
+
+  return (
+    <div
+      className="track-paint-grid"
+      role="group"
+      aria-label={ariaLabel}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        const index = buttonIndexAt(e.clientX, e.clientY);
+        if (index === null) return;
+        const item = items[index];
+        if (!item) return;
+
+        e.preventDefault();
+        const paintOn = !bitOn(mask, item.bit);
+        const nextMask = setBit(mask, item.bit, paintOn);
+        dragRef.current = {
+          pointerId: e.pointerId,
+          paintOn,
+          mask: nextMask,
+          lastIndex: index,
+        };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        onChange(nextMask);
+      }}
+      onPointerMove={(e) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== e.pointerId) return;
+        const index = buttonIndexAt(e.clientX, e.clientY);
+        if (index === null || index === drag.lastIndex) return;
+
+        const nextMask = paintTrackRange(
+          drag.mask,
+          items,
+          drag.lastIndex,
+          index,
+          drag.paintOn,
+        );
+        drag.mask = nextMask;
+        drag.lastIndex = index;
+        onChange(nextMask);
+      }}
+      onPointerUp={finishDrag}
+      onPointerCancel={finishDrag}
+      onClick={(e) => {
+        const button = (e.target as HTMLElement).closest<HTMLElement>(
+          "[data-track-paint-index]",
+        );
+        if (!button) return;
+        if (e.detail > 0) {
+          e.preventDefault();
+          return;
+        }
+        const index = Number(button.dataset.trackPaintIndex);
+        const item = items[index];
+        if (item) onChange(setBit(mask, item.bit, !bitOn(mask, item.bit)));
+      }}
+    >
+      {items.map((item, index) => {
+        const on = bitOn(mask, item.bit);
+        return (
+          <div className="track-paint-item" key={item.bit}>
+            <div className="track-paint-help">
+              <InfoTip label={item.name} text={item.info} />
+            </div>
+            <button
+              type="button"
+              className={`track-paint-button${on ? " is-on" : ""}`}
+              data-track-paint-index={index}
+              aria-pressed={on}
+              aria-label={`${item.name}: ${on ? "ON" : "OFF"}`}
+            >
+              <span className="track-paint-name">{item.name}</span>
+              <span className="track-paint-state">{on ? "ON" : "OFF"}</span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function LoopTab({
   model,
@@ -201,57 +334,37 @@ export function LoopTab({
               />
             ))}
           </div>
-          <h3 className="section-title">All Start</h3>
-          <div className="param-columns">
-            {PLAY_ALL_START_BITS.map((inp) => {
-              const mask = num(model.play, "D", 0);
-              return (
-                <ParamControl
-                  key={inp.bit}
-                  id={`play-start-${inp.bit}`}
-                  def={{
-                    tag: "D",
-                    name: inp.name,
-                    kind: "bool",
-                    info: inp.info,
-                  }}
-                  value={bitOn(mask, inp.bit) ? 1 : 0}
-                  onChange={(v) =>
-                    onPatch({
-                      type: "section",
-                      section: "PLAY",
-                      tags: { D: String(setBit(mask, inp.bit, Boolean(v))) },
-                    })
-                  }
-                />
-              );
-            })}
-          </div>
-          <h3 className="section-title">All Stop</h3>
-          <div className="param-columns">
-            {PLAY_ALL_STOP_BITS.map((inp) => {
-              const mask = num(model.play, "E", 0);
-              return (
-                <ParamControl
-                  key={inp.bit}
-                  id={`play-stop-${inp.bit}`}
-                  def={{
-                    tag: "E",
-                    name: inp.name,
-                    kind: "bool",
-                    info: inp.info,
-                  }}
-                  value={bitOn(mask, inp.bit) ? 1 : 0}
-                  onChange={(v) =>
-                    onPatch({
-                      type: "section",
-                      section: "PLAY",
-                      tags: { E: String(setBit(mask, inp.bit, Boolean(v))) },
-                    })
-                  }
-                />
-              );
-            })}
+          <div className="track-paint-sections">
+            <section className="track-paint-section">
+              <h3 className="section-title">All Start</h3>
+              <TrackPaintButtons
+                items={PLAY_ALL_START_BITS}
+                mask={num(model.play, "D", 0)}
+                ariaLabel="All Start tracks"
+                onChange={(mask) =>
+                  onPatch({
+                    type: "section",
+                    section: "PLAY",
+                    tags: { D: String(mask) },
+                  })
+                }
+              />
+            </section>
+            <section className="track-paint-section">
+              <h3 className="section-title">All Stop</h3>
+              <TrackPaintButtons
+                items={PLAY_ALL_STOP_BITS}
+                mask={num(model.play, "E", 0)}
+                ariaLabel="All Stop tracks"
+                onChange={(mask) =>
+                  onPatch({
+                    type: "section",
+                    section: "PLAY",
+                    tags: { E: String(mask) },
+                  })
+                }
+              />
+            </section>
           </div>
         </>
       ) : null}

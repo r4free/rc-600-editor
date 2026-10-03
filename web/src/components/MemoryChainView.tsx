@@ -12,6 +12,7 @@ import type { MemoryModel } from "@rc600/rc0/memory";
 import { fxSlotSection } from "@rc600/catalog/params";
 import { readUiTab, saveUiTab, usePersistedTab } from "../uiTabs";
 import { Icon } from "./Icon";
+import { Rc600Model } from "./Rc600Model";
 import type { PatchHandler } from "./LoopTab";
 import { chainFocusFor } from "./chainFocus";
 import {
@@ -183,6 +184,7 @@ export function MemoryChainBar({
   onJumpTab: (tab: string) => void;
 }) {
   const [visible, setVisible] = usePersistedTab("memory.chain", "off", CHAIN_VIS);
+  const [modelVisible, setModelVisible] = usePersistedTab("memory.model3d", "off", CHAIN_VIS);
   const [zoom, setZoom] = usePersistedTab("memory.chainZoom", 1, ZOOM_PRESETS);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -312,6 +314,17 @@ export function MemoryChainBar({
           <Icon name="chain" size={14} />
           Chain
         </button>
+        <button
+          type="button"
+          className={`tone-view-btn${modelVisible === "on" ? " active" : ""}`}
+          aria-expanded={modelVisible === "on"}
+          aria-controls="memory-model3d"
+          title={modelVisible === "on" ? "Hide 3D model" : "Show 3D model"}
+          onClick={() => setModelVisible(modelVisible === "on" ? "off" : "on")}
+        >
+          <Icon name="board" size={14} />
+          3D Model
+        </button>
         {visible === "on" ? (
           <div className="memory-chain-zoom" role="group" aria-label="Chain zoom">
             <button
@@ -336,6 +349,10 @@ export function MemoryChainBar({
             </button>
           </div>
         ) : null}
+      </div>
+
+      <div id="memory-model3d" hidden={modelVisible !== "on"}>
+        {modelVisible === "on" ? <Rc600Model /> : null}
       </div>
 
       {visible === "on" && graph && model ? (

@@ -1,0 +1,20 @@
+.rc3 { color: var(--text); background: var(--bg-chain); padding: 12px 16px; margin: 0; border-bottom: 1px solid var(--line); container-type: inline-size; }
+.rc3 * { box-sizing: border-box; }
+.rc3-camera { display: flex; flex-wrap: wrap; gap: 8px; }
+.rc3 button { color: var(--text); background: var(--bg-panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; font: inherit; font-size: .75rem; }
+.rc3 button:hover { color: var(--accent); }
+.rc3 button:focus-visible, .rc3-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rc3-stage { height: 290px; display: grid; place-items: center; perspective: 1500px; overflow: hidden; touch-action: none; cursor: grab; background: radial-gradient(ellipse, var(--bg-panel) 0, var(--bg-chain) 70%); }
+.rc3-stage:active { cursor: grabbing; }
+.rc3 .hint { margin: 8px 0; }
+.rc3-fit { width: 640px; height: 280px; transform-style: preserve-3d; }
+.rc3-body { position: relative; width: 640px; height: 280px; transform-style: preserve-3d; }
+.rc3-face { position: absolute; backface-visibility: hidden; }
+.rc3-panel { width: 640px; height: 280px; transform: translateZ(45px); background-size: 122% 253.5%; background-position: 50% 51.4%; background-color: #bd1622; }
+.rc3-rear { width: 640px; height: 82px; top: -41px; transform: translateZ(4px) rotateX(90deg); background-size: 118% 781%; background-position: 50% 50.8%; background-color: #bc1723; }
+.rc3-front { width: 640px; height: 32px; top: 264px; transform: translateZ(29px) rotateX(-90deg); background: #88121b; }
+.rc3-side { width: 82px; height: 280px; top: 0; background: linear-gradient(90deg,#101219,#333a43); clip-path: polygon(0 0,100% 0,100% 100%,61% 100%); }
+.rc3-left { left: -41px; transform: translateZ(4px) rotateY(-90deg); }.rc3-right { right: -41px; transform: translateZ(4px) rotateY(90deg); clip-path: polygon(0 0,100% 0,39% 100%,0 100%); }
+.rc3-bottom { width: 640px; height: 284px; transform: translateZ(-16px) rotateX(180deg) rotateX(10deg); background: #191c22; }
+@container (max-width: 750px) { .rc3-fit { transform: scale(.68); } }
+@container (max-width: 480px) { .rc3-fit { transform: scale(.44); } }

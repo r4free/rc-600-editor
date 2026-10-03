@@ -105,6 +105,7 @@ import {
 } from "./presets/memoryDrafts";
 import { usePersistedTab } from "./uiTabs";
 import { MemoryChainBar } from "./components/MemoryChainView";
+import { NavigationBreadcrumb } from "./components/NavigationBreadcrumb";
 import type { SetlistMidiAction } from "./presets/playlist";
 
 const WORKSPACES = ["memory", "system", "play-drum", "setlists", "tuner"] as const;
@@ -1258,7 +1259,6 @@ export function App() {
           <div className="topbar-start">
             <div className="brand">
               <PlatformSelect current="rc-600" />
-              <div className="brand-sub">memories · system · Web MIDI</div>
             </div>
           </div>
         </header>
@@ -1299,7 +1299,6 @@ export function App() {
                 onChannel={setMidiCh}
               />
             </div>
-            <div className="brand-sub">memories · system · Web MIDI</div>
           </div>
         </div>
         <div className="topbar-actions">
@@ -1379,42 +1378,47 @@ export function App() {
               Connect to USB
             </button>
           )}
-          <button
-            type="button"
-            className="btn warn"
-            disabled={!dirty || !slot || saving}
-            onClick={() => void saveCurrent()}
+          <div
+            className={`topbar-save-actions${anyMemoryDirty || sysDirty ? " has-pending" : ""}`}
+            aria-label="Save and discard changes"
           >
-            <Icon name="save" size={14} />
-            Save memory
-          </button>
-          <button
-            type="button"
-            className="btn warn"
-            disabled={!anyMemoryDirty || saving}
-            onClick={() => void saveAll()}
-          >
-            <Icon name="save" size={14} />
-            Save all
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            disabled={!dirty || !slot || saving}
-            onClick={discardMemory}
-          >
-            <Icon name="restore" size={14} />
-            Discard memory
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            disabled={!anyMemoryDirty || saving}
-            onClick={() => setDiscardAllOpen(true)}
-          >
-            <Icon name="restore" size={14} />
-            Discard all
-          </button>
+            <button
+              type="button"
+              className="btn warn"
+              disabled={!dirty || !slot || saving}
+              onClick={() => void saveCurrent()}
+            >
+              <Icon name="save" size={14} />
+              Save memory
+            </button>
+            <button
+              type="button"
+              className="btn warn"
+              disabled={!anyMemoryDirty || saving}
+              onClick={() => void saveAll()}
+            >
+              <Icon name="save" size={14} />
+              Save all
+            </button>
+            <button
+              type="button"
+              className="btn ghost discard-action"
+              disabled={!dirty || !slot || saving}
+              onClick={discardMemory}
+            >
+              <Icon name="restore" size={14} />
+              Discard memory
+            </button>
+            <button
+              type="button"
+              className="btn ghost discard-action"
+              disabled={!anyMemoryDirty || saving}
+              onClick={() => setDiscardAllOpen(true)}
+            >
+              <Icon name="restore" size={14} />
+              Discard all
+            </button>
+          </div>
           {requireLicense ? (
             <button
               type="button"
@@ -1428,14 +1432,28 @@ export function App() {
               Clear license
             </button>
           ) : null}
-          <span className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}>
+          <span
+            className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
+            {dirty || sysDirty ? (
+              <span className="unsaved-indicator">
+                <Icon name="dirty" size={11} />
+                Unsaved changes
+              </span>
+            ) : anyMemoryDirty ? (
+              <span className="unsaved-indicator">
+                <Icon name="dirty" size={11} />
+                Unsaved memories
+              </span>
+            ) : null}
             {rootLabel ?? "no folder"}
             {session.license
               ? ` · license until ${session.license.expiresAt.slice(0, 10)}`
               : session.mode === "open"
                 ? " · public"
                 : ""}
-            {dirty || sysDirty ? " · dirty" : anyMemoryDirty ? " · unsaved memories" : ""}
             {status ? ` · ${status}` : ""}
           </span>
         </div>
@@ -1519,6 +1537,7 @@ export function App() {
                 Tuner
               </button>
             </div>
+            <NavigationBreadcrumb />
             {workspace === "tuner" ? (
               <TunerTab
                 usbStorageActive={hasDirHandle}
@@ -1702,6 +1721,7 @@ export function App() {
               ) : null}
             </div>
 
+            <NavigationBreadcrumb />
             {workspace === "tuner" ? (
               <TunerTab
                 usbStorageActive={hasDirHandle}
