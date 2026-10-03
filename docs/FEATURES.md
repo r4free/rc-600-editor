@@ -8,7 +8,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Shipped
 
-- **Paid activation:** on the hosted site, the first screen asks for a license key, links to Stripe Checkout to buy one, and links to the user guide. The key is sent by email after the payment. The editor pages and scripts stay on the server until that key is accepted. The guide itself can be opened from that screen. Local development still opens the editor without a key.
+- **Paid activation:** on the hosted site, a welcoming first screen introduces the editor's memory, backup/MIDI, and performance tools; returning users can enter a license key, while new users can open Stripe Checkout or explore the user guide. The key is sent by email after payment. The editor pages and scripts stay on the server until that key is accepted. Local development still opens the editor without a key.
 - **User guide:** the Guide link opens an English beginner walkthrough in a new tab, with real editor screenshots, all main tabs and sub-tabs, file/MIDI workflows, troubleshooting, light/dark themes and browser printing to PDF.
 - Memory / looper oriented web editor for the Boss RC-600.
 - Horizontal editor tabs and English-only UI (see Cursor rules).
@@ -30,7 +30,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Entregue
 
-- **Ativação paga:** no site hospedado, a primeira tela pede a chave de licença, leva ao Stripe Checkout para comprar uma, e tem o link do guia. A chave é enviada por e-mail depois do pagamento. Páginas e scripts do editor ficam no servidor até a chave ser aceita. O guia em si abre a partir dessa tela. No desenvolvimento local, o editor ainda abre sem chave.
+- **Ativação paga:** no site hospedado, uma tela inicial mais acolhedora apresenta os recursos de memórias, backup/MIDI e performance do editor; quem já comprou informa a chave, enquanto novos usuários podem abrir o Stripe Checkout ou conhecer o guia. A chave é enviada por e-mail depois do pagamento. Páginas e scripts do editor ficam no servidor até a chave ser aceita. No desenvolvimento local, o editor ainda abre sem chave.
 - **Guia de uso:** o link Guide abre em nova aba um passo a passo em inglês para iniciantes, com capturas reais do editor, abas e subabas, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro e impressão em PDF pelo navegador.
 - Editor web orientado a memória / looper para o Boss RC-600.
 - Abas horizontais e UI só em inglês (ver Cursor rules).
@@ -52,6 +52,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### 2026-10-03
 
+- **EN:** The activation screen now introduces the editor's main workflows, clearly separates returning users from new buyers, and uses a responsive two-column layout with a direct user-guide link.
+- **PT:** A tela de ativação agora apresenta os principais fluxos do editor, separa claramente quem já tem licença de quem vai comprar e usa um layout responsivo em duas colunas com acesso direto ao guia.
 - **EN:** The activation page has a Buy license button that opens Stripe Checkout. The license key is sent by email after the payment, not shown on a return page.
 - **PT:** A página de ativação tem o botão Buy license, que abre o Stripe Checkout. A chave de licença é enviada por e-mail depois do pagamento, e não aparece numa página de retorno.
 - **EN:** The early-development banner at the top of the editor is gone.

@@ -16,7 +16,7 @@ type FulfillmentFile = {
 
 export type FulfillResult =
   | { ok: true; key: string; licenseId: string; expiresAt: string }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: 400 | 402 | 502 | 503; error: string };
 
 export function stripePaymentLink(): string {
   const override = process.env.RC600_STRIPE_PAYMENT_LINK?.trim();

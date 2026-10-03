@@ -43,10 +43,11 @@ describe("shell gate", () => {
 
   it("keeps activation HTML free of editor scripts", () => {
     const html = activationPageHtml('bad <script>alert("x")</script>');
-    assert.match(html, /Enter license key/);
+    assert.match(html, /Your RC-600, easier to organize/);
+    assert.match(html, /Shape every memory/);
     assert.match(html, /action="\/api\/license"/);
     assert.match(html, /href="\/guia.html"/);
-    assert.match(html, /Buy license/);
+    assert.match(html, /Get a license/);
     assert.match(html, /https:\/\/buy\.stripe\.com\/cNicN62zPgLL38J8O94Ni00/);
     assert.equal(html.includes("<script"), false);
     assert.equal(html.includes("/assets/"), false);
@@ -108,7 +109,7 @@ describe("shell gate", () => {
     const locked = await app.request("http://localhost/");
     const lockedHtml = await locked.text();
     assert.equal(locked.status, 200);
-    assert.match(lockedHtml, /Enter license key/);
+    assert.match(lockedHtml, /Welcome back/);
     assert.equal(lockedHtml.includes("SECRET_EDITOR"), false);
     assert.equal(lockedHtml.includes('type="module"'), false);
     assert.equal(locked.headers.get("cache-control"), "no-store");
