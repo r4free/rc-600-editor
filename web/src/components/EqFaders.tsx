@@ -54,18 +54,21 @@ function num(tags: TagMap, tag: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function EqFader({
+export function EqFader({
   id,
   def,
   short,
   value,
   onChange,
+  display = eqDisplay,
 }: {
   id: string;
   def: ParamDef;
   short: string;
   value: number;
   onChange: (v: number) => void;
+  /** Optional value formatter for fader boards that reuse the mixer EQ layout. */
+  display?: (def: ParamDef, value: number) => { value: string; unit?: string };
 }) {
   const { min, max } = eqRange(def);
   const span = Math.max(1, max - min);
@@ -113,7 +116,7 @@ function EqFader({
   const fill = bipolar
     ? { bottom: Math.min(pct, centerPct), height: Math.abs(pct - centerPct) }
     : { bottom: 0, height: pct };
-  const shown = eqDisplay(def, value);
+  const shown = display(def, value);
   const text = `${shown.value}${shown.unit ? ` ${shown.unit}` : ""}`;
   const changed = value !== fallback;
 

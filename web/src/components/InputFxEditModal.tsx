@@ -22,6 +22,8 @@ import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
+import { PreampEditor } from "./PreampEditor";
+import { PreampPreviewBar } from "./PreampPreviewBar";
 import { onOffView, ScrubCard, TrackStateCard, type PatchHandler } from "./LoopTab";
 import { rateCardValue, StepSequencer } from "./StepSequencer";
 
@@ -30,6 +32,7 @@ const DEFAULT_BPM = 120;
 const PHASER_TYPE = 4;
 const FLANGER_TYPE = 5;
 const RING_MOD_TYPE = 9;
+const PREAMP_TYPE = 23;
 const TREMOLO_TYPE = 32;
 const VIBRATO_TYPE = 33;
 const CHORUS_TYPE = 48;
@@ -310,6 +313,23 @@ export function InputFxEditModal({
         wetLevel: tagValue("G"),
       }
     : undefined;
+  const preamp =
+    type === PREAMP_TYPE
+      ? {
+          ampType: tagValue("A"),
+          speakerType: tagValue("B"),
+          gain: tagValue("C"),
+          tComp: tagValue("D"),
+          bass: tagValue("E"),
+          middle: tagValue("F"),
+          treble: tagValue("G"),
+          presence: tagValue("H"),
+          micType: tagValue("I"),
+          micDistance: tagValue("J"),
+          micPosition: tagValue("K"),
+          effectLevel: tagValue("L"),
+        }
+      : undefined;
   const defaultSound = ring
     ? "ring"
     : phaser
@@ -512,7 +532,24 @@ export function InputFxEditModal({
           settings={delay}
         />
       ) : null}
-      {blockParams.length > 0 && !grouped ? (
+      {preamp ? (
+        <PreampPreviewBar
+          key={`preamp-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={preamp}
+        />
+      ) : null}
+      {type === PREAMP_TYPE ? (
+        <PreampEditor
+          idPrefix={`ifx-edit-${section}`}
+          params={params}
+          tags={tags}
+          onChange={(tag, value) => setBlockTag(section, tag, value)}
+        />
+      ) : null}
+      {blockParams.length > 0 && !grouped && type !== PREAMP_TYPE ? (
         <section className="ifx-effect-controls" data-fx-slot={FX_BANKS[slot]!}>
           <div className="param-columns">{blockParams.map(blockControl)}</div>
         </section>
