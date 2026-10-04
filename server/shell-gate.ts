@@ -2,9 +2,19 @@
  * Paid shell: until a license session exists, the server answers with a
  * standalone activation page and does not send editor files.
  */
+import { IOS_WEB_MIDI_BROWSER_URL } from "../src/midi/rc600-midi.js";
 import { requireLicenseEnabled } from "./licenses.js";
 import { SESSION_COOKIE, verifyLicenseSessionToken } from "./session.js";
 import { stripePaymentLink } from "./stripe-license.js";
+
+/** Plain text behind the activation-page Copy button. */
+const REQUIREMENTS_COPY = `System requirements — RC-600 Web Editor
+
+The editor runs in any modern web browser, on a computer, phone, or tablet.
+
+Live MIDI to the RC-600 needs Web MIDI. Safari and Chrome on iPhone and iPad do not include Web MIDI, so connecting to the pedal over MIDI does not work in those browsers.
+
+On iPhone or iPad, open the site in Web MIDI Browser (App Store: ${IOS_WEB_MIDI_BROWSER_URL}). Live MIDI then works the same way. On a computer, use Chrome or Edge.`;
 
 export type ShellRequestKind = "api" | "document" | "asset" | "guide";
 
@@ -49,6 +59,11 @@ export function isFormActivation(contentType: string | undefined): boolean {
   return (
     ctype.includes("application/x-www-form-urlencoded") || ctype.includes("multipart/form-data")
   );
+}
+
+/** Product photo on the activation page. Not an editor bundle. */
+export function isActivationImage(rawPath: string): boolean {
+  return pathnameOf(rawPath) === "/rc600-front.png";
 }
 
 /** User guide stays readable from the activation page. */
@@ -110,7 +125,9 @@ export function decidePaidShell(
   demoOk = false,
 ): ShellDecision {
   const kind = shellRequestKind(rawPath);
-  if (kind === "api" || kind === "guide" || sessionOk) return { action: "next" };
+  if (kind === "api" || kind === "guide" || sessionOk || isActivationImage(rawPath)) {
+    return { action: "next" };
+  }
   if (isDemoDocument(rawPath)) return { action: "demo" };
   if (kind === "asset" && demoOk) return { action: "next" };
   if (kind === "document") {
@@ -157,6 +174,13 @@ export function activationPageHtml(error?: string): string {
       padding: clamp(1.75rem, 5vw, 4.5rem);
     }
     .intro { max-width: 36rem; }
+    .pedal {
+      display: block;
+      width: min(100%, 31rem);
+      height: auto;
+      margin: 0 0 1.15rem;
+      filter: drop-shadow(0 0.75rem 1.25rem rgba(0, 0, 0, 0.42));
+    }
     .eyebrow, .kicker {
       margin: 0;
       color: #00c7fd;
@@ -214,6 +238,12 @@ export function activationPageHtml(error?: string): string {
       gap: 0.75rem 1.25rem;
       margin-top: 1.75rem;
     }
+    button.guide {
+      border: 0;
+      padding: 0;
+      background: none;
+      cursor: pointer;
+    }
     .guide {
       display: inline-flex;
       align-items: center;
@@ -222,6 +252,65 @@ export function activationPageHtml(error?: string): string {
       font-size: 0.82rem;
       font-weight: 600;
       text-decoration: none;
+    }
+    .req-dialog {
+      width: min(32rem, calc(100% - 2rem));
+      max-height: min(90vh, 36rem);
+      margin: auto;
+      padding: 1.15rem 1.25rem 1.3rem;
+      border: 1px solid #304057;
+      border-radius: 12px;
+      background: #18212d;
+      color: #dce6f0;
+      box-shadow: 0 1.25rem 4rem rgba(0, 0, 0, 0.45);
+    }
+    .req-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+    .req-dialog-head {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin: 0;
+    }
+    .req-dialog h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+    .req-dialog-actions { display: flex; gap: 0.4rem; }
+    .req-dialog ul {
+      margin: 0.9rem 0 0;
+      padding-left: 1.15rem;
+      color: #8a9aaa;
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+    .req-dialog li + li { margin-top: 0.55rem; }
+    .req-dialog a { color: #00c7fd; font-weight: 650; }
+    .req-copy {
+      padding: 0.35rem 0.7rem;
+      border: 1px solid #3b4d65;
+      border-radius: 6px;
+      background: transparent;
+      color: #dce6f0;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .req-copy:hover, .req-copy:focus-visible { border-color: #0071c5; }
+    .req-source {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: pre;
+      border: 0;
     }
     .guide:hover, .guide:focus-visible { text-decoration: underline; }
     .card {
@@ -326,6 +415,7 @@ export function activationPageHtml(error?: string): string {
 <body>
   <main>
     <section class="intro" aria-labelledby="page-title">
+      <img class="pedal" src="/rc600-front.png" alt="BOSS RC-600 Loop Station" width="581" height="215" />
       <p class="eyebrow">BOSS RC-600 · WEB EDITOR</p>
       <h1 id="page-title">Your RC-600, easier to organize.</h1>
       <p class="lead">Edit memories, system settings, and performance tools from one focused workspace in your browser.</p>
@@ -353,6 +443,7 @@ export function activationPageHtml(error?: string): string {
         </div>
       </div>
       <p class="intro-links">
+        <button type="button" class="guide" onclick="document.getElementById('system-requirements').showModal()">System requirements</button>
         <a class="guide" href="/demo">View a demo <span aria-hidden="true">↗</span></a>
         <a class="guide" href="/guia.html" target="_blank" rel="noopener noreferrer">Explore the user guide <span aria-hidden="true">↗</span></a>
       </p>
@@ -372,6 +463,21 @@ export function activationPageHtml(error?: string): string {
       <p class="purchase-note">Secure checkout. Your license key is sent by email after payment.</p>
     </section>
   </main>
+  <dialog id="system-requirements" class="req-dialog" aria-labelledby="system-requirements-title" onclick="if(event.target===this)this.close()">
+    <form method="dialog" class="req-dialog-head">
+      <h2 id="system-requirements-title">System requirements</h2>
+      <div class="req-dialog-actions">
+        <button type="button" class="req-copy" onclick="var b=this;navigator.clipboard.writeText(document.getElementById('req-copy-text').value).then(function(){b.textContent='Copied'})">Copy</button>
+        <button type="submit" class="req-copy">Close</button>
+      </div>
+    </form>
+    <ul>
+      <li>Runs in any modern browser, on a computer, phone, or tablet.</li>
+      <li>Live MIDI to the RC-600 needs Web MIDI. Safari and Chrome on iPhone and iPad do not include it, so the MIDI connection does not work there.</li>
+      <li>On iPhone or iPad, open this site in <a href="${escapeHtml(IOS_WEB_MIDI_BROWSER_URL)}" target="_blank" rel="noopener noreferrer">Web MIDI Browser</a> and live MIDI works. On a computer, use Chrome or Edge.</li>
+    </ul>
+    <textarea id="req-copy-text" class="req-source" readonly tabindex="-1" aria-hidden="true">${escapeHtml(REQUIREMENTS_COPY)}</textarea>
+  </dialog>
 </body>
 </html>
 `;

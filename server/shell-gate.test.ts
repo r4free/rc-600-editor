@@ -10,6 +10,7 @@ import {
   activationPageHtml,
   appShellAllowed,
   decidePaidShell,
+  isActivationImage,
   demoViewAllowed,
   demoViewCookie,
   isDemoDocument,
@@ -46,11 +47,19 @@ describe("shell gate", () => {
 
   it("keeps activation HTML free of editor scripts", () => {
     const html = activationPageHtml('bad <script>alert("x")</script>');
+    assert.match(html, /src="\/rc600-front.png"/);
+    assert.match(html, /alt="BOSS RC-600 Loop Station"/);
     assert.match(html, /Your RC-600, easier to organize/);
     assert.match(html, /Shape every memory/);
     assert.match(html, /action="\/api\/license"/);
     assert.match(html, /href="\/demo"/);
     assert.match(html, /View a demo/);
+    assert.match(html, /System requirements/);
+    assert.match(html, /<dialog id="system-requirements"/);
+    assert.match(html, /showModal\(\)/);
+    assert.match(html, /phone, or tablet/);
+    assert.match(html, /Web MIDI Browser/);
+    assert.match(html, /apps\.apple\.com\/app\/web-midi-browser/);
     assert.match(html, /href="\/guia.html"/);
     assert.match(html, /Get a license/);
     assert.match(html, /https:\/\/buy\.stripe\.com\/cNicN62zPgLL38J8O94Ni00/);
@@ -70,6 +79,9 @@ describe("shell gate", () => {
     assert.equal(shellRequestKind("/guia.js"), "guide");
     assert.equal(shellRequestKind("/guia.css"), "guide");
     assert.equal(shellRequestKind("/guide-images/editor-overview.png"), "guide");
+    assert.equal(isActivationImage("/rc600-front.png"), true);
+    assert.equal(isActivationImage("/rc600-front.png?v=1"), true);
+    assert.equal(decidePaidShell("/rc600-front.png", false).action, "next");
     assert.equal(decidePaidShell("/guia.html", false).action, "next");
     assert.equal(shellRequestKind("/src/main.tsx?t=1"), "asset");
     assert.equal(shellRequestKind("/@vite/client"), "asset");

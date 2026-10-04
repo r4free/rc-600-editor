@@ -23,11 +23,13 @@ import { InfoTip } from "./InfoTip";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
 import { PreampEditor } from "./PreampEditor";
+import { AutoRiffPreviewBar } from "./AutoRiffPreviewBar";
 import { LofiPreviewBar } from "./LofiPreviewBar";
+import { PhraseRoll } from "./PhraseRoll";
 import { PatternSlicerPreviewBar } from "./PatternSlicerPreviewBar";
 import { PreampPreviewBar } from "./PreampPreviewBar";
 import { SustainerPreviewBar } from "./SustainerPreviewBar";
-import { onOffView, ScrubCard, TrackStateCard, type PatchHandler } from "./LoopTab";
+import { onOffView, ScrubCard, TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
 import { rateCardValue, StepSequencer } from "./StepSequencer";
 
 const DEFAULT_BPM = 120;
@@ -55,6 +57,31 @@ const SYNTH_METERS: Record<string, string> = {
   Resonance: "Peak",
   Decay: "Sweep time",
 };
+const AUTO_RIFF_TYPE = 12;
+const AUTO_RIFF_METERS: Record<string, string> = {
+  Attack: "Soft → Punchy",
+};
+const AUTO_RIFF_HOLD_VIEW: TrackStateView = {
+  label: "Hold",
+  variant: "input",
+  states: [
+    { icon: "note", text: "Off", title: "The riff stops when you stop playing.", color: "var(--muted)", dim: true },
+    { icon: "note", text: "Hold", title: "The riff keeps playing after the input sound stops.", alert: true },
+  ],
+};
+const AUTO_RIFF_LOOP_VIEW: TrackStateView = {
+  label: "Loop",
+  variant: "one-shot",
+  states: [
+    { icon: "oneShot", text: "Once", title: "The phrase plays once per note.", color: "#f59e0b", alert: true },
+    { icon: "loop", text: "Loop", title: "The phrase repeats continuously." },
+  ],
+};
+
+function keyCardValue(label: string): { value: string; unit: string } {
+  const m = /^(\S+) \((\S+)\)$/.exec(label);
+  return m ? { value: m[1]!, unit: `Major · ${m[2]}` } : { value: label, unit: "Key" };
+}
 const LOFI_TYPE = 7;
 const SUSTAINER_TYPE = 11;
 const SUSTAINER_METERS: Record<string, string> = {
@@ -66,6 +93,10 @@ const PATTERN_SLICER_TYPE = 34;
 const PATTERN_SLICER_METERS: Record<string, string> = {
   Duty: "Sound length",
   Attack: "Soft → Punchy",
+};
+const STEREO_ENHANCE_TYPE = 31;
+const STEREO_ENHANCE_METERS: Record<string, string> = {
+  Enhance: "Mono → Wide",
 };
 const PREAMP_TYPE = 23;
 const TREMOLO_TYPE = 32;
@@ -126,6 +157,14 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: st
     mixTitle: "Tone",
     mixMatch: /^(Low Gain|Hi Gain|Level)$/,
     mix: "Low Gain and Hi Gain boost or cut the lows and highs (−20 to +20 dB, 0 = flat). Level is the volume of the effect sound.",
+  },
+  [AUTO_RIFF_TYPE]: {
+    main: "Automatically plays a phrase built from each note you play. Play single notes: chords cannot be analyzed. Phrase picks one of the 30 built-in phrases, Tempo its speed (a note length follows the tempo), and Key the scale the phrase follows. Hold keeps the riff going after you stop playing, Loop repeats the phrase continuously instead of once, and Attack sets how loud the attack added to each phrase is.",
+    mix: "Balance goes from the direct sound only (Direct) to the riff only (Riff); the middle blends both.",
+  },
+  [STEREO_ENHANCE_TYPE]: {
+    main: "Gives a stereo feeling to a mono signal, spreading it between left and right. Enhance sets how wide it spreads (0 = no widening). Low Cut keeps the lows out of the widening so the bass stays solid in the center (FLAT = the whole sound is widened).",
+    mix: "Level is the volume of the effect sound.",
   },
   [LOFI_TYPE]: {
     main: "Degrades the sound on purpose for a vintage, crunchy character. Bit Depth sets how many bits are kept: fewer bits sound grainier and noisier (8 is the classic sampler crunch, 1 is extreme). Sample Rate divides the sampling rate: lower fractions lose more highs and add a metallic edge. OFF leaves that part of the sound untouched.",
@@ -200,10 +239,10 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: st
   },
 };
 
-const CUT_PARAM = /^(Lo Cut|High Cut)$/;
+const CUT_PARAM = /^(Lo Cut|Low Cut|High Cut)$/;
 
 function isSyncRate(def: { kind: string; name: string; options?: { label: string }[] }) {
-  return def.kind === "enum" && def.name === "Rate" && def.options?.[0]?.label === "4MEAS";
+  return def.kind === "enum" && (def.name === "Rate" || def.name === "Tempo") && def.options?.[0]?.label === "4MEAS";
 }
 
 function delayTimeCardValue(def: { options?: { value: number; label: string }[] }, raw: number) {
@@ -414,6 +453,18 @@ export function InputFxEditModal({
           sustain: tagValue("F"),
         }
       : undefined;
+  const autoRiff =
+    type === AUTO_RIFF_TYPE
+      ? {
+          phrase: tagValue("A"),
+          rateIndex: tagValue("B"),
+          hold: tagValue("C") === 1,
+          attack: tagValue("D"),
+          loop: tagValue("E") === 1,
+          key: tagValue("F"),
+          balance: tagValue("G"),
+        }
+      : undefined;
   const lofi =
     type === LOFI_TYPE
       ? { bitDepthRaw: tagValue("A"), sampleRateRaw: tagValue("B"), balance: tagValue("D") }
@@ -492,6 +543,49 @@ export function InputFxEditModal({
           onChange={(v) => setBlockTag(section!, def.tag, v)}
         />
       );
+    }
+    if (type === AUTO_RIFF_TYPE) {
+      if (def.name === "Phrase" || def.name === "Key") {
+        const phrase = def.name === "Phrase";
+        const card = (
+          <ScrubCard
+            key={def.tag}
+            id={id}
+            def={def}
+            value={value}
+            min={0}
+            max={def.options?.at(-1)?.value ?? 0}
+            format={(v) =>
+              phrase
+                ? { value: String(v + 1).padStart(2, "0"), unit: "Phrase" }
+                : keyCardValue(def.options?.find((o) => o.value === v)?.label ?? String(v))
+            }
+            alert
+            color="var(--slot-color)"
+            valueIcon={phrase ? "note" : "piano"}
+            onChange={(v) => setBlockTag(section!, def.tag, v)}
+          />
+        );
+        if (!phrase) return card;
+        return (
+          <div key={def.tag} className="riff-phrase">
+            {card}
+            <PhraseRoll phrase={value} keyIndex={autoRiff?.key ?? 0} />
+          </div>
+        );
+      }
+      if (def.name === "Hold" || def.name === "Loop") {
+        return (
+          <TrackStateCard
+            key={def.tag}
+            id={id}
+            def={def}
+            view={def.name === "Hold" ? AUTO_RIFF_HOLD_VIEW : AUTO_RIFF_LOOP_VIEW}
+            value={value}
+            onChange={(v) => setBlockTag(section!, def.tag, v)}
+          />
+        );
+      }
     }
     const patternSlicer = type === PATTERN_SLICER_TYPE;
     if (patternSlicer && def.name === "Pattern") {
@@ -654,14 +748,28 @@ export function InputFxEditModal({
                         ? SUSTAINER_METERS[def.name]
                         : type === SYNTH_TYPE
                           ? SYNTH_METERS[def.name]
-                          : undefined) ?? def.name,
+                          : type === STEREO_ENHANCE_TYPE
+                            ? STEREO_ENHANCE_METERS[def.name]
+                            : type === AUTO_RIFF_TYPE
+                              ? AUTO_RIFF_METERS[def.name]
+                              : undefined) ?? def.name,
                 color: () => "var(--slot-color)",
               }
             : undefined
         }
         balance={
           grouped && def.name === "Balance"
-            ? { left: "Direct", right: type === LOFI_TYPE ? "Lo-Fi" : type === SYNTH_TYPE ? "Synth" : "Effect" }
+            ? {
+                left: "Direct",
+                right:
+                  type === LOFI_TYPE
+                    ? "Lo-Fi"
+                    : type === SYNTH_TYPE
+                      ? "Synth"
+                      : type === AUTO_RIFF_TYPE
+                        ? "Riff"
+                        : "Effect",
+              }
             : undefined
         }
         onChange={(v) => setBlockTag(section!, def.tag, v)}
@@ -678,7 +786,7 @@ export function InputFxEditModal({
     return (
       <div
         key={def.tag}
-        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) || (type === AUTO_RIFF_TYPE && def.name === "Phrase") ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
         title={sequenced ? "The step sequence is changing this parameter." : undefined}
       >
         {blockControl(def)}
@@ -745,6 +853,15 @@ export function InputFxEditModal({
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
           memoryBpm={memoryTempo(model)}
           settings={sustainer}
+        />
+      ) : null}
+      {autoRiff ? (
+        <AutoRiffPreviewBar
+          key={`autoriff-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={autoRiff}
         />
       ) : null}
       {lofi ? (

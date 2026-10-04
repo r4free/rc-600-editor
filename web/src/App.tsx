@@ -282,6 +282,7 @@ export function App() {
   baseXmlRef.current = baseXml;
   const slotRef = useRef(slot);
   slotRef.current = slot;
+  const memListRef = useRef<HTMLDivElement>(null);
   const activeSideRef = useRef(activeSide);
   activeSideRef.current = activeSide;
   const backupAckRef = useRef(backupAck);
@@ -332,6 +333,24 @@ export function App() {
   );
   const sendChannelsRef = useRef(sendChannels);
   sendChannelsRef.current = sendChannels;
+
+  useEffect(() => {
+    if (slot == null || workspace !== "memory") return;
+    const list = memListRef.current;
+    if (!list || list.clientHeight === 0) return;
+    const row = list.querySelector(`[data-slot="${slot}"]`);
+    if (!(row instanceof HTMLElement)) return;
+    const style = getComputedStyle(list);
+    const inset =
+      (Number.parseFloat(style.borderTopWidth) || 0) +
+      (Number.parseFloat(style.paddingTop) || 0);
+    const top = Math.max(
+      0,
+      list.scrollTop + (row.getBoundingClientRect().top - (list.getBoundingClientRect().top + inset)),
+    );
+    if (Math.abs(list.scrollTop - top) < 2) return;
+    list.scrollTo({ top, behavior: "smooth" });
+  }, [slot, workspace, summaries.length]);
 
   const loadSlot = useCallback(
     (s: number, map: Map<string, string> = files, opts?: { syncPedal?: boolean }) => {
@@ -1912,7 +1931,7 @@ export function App() {
                       );
                     })}
                   </select>
-                  <div className="mem-list">
+                  <div className="mem-list" ref={memListRef}>
                     {summaries.map((s) => {
                       const unsaved = (drafts.get(s.slot)?.length ?? 0) > 0;
                       const canApply =
@@ -1920,7 +1939,7 @@ export function App() {
                         memoryClipboard!.sourceSlot !== s.slot &&
                         !saving;
                       return (
-                        <div key={s.slot} className="mem-row">
+                        <div key={s.slot} className="mem-row" data-slot={s.slot}>
                           <button
                             type="button"
                             className={`mem-item ${slot === s.slot ? "active" : ""} ${unsaved ? "dirty" : ""}`}

@@ -8,10 +8,13 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Shipped
 
+- **Memory list:** selecting a memory scrolls the list so that memory sits at the top.
 - **Navigation breadcrumb:** the path above the workspace content follows the currently visible tabs, including nested tracks, routing and EQ channels. Earlier levels return focus to that level's tabs without resetting edits or changing the pedal.
 - **3D Model panel:** next to Chain, open a photo-textured RC-600 model with rotation, keyboard controls, zoom, panel and rear views. This first integration is visual only.
 
 - **View-only demo:** from the activation page, **View a demo** opens `/demo` with sample memories and system settings. You can look through Memory, System, Play Drum, Setlists, and Tuner. Drum pads and the tuner play in the browser. Editing, saving, USB, and MIDI to an RC-600 stay off, and nothing is written back. A license key is not required. Once a license is active, the Demo fixtures button is no longer in the editor.
+- **System requirements:** the activation screen has a **System requirements** button that opens a window you can copy. It says the editor runs in any modern browser, including phones and tablets, and that live MIDI does not work in Safari or Chrome on iPhone and iPad. Opening the site in Web MIDI Browser (App Store) enables live MIDI there; on a computer, Chrome or Edge is enough.
+- **Pedal photo on the activation screen:** a picture of the RC-600 sits above “Your RC-600, easier to organize.” so the pedal is clear before you enter a license key.
 - **Paid activation:** on the hosted site, a welcoming first screen introduces the editor's memory, backup/MIDI, and performance tools; returning users can enter a license key, while new users can open Stripe Checkout, view the demo, or explore the user guide. The key is sent by email after payment and never expires. The full editor stays on the server until that key is accepted. The demo page is the public exception and cannot save or connect to a pedal. Local development still opens the editor without a key.
 - **User guide:** the Guide link opens an English beginner walkthrough in a new tab, with real editor screenshots, all main tabs and sub-tabs, file/MIDI workflows, troubleshooting, light/dark themes and browser printing to PDF.
 - Memory / looper oriented web editor for the Boss RC-600.
@@ -46,6 +49,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - The 3D model uses approximate geometry and photographs; controls and sockets have no individual meshes, hotspots or editor navigation yet.
 
 - In the Audio tab, a track's waveform shows its real shape only after the WAV is loaded (the first Play or Play all). Until then, the bars are a dimmed stand-in and do not reflect the audio.
+- The Auto Riff preview and phrase picture use 30 invented phrases, one per Phrase number: Boss does not publish the RC-600's own phrases, so the pedal plays different riffs.
 - The Input FX step sequencer's preview sound only approximates what the steps shape (volume, filter, pitch, pan, vibrato, ring modulator, phaser, flanger or tremolo); Step Slicer step lengths are not heard in the preview.
 - Parameters the Parameter Guide does not describe (such as Phaser **Mode** / **Bi-Phase**, Flanger **Mode** and Ring Mod **Mode**) are saved to the memory but do not change the preview. The preview's Step Sync treats one measure as the loop, since the real loop length lives on the pedal.
 - The order of the sequence **Target** options follows the Parameter Guide's ★ list; it matches the default (first option) in the factory files, but the other values have not been confirmed on the pedal yet.
@@ -56,10 +60,13 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Entregue
 
+- **Lista de memórias:** ao selecionar uma memória, a lista rola para deixar essa memória no topo.
 - **Breadcrumb de navegação:** o caminho acima do conteúdo acompanha as abas visíveis, incluindo pistas, roteamento e canais EQ aninhados. Níveis anteriores devolvem o foco às abas daquele nível sem reiniciar a edição nem alterar a pedaleira.
 - **Painel 3D Model:** ao lado de Chain, abre um modelo da RC-600 com fotos como texturas, rotação, controles por teclado, zoom e vistas do painel e da traseira. Esta primeira integração é apenas visual.
 
 - **Demo só de visualização:** na tela de ativação, **View a demo** abre `/demo` com memórias e ajustes de sistema de exemplo. Dá para percorrer Memory, System, Play Drum, Setlists e Tuner. Os pads de bateria e o afinador tocam no navegador. Edição, gravação, USB e MIDI para a RC-600 ficam desligados, e nada é gravado de volta. A chave de licença não é necessária. Com a licença ativa, o botão Demo fixtures sai do editor.
+- **Requisitos de sistema:** a tela de ativação tem um botão **System requirements** que abre uma janela com texto que dá para copiar. Ela diz que o editor roda em qualquer navegador moderno, inclusive celular e tablet, e que o MIDI ao vivo não funciona no Safari ou Chrome do iPhone e do iPad. Abrir o site no Web MIDI Browser (App Store) libera o MIDI ao vivo ali; no computador, Chrome ou Edge bastam.
+- **Foto da pedaleira na tela de ativação:** uma imagem da RC-600 fica acima de “Your RC-600, easier to organize.”, para deixar claro qual é o pedal antes de informar a chave.
 - **Ativação paga:** no site hospedado, uma tela inicial mais acolhedora apresenta os recursos de memórias, backup/MIDI e performance do editor; quem já comprou informa a chave, enquanto novos usuários podem abrir o Stripe Checkout, ver a demo ou conhecer o guia. A chave é enviada por e-mail depois do pagamento e não expira. O editor completo fica no servidor até a chave ser aceita. A página de demo é a exceção pública e não grava nem conecta na pedaleira. No desenvolvimento local, o editor ainda abre sem chave.
 - **Guia de uso:** o link Guide abre em nova aba um passo a passo em inglês para iniciantes, com capturas reais do editor, abas e subabas, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro e impressão em PDF pelo navegador.
 - Editor web orientado a memória / looper para o Boss RC-600.
@@ -91,6 +98,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Limitações conhecidas
 
+- A prévia e o desenho de frase do Auto Riff usam 30 frases inventadas, uma por número de Phrase: a Boss não publica as frases da RC-600, então a pedaleira toca riffs diferentes.
 - O modelo 3D usa geometria aproximada e fotografias; controles e conectores ainda não possuem malhas individuais, hotspots ou navegação para o editor.
 
 - Na aba Audio, a forma de onda de uma pista só mostra o formato real depois que o WAV é carregado (no primeiro Play ou Play all). Até lá, as barras são uma forma provisória esmaecida e não refletem o áudio.
@@ -103,6 +111,27 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 ## Changelog
 
 ### 2026-10-04
+
+- **EN:** Selecting a memory scrolls the memory list so that memory sits at the top.
+- **PT:** Ao selecionar uma memória, a lista rola para deixar essa memória no topo.
+
+- **EN:** **Auto Riff preview and phrase picture**: the Auto Riff edit window has a Play bar (BPM, Tap, Memory tempo). A guitar plays a note every two bars and a synth riff follows the selected Phrase from that note, using Tempo, Key, Hold (the riff stops when the guitar note fades unless Hold is ON), Loop, Attack and Balance; changes are heard while it plays. Next to the Phrase card, a mini piano roll draws the phrase's 16 steps (higher notes higher, held notes longer, rests empty), lists its notes in the chosen Key, and lights up the step that is playing.
+- **PT:** **Prévia do Auto Riff e desenho da frase**: a janela de edição do Auto Riff ganhou barra de Play (BPM, Tap, tempo da memória). Uma guitarra toca uma nota a cada dois compassos e um riff de synth segue a Phrase escolhida a partir dessa nota, usando Tempo, Key, Hold (o riff para quando a nota da guitarra some, a não ser com Hold ON), Loop, Attack e Balance; as mudanças são ouvidas enquanto toca. Ao lado do card Phrase, um mini piano roll desenha os 16 steps da frase (notas mais agudas mais acima, notas sustentadas mais longas, pausas vazias), lista as notas na Key escolhida e acende o step que está tocando.
+
+- **EN:** The activation screen shows a photo of the RC-600 above “Your RC-600, easier to organize.” so it is obvious which pedal the editor is for.
+- **PT:** A tela de ativação mostra uma foto da RC-600 acima de “Your RC-600, easier to organize.”, para deixar óbvio qual pedaleira o editor atende.
+
+- **EN:** **Auto Riff** edit window: an info icon explains the effect (and that it needs single notes, not chords). **Phrase** (01–30), **Tempo** (shown as Note, Dotted note, Triplet or Measures) and **Key** (e.g. "Db · Major · Bbm") are scrub cards instead of long lists. **Hold** is an on/off card (Off / Hold), **Loop** switches between **Once** and **Loop**, **Attack** has a "Soft → Punchy" meter, and **Balance** uses the centered **Direct ↔ Riff** control in its own Mix group.
+- **PT:** Janela de edição do **Auto Riff**: um ícone de info explica o efeito (e avisa que ele precisa de notas soltas, não acordes). **Phrase** (01–30), **Tempo** (mostrado como Note, Dotted note, Triplet ou Measures) e **Key** (ex.: "Db · Major · Bbm") viraram cards de rolagem em vez de listas longas. **Hold** é um card liga/desliga (Off / Hold), **Loop** alterna entre **Once** e **Loop**, **Attack** tem uma barra "Soft → Punchy" e **Balance** usa o controle centralizado **Direct ↔ Riff** num grupo Mix próprio.
+
+- **EN:** The Input FX **Effect library** now opens at the same size as the **Edit** window (80% of the screen width, almost full height, full screen on phones), so switching between them no longer resizes the window.
+- **PT:** A **Effect library** do Input FX agora abre do mesmo tamanho da janela **Edit** (80% da largura da tela, quase a altura toda, tela cheia no celular), então alternar entre elas não muda mais o tamanho da janela.
+
+- **EN:** **Stereo Enhance** edit window: an info icon explains the effect. **Enhance** has a "Mono → Wide" meter, **Low Cut** is a mini equalizer (FLAT on the left, bars dim as the cut rises), and **Level** sits in its own Mix group with the volume-style control and reset button.
+- **PT:** Janela de edição do **Stereo Enhance**: um ícone de info explica o efeito. **Enhance** tem uma barra "Mono → Wide", **Low Cut** virou mini equalizador (FLAT à esquerda, as barras apagam conforme o corte sobe) e **Level** fica num grupo Mix próprio, com o controle no estilo volume e botão de reset.
+
+- **EN:** **System requirements** on the activation screen is a button that opens a window. The window explains that the editor runs in any browser, including phones and tablets, and that iPhone/iPad MIDI needs Web MIDI Browser. The text can be copied.
+- **PT:** **System requirements** na tela de ativação é um botão que abre uma janela. A janela explica que o editor roda em qualquer navegador, inclusive no celular, e que o MIDI no iPhone/iPad precisa do Web MIDI Browser. O texto pode ser copiado.
 
 - **EN:** **View-only demo:** a separate page shows sample memories and the Memory, System, Play Drum, Setlists, and Tuner workspaces without editing, saving, or connecting to an RC-600. The activation page links to it. The Demo fixtures button is hidden after a license key is active.
 - **PT:** **Demo só de visualização:** uma página separada mostra memórias de exemplo e as áreas Memory, System, Play Drum, Setlists e Tuner, sem editar, gravar ou conectar na RC-600. A tela de ativação aponta para ela. O botão Demo fixtures some depois que a chave de licença está ativa.

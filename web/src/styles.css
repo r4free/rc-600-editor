@@ -1846,6 +1846,14 @@ textarea {
   max-width: 36rem;
 }
 
+.unlock-pedal {
+  display: block;
+  width: min(100%, 31rem);
+  height: auto;
+  margin: 0 0 1.15rem;
+  filter: drop-shadow(0 0.75rem 1.25rem rgb(0 0 0 / 42%));
+}
+
 .unlock-eyebrow,
 .unlock-card-kicker {
   margin: 0;
@@ -1907,11 +1915,42 @@ textarea {
   line-height: 1.5;
 }
 
+.unlock-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1.75rem;
+}
+
+.unlock-requirements {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.unlock-requirements li + li {
+  margin-top: 0.55rem;
+}
+
+.unlock-requirements a {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+button.unlock-guide {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
 .unlock-guide {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin-top: 1.75rem;
+  margin-top: 0;
   color: var(--accent);
   font-size: 0.82rem;
   font-weight: 600;
@@ -2231,12 +2270,7 @@ textarea {
   }
 }
 
-.modal-sheet.ifx-library-modal {
-  max-width: min(76rem, 96vw);
-  height: min(88vh, 60rem);
-  max-height: none;
-}
-
+.modal-sheet.ifx-library-modal,
 .modal-sheet.ifx-edit-modal {
   max-width: none;
   width: 80vw;
@@ -2244,6 +2278,7 @@ textarea {
   max-height: none;
 }
 
+.modal-backdrop:has(> .ifx-library-modal),
 .modal-backdrop:has(> .ifx-edit-modal) {
   padding-block: 2.5dvh;
 }
@@ -3211,10 +3246,12 @@ textarea {
 }
 
 @media (max-width: 720px) {
+  .modal-backdrop:has(> .ifx-library-modal),
   .modal-backdrop:has(> .ifx-edit-modal) {
     padding: 0;
   }
 
+  .modal-sheet.ifx-library-modal,
   .modal-sheet.ifx-edit-modal {
     width: 100vw;
     height: 100dvh;
@@ -3341,6 +3378,79 @@ textarea {
   overflow: auto;
   min-height: 0;
   padding-right: 0.25rem;
+}
+
+.riff-phrase {
+  display: grid;
+  grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: stretch;
+}
+
+.phrase-roll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 5.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-chain);
+}
+
+.phrase-roll svg {
+  flex: 1;
+  width: 100%;
+  min-height: 4rem;
+}
+
+.phrase-roll-col {
+  fill: transparent;
+  transition: fill 80ms linear;
+}
+
+.phrase-roll-col.is-beat {
+  fill: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.phrase-roll-col.is-current {
+  fill: color-mix(in srgb, var(--slot-color, var(--accent)) 25%, transparent);
+}
+
+.phrase-roll-root {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.phrase-roll-note {
+  fill: color-mix(in srgb, var(--slot-color, var(--accent)) 65%, transparent);
+}
+
+.phrase-roll-note.is-on {
+  fill: var(--slot-color, var(--accent));
+}
+
+.phrase-roll-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.phrase-roll-scale span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .riff-phrase {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .ifx-library-capture-status {

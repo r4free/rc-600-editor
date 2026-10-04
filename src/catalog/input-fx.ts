@@ -497,11 +497,16 @@ const AUTO_RIFF_PARAMS: ParamDef[] = [
     "Selects the phrase for creating the auto riff.",
   ),
   enumP("B", "Tempo", SYNC_RATE, 6, "Sets the speed of the phrase."),
-  boolP("C", "Hold", 0, "When ON, the effect sound continues after there is no input signal."),
-  intP("D", "Attack", 0, 100, 50, "Loudness of the attack sound added to each phrase."),
-  boolP("E", "Loop", 1, "When ON, the phrase plays back continuously."),
-  enumP("F", "Key", KEY_OPTIONS, 0, "Sets the key of the phrase."),
-  intP("G", "Balance", 0, 100, 50, "Volume balance between the direct sound and the effect sound."),
+  boolP(
+    "C",
+    "Hold",
+    0,
+    "If you turn Hold ON after you pick a note, the effect sound continues even after there is no input signal.",
+  ),
+  intP("D", "Attack", 0, 100, 50, "Sets the loudness of the attack sound added to each phrase."),
+  boolP("E", "Loop", 1, "If Loop is ON, the phrase is played back continuously. OFF plays it once."),
+  enumP("F", "Key", KEY_OPTIONS, 0, "Sets the key of the phrase (major key with its relative minor)."),
+  intP("G", "Balance", 0, 100, 50, "Adjusts the volume balance between the direct sound and the effect sound."),
 ];
 
 const SLOW_GEAR_PARAMS: ParamDef[] = [

@@ -120,7 +120,7 @@ export function FilterCutControl({
   onChange: (v: number) => void;
 }) {
   const options = def.options ?? [];
-  const low = def.name === "Lo Cut";
+  const low = def.name === "Lo Cut" || def.name === "Low Cut";
   const bands = options.filter((o) => o.label !== FLAT);
   const label = options.find((o) => o.value === value)?.label ?? FLAT;
   const flat = label === FLAT;
