@@ -351,12 +351,15 @@ export function TrackStateCard({
   view,
   value,
   onChange,
+  group,
 }: {
   id: string;
   def: ParamDef;
   view: TrackStateView;
   value: number;
   onChange: (v: number) => void;
+  /** Shown above the parameter label, e.g. "Bank A". */
+  group?: string;
 }) {
   const { states } = view;
   const index = value >= 0 && value < states.length ? value : 0;
@@ -368,7 +371,7 @@ export function TrackStateCard({
     : undefined;
   return (
     <div
-      className={`param-row play-state-param is-${view.variant} is-v${index}${state.alert ? " is-alert" : ""}${state.dim ? " is-dim" : ""}`}
+      className={`param-row play-state-param is-${view.variant} is-v${index}${state.alert ? " is-alert" : ""}${state.dim ? " is-dim" : ""}${group ? " has-footer" : ""}`}
       style={style}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("button, .param-label")) return;
@@ -376,7 +379,7 @@ export function TrackStateCard({
       }}
     >
       <div className="param-label">
-        <label htmlFor={id}>{view.label}</label>
+        <label htmlFor={id}>{group ?? view.label}</label>
         {def.info ? <InfoTip label={def.name} text={def.info} /> : null}
       </div>
       <button
@@ -392,6 +395,7 @@ export function TrackStateCard({
         <Icon name={state.icon} className="play-state-icon" />
         <span className="play-state-text">{state.text}</span>
       </button>
+      {group ? <span className="play-state-footer">{view.label}</span> : null}
     </div>
   );
 }

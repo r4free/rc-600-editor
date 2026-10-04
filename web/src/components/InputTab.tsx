@@ -264,34 +264,34 @@ export function InputTab({
       ) : null}
 
       {sub === "eq" ? (
-        <>
-          <div className="tabs tabs-sub" role="tablist" aria-label="Input EQ">
-            {eqChannels.map((ch) => (
-              <button
-                key={ch.section}
-                type="button"
-                role="tab"
-                aria-selected={eqSection === ch.section}
-                className={`tab ${eqSection === ch.section ? "active" : ""}`}
-                onClick={() => setEqCh(ch.section)}
-              >
-                <Icon name={ch.linkTag === "E" ? "mic" : "guitar"} size={12} />
-                {inputEqChannelLabel(ch, model.input)}
-              </button>
-            ))}
-          </div>
-          <EqPanel
-            idPrefix={`in-eq-${eqSection}`}
-            title={inputEqChannelLabel(
-              INPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? INPUT_EQ_CHANNELS[0],
-              model.input,
-            )}
-            viewKey={`inputEq.view.${scope}`}
-            params={INPUT_EQ_PARAMS}
-            tags={eqTags}
-            onChange={setEq}
-          />
-        </>
+        <EqPanel
+          idPrefix={`in-eq-${eqSection}`}
+          title={inputEqChannelLabel(
+            INPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? INPUT_EQ_CHANNELS[0],
+            model.input,
+          )}
+          heading={
+            <div className="tabs tabs-sub eq-toolbar-tabs" role="tablist" aria-label="Input EQ">
+              {eqChannels.map((ch) => (
+                <button
+                  key={ch.section}
+                  type="button"
+                  role="tab"
+                  aria-selected={eqSection === ch.section}
+                  className={`tab ${eqSection === ch.section ? "active" : ""}`}
+                  onClick={() => setEqCh(ch.section)}
+                >
+                  <Icon name={ch.linkTag === "E" ? "mic" : "guitar"} size={12} />
+                  {inputEqChannelLabel(ch, model.input)}
+                </button>
+              ))}
+            </div>
+          }
+          viewKey={`inputEq.view.${scope}`}
+          params={INPUT_EQ_PARAMS}
+          tags={eqTags}
+          onChange={setEq}
+        />
       ) : null}
 
       {sub === "dynamics" ? (

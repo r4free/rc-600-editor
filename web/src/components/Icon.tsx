@@ -107,6 +107,9 @@ const ICONS = {
   headphones: "mdi:headphones",
   volumeOff: "mdi:volume-off",
   speaker: "mdi:speaker",
+  power: "mdi:power",
+  toggle: "mdi:toggle-switch-outline",
+  moment: "mdi:gesture-tap-hold",
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -9,6 +9,7 @@ import {
   INPUT_FX_TYPE_OPTIONS,
   fxSlotSection,
   inputFxInsertDef,
+  type ParamDef,
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
@@ -17,8 +18,6 @@ import { InfoTip } from "./InfoTip";
 import { InputFxEditModal } from "./InputFxEditModal";
 import { InputFxLibraryModal } from "./InputFxLibraryModal";
 import { TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
-import { ParamControl } from "./ParamControl";
-
 const IFX_PAGES = ["setup", ...FX_BANKS] as const;
 type IfxPage = (typeof IFX_PAGES)[number];
 const IFX_SLOTS = [0, 1, 2, 3] as const;
@@ -31,7 +30,61 @@ const PAGES: { id: IfxPage; label: string; icon: IconName }[] = [
   { id: "D", label: "Bank D", icon: "mfx" },
 ];
 
-const SLOT_SHELL_PARAMS = IFX_SLOT_PARAMS.filter((p) => p.tag !== "C");
+const slotParam = (tag: string) => IFX_SLOT_PARAMS.find((p) => p.tag === tag)!;
+
+const SLOT_SWITCH_DEF: ParamDef = {
+  ...slotParam("A"),
+  kind: "enum",
+  info: `${slotParam("A").info} ${slotParam("B").info} Click to cycle Off → Toggle → Moment.`,
+};
+const SLOT_TYPE_DEF = slotParam("C");
+
+const SLOT_SWITCH_VIEW: TrackStateView = {
+  label: "Switch",
+  variant: "fx-slot-switch",
+  states: [
+    { icon: "power", text: "Off", title: "This effect is off.", color: "var(--muted)", dim: true },
+    { icon: "toggle", text: "Toggle", title: "On. Each press of the switch turns the effect on or off." },
+    {
+      icon: "moment",
+      text: "Moment",
+      title: "On. The effect sounds only while the switch is held.",
+      color: "#facc15",
+      alert: true,
+    },
+  ],
+};
+
+/** Off = 0, Toggle = 1, Moment = 2 (Switch Mode is kept while off). */
+function slotSwitchValue(tags: TagMap): number {
+  if (num(tags, "A") !== 1) return 0;
+  return num(tags, "B") === 1 ? 2 : 1;
+}
+
+function slotSwitchTags(value: number): Record<string, string> {
+  if (value === 0) return { A: "0" };
+  return { A: "1", B: value === 2 ? "1" : "0" };
+}
+
+function insertIcon(label: string): IconName {
+  if (label.startsWith("MIC")) return "mic";
+  if (label.startsWith("INST")) return "guitar";
+  return "merge";
+}
+
+function insertView(def: ParamDef): TrackStateView {
+  return {
+    label: "Insert",
+    variant: "fx-insert",
+    states: (def.options ?? []).map((o) => ({
+      icon: insertIcon(o.label),
+      text: o.label,
+      title: o.value === 0 ? "Applied to all inputs." : `Applied to ${o.label} only.`,
+      alert: o.value !== 0,
+      color: o.value === 0 ? undefined : "var(--slot-color, #38bdf8)",
+    })),
+  };
+}
 
 const LETTER_ICONS: IconName[] = ["variationA", "variationB", "variationC", "variationD"];
 
@@ -150,16 +203,12 @@ export function InputFxTab({
     onPatch(ops);
   }
 
-  function setSlotParam(bankNo: number, slotNo: number, tag: string, value: number) {
+  function setSlotTags(bankNo: number, slotNo: number, tags: Record<string, string>) {
     const ops: PatchOp[] = [];
-    if (tag === "A" && value === 1 && num(model.ifxBanks[bankNo] ?? {}, "B") === IFX_MODE_SINGLE) {
+    if (tags.A === "1" && num(model.ifxBanks[bankNo] ?? {}, "B") === IFX_MODE_SINGLE) {
       ops.push(...collapseOps(bankNo, slotNo));
     }
-    ops.push({
-      type: "ifx",
-      section: fxSlotSection(bankNo, slotNo),
-      tags: { [tag]: String(value) },
-    });
+    ops.push({ type: "ifx", section: fxSlotSection(bankNo, slotNo), tags });
     onPatch(ops);
   }
 
@@ -212,6 +261,7 @@ export function InputFxTab({
             role="tab"
             aria-selected={page === t.id}
             className={`tab ${page === t.id ? "active" : ""}`}
+            data-bank={t.id === "setup" ? undefined : t.id}
             onClick={() => setPage(t.id)}
           >
             <Icon name={t.icon} size={14} />
@@ -235,8 +285,7 @@ export function InputFxTab({
 
       {page === "setup" ? (
         <div className="setup-columns">
-          <section>
-            <h3 className="section-title">Setup</h3>
+          <section aria-label="Selected Bank">
             <div className="track-state-cards">
               <TrackStateCard
                 id="ifx-selected-bank"
@@ -248,12 +297,12 @@ export function InputFxTab({
             </div>
           </section>
           {FX_BANKS.map((letter, i) => (
-            <section key={letter}>
-              <h3 className="section-title">Bank {letter}</h3>
+            <section key={letter} aria-label={`Bank ${letter}`} data-bank={letter}>
               <div className="track-state-cards">
                 {IFX_BANK_PARAMS.map((def) => (
                   <TrackStateCard
                     key={def.tag}
+                    group={`Bank ${letter}`}
                     id={`ifx-bank-${letter}-${def.tag}`}
                     def={def}
                     view={BANK_VIEWS[def.tag]}
@@ -266,65 +315,56 @@ export function InputFxTab({
           ))}
         </div>
       ) : (
-        <>
+        <div className="ifx-slot-grid">
           {IFX_SLOTS.map((slotNo) => {
             const tags = model.ifxSlots[bank]?.[slotNo] ?? {};
             const insertValue = num(tags, "D");
+            const insertDef = inputFxInsertDef(model.input, insertValue);
+            const insertOptions = insertDef.options ?? [];
+            const insertIndex = Math.max(
+              0,
+              insertOptions.findIndex((o) => o.value === insertValue),
+            );
             const type = num(tags, "C");
-            const effectName = typeLabel(type);
+            const switchValue = slotSwitchValue(tags);
             return (
-              <section key={slotNo}>
-                <h3 className="section-title">FX {FX_BANKS[slotNo]}</h3>
-                <div className="param-columns">
-                  {SLOT_SHELL_PARAMS.map((def) => {
-                    const current =
-                      def.tag === "D" ? insertValue : num(tags, def.tag, def.default ?? 0);
-                    const shown =
-                      def.tag === "D" ? inputFxInsertDef(model.input, insertValue) : def;
-                    return (
-                      <ParamControl
-                        key={def.tag}
-                        id={`ifx-slot-${page}-${slotNo}-${def.tag}`}
-                        def={shown}
-                        value={current}
-                        onChange={(v) => setSlotParam(bank, slotNo, def.tag, v)}
-                      />
-                    );
-                  })}
-                  <div className="param-row ifx-effect-row">
-                    <div className="param-label">
-                      <span>Effect</span>
-                    </div>
-                    <div className="param-control ifx-effect-control">
-                      <span className="ifx-effect-name" title={effectName}>
-                        {effectName}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={type === 0}
-                        title={type === 0 ? "THRU has no parameters" : `Edit ${effectName}`}
-                        onClick={() => setEditSlot(slotNo)}
-                      >
-                        <Icon name="tune" size={14} />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="btn"
-                        title="Open effect library"
-                        onClick={() => setLibrarySlot(slotNo)}
-                      >
-                        <Icon name="library" size={14} />
-                        Library
-                      </button>
-                    </div>
-                  </div>
+              <section
+                key={slotNo}
+                className={`ifx-slot${switchValue === 0 ? " is-off" : ""}`}
+                aria-label={`FX ${FX_BANKS[slotNo]}`}
+                data-fx-slot={FX_BANKS[slotNo]}
+              >
+                <div className="ifx-slot-cards">
+                  <TrackStateCard
+                    group={`FX ${FX_BANKS[slotNo]}`}
+                    id={`ifx-slot-${page}-${slotNo}-switch`}
+                    def={SLOT_SWITCH_DEF}
+                    view={SLOT_SWITCH_VIEW}
+                    value={switchValue}
+                    onChange={(v) => setSlotTags(bank, slotNo, slotSwitchTags(v))}
+                  />
+                  <TrackStateCard
+                    group={`FX ${FX_BANKS[slotNo]}`}
+                    id={`ifx-slot-${page}-${slotNo}-insert`}
+                    def={insertDef}
+                    view={insertView(insertDef)}
+                    value={insertIndex}
+                    onChange={(i) =>
+                      setSlotTags(bank, slotNo, { D: String(insertOptions[i]?.value ?? 0) })
+                    }
+                  />
+                  <EffectCard
+                    group={`FX ${FX_BANKS[slotNo]}`}
+                    id={`ifx-slot-${page}-${slotNo}-effect`}
+                    type={type}
+                    onLibrary={() => setLibrarySlot(slotNo)}
+                    onEdit={() => setEditSlot(slotNo)}
+                  />
                 </div>
               </section>
             );
           })}
-        </>
+        </div>
       )}
 
       {editSlot !== null && page !== "setup" ? (
@@ -346,6 +386,59 @@ export function InputFxTab({
           onClose={() => setLibrarySlot(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+function EffectCard({
+  id,
+  group,
+  type,
+  onLibrary,
+  onEdit,
+}: {
+  id: string;
+  group: string;
+  type: number;
+  onLibrary: () => void;
+  onEdit: () => void;
+}) {
+  const name = typeLabel(type);
+  const thru = type === 0;
+  return (
+    <div className={`param-row play-state-param is-fx-effect has-footer${thru ? " is-dim" : ""}`}>
+      <div className="param-label">
+        <label htmlFor={id}>{group}</label>
+        <InfoTip label={SLOT_TYPE_DEF.name} text={SLOT_TYPE_DEF.info ?? ""} />
+      </div>
+      <button
+        id={id}
+        type="button"
+        className="play-state-btn"
+        aria-label={`Effect: ${name}. Open effect library`}
+        title={`${name}. Click to open the effect library.`}
+        onClick={onLibrary}
+      >
+        <Icon name="mfx" className="play-state-icon" />
+        <span className="play-state-text ifx-effect-card-name">{name}</span>
+      </button>
+      <div className="ifx-effect-card-actions">
+        <button type="button" className="btn ghost" title="Open effect library" onClick={onLibrary}>
+          <Icon name="library" size={14} />
+          Library
+        </button>
+        <button
+          type="button"
+          className="btn ghost"
+          disabled={thru}
+          title={thru ? "THRU has no parameters" : `Edit ${name}`}
+          onClick={onEdit}
+        >
+          <Icon name="tune" size={14} />
+          Edit
+        </button>
+      </div>
+      <span className="play-state-footer">Effect</span>
     </div>
   );
 }
