@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyStepDepth, lfoRateHz, stepDurationSec, stepValueToTarget, vibratoDelay } from "./stepPreview";
+import {
+  applyStepDepth,
+  lfoRateHz,
+  ringFrequencyHz,
+  stepDurationSec,
+  stepValueToTarget,
+  vibratoDelay,
+} from "./stepPreview";
+
+describe("ring modulator preview", () => {
+  it("maps Frequency exponentially from 30 Hz to 3 kHz", () => {
+    assert.equal(ringFrequencyHz(0), 30);
+    assert.ok(Math.abs(ringFrequencyHz(50) - 300) < 1e-9);
+    assert.ok(Math.abs(ringFrequencyHz(100) - 3000) < 1e-9);
+    assert.equal(stepValueToTarget("ring", 0), 30);
+  });
+});
 
 describe("vibrato preview", () => {
   it("maps step values to wobble depth in cents", () => {

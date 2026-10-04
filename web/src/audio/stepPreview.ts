@@ -1,6 +1,6 @@
 import { syncRateBeats, type StepTarget } from "@rc600/catalog/input-fx";
 
-export type PreviewSound = "tone" | "beat" | "synth";
+export type PreviewSound = "tone" | "beat" | "synth" | "ring";
 
 export interface StepPreviewConfig {
   /** Step values 0–100 (all 16, even past Step Max). */
@@ -20,6 +20,23 @@ export interface StepPreviewConfig {
   compressorGainDb?: number;
   /** Simulates the Vibrato effect itself; the steps drive `stepParam` (none when Sequence is OFF). */
   vibrato?: VibratoPreview;
+  /** Simulates the Ring Modulator itself; the steps drive Frequency when `stepFrequency` is on. */
+  ring?: RingPreview;
+}
+
+export interface RingPreview {
+  frequency: number;
+  balance: number;
+  stepFrequency: boolean;
+}
+
+const RING_MIN_HZ = 30;
+const RING_MAX_HZ = 3000;
+
+/** Ring carrier frequency for a 0–100 value (exponential 30 Hz – 3 kHz). */
+export function ringFrequencyHz(value: number): number {
+  const v = Math.max(0, Math.min(100, value)) / 100;
+  return RING_MIN_HZ * (RING_MAX_HZ / RING_MIN_HZ) ** v;
 }
 
 export interface VibratoPreview {
@@ -83,6 +100,8 @@ export function stepValueToTarget(target: StepTarget, value: number): number {
       return v * 2 - 1;
     case "vibrato":
       return v * VIBRATO_MAX_CENTS;
+    case "ring":
+      return ringFrequencyHz(value);
   }
 }
 
@@ -120,6 +139,7 @@ export class StepPreviewEngine {
     dry: GainNode;
     wet: GainNode;
   } | null = null;
+  private ringNodes: { carrier: OscillatorNode; dry: GainNode; wet: GainNode } | null = null;
   private toneOscs: OscillatorNode[] = [];
   private noise: AudioBuffer | null = null;
 
@@ -142,7 +162,10 @@ export class StepPreviewEngine {
 
   update(cfg: StepPreviewConfig): void {
     const soundChanged =
-      cfg.sound !== this.cfg.sound || cfg.target !== this.cfg.target || !cfg.vibrato !== !this.cfg.vibrato;
+      cfg.sound !== this.cfg.sound ||
+      cfg.target !== this.cfg.target ||
+      !cfg.vibrato !== !this.cfg.vibrato ||
+      !cfg.ring !== !this.cfg.ring;
     this.cfg = cfg;
     this.updatePreviewControls();
     if (this.playing && soundChanged) {
@@ -174,7 +197,10 @@ export class StepPreviewEngine {
     const ctx = this.ctx;
     if (ctx && this.master) {
       this.master.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
-      const old = { master: this.master, oscs: [...this.toneOscs, ...(this.vib?.lfos ?? [])] };
+      const old = {
+        master: this.master,
+        oscs: [...this.toneOscs, ...(this.vib?.lfos ?? []), ...(this.ringNodes ? [this.ringNodes.carrier] : [])],
+      };
       setTimeout(() => {
         for (const o of old.oscs) o.stop();
         old.master.disconnect();
@@ -183,6 +209,7 @@ export class StepPreviewEngine {
     this.master = null;
     this.toneOscs = [];
     this.vib = null;
+    this.ringNodes = null;
     this.onStep(-1);
   }
 
@@ -212,8 +239,19 @@ export class StepPreviewEngine {
     const compressorGain = ctx.createGain();
     panner.connect(compressor).connect(compressorGain).connect(master);
     const stepGain = ctx.createGain();
-    stepGain.gain.value = this.cfg.target === "volume" && !this.cfg.vibrato ? 0 : 1;
-    if (this.cfg.vibrato) {
+    stepGain.gain.value = this.cfg.target === "volume" && !this.cfg.vibrato && !this.cfg.ring ? 0 : 1;
+    if (this.cfg.ring) {
+      const carrier = ctx.createOscillator();
+      const multiplier = ctx.createGain();
+      multiplier.gain.value = 0;
+      carrier.connect(multiplier.gain);
+      carrier.start();
+      const dry = ctx.createGain();
+      const wet = ctx.createGain();
+      stepGain.connect(dry).connect(panner);
+      stepGain.connect(multiplier).connect(wet).connect(panner);
+      this.ringNodes = { carrier, dry, wet };
+    } else if (this.cfg.vibrato) {
       const delay = ctx.createDelay(1);
       delay.delayTime.value = VIBRATO_BASE_DELAY_SEC + VIBRATO_MAX_DELAY_SEC;
       const mainMod = ctx.createGain();
@@ -249,11 +287,18 @@ export class StepPreviewEngine {
     this.updatePreviewControls();
     this.pitchCents = 0;
 
-    if (this.cfg.sound === "tone") {
-      const shapes: [OscillatorType, number, number][] = [
-        ["sawtooth", BASE_FREQ, 0.5],
-        ["square", BASE_FREQ / 2, 0.25],
-      ];
+    if (this.cfg.sound === "tone" || this.cfg.sound === "ring") {
+      const shapes: [OscillatorType, number, number][] =
+        this.cfg.sound === "ring"
+          ? [
+              ["triangle", BASE_FREQ, 0.55],
+              ["sine", BASE_FREQ * 1.5, 0.3],
+              ["sine", BASE_FREQ * 2, 0.25],
+            ]
+          : [
+              ["sawtooth", BASE_FREQ, 0.5],
+              ["square", BASE_FREQ / 2, 0.25],
+            ];
       this.toneOscs = shapes.map(([type, freq, level]) => {
         const osc = ctx.createOscillator();
         osc.type = type;
@@ -291,7 +336,10 @@ export class StepPreviewEngine {
     const value = stepValueToTarget(this.cfg.target, step);
     const vibrato = this.cfg.vibrato;
     this.lastStep = index;
-    if (vibrato) {
+    const ring = this.cfg.ring;
+    if (ring) {
+      if (ring.stepFrequency) this.applyRing({ ...ring, frequency: raw }, t);
+    } else if (vibrato) {
       if (vibrato.stepParam) this.applyVibrato({ ...vibrato, [vibrato.stepParam]: raw }, t);
     } else switch (this.cfg.target) {
       case "volume":
@@ -308,6 +356,7 @@ export class StepPreviewEngine {
         this.panner!.pan.setTargetAtTime(value, t, PARAM_GLIDE_SEC);
         break;
       case "vibrato":
+      case "ring":
         break;
     }
     if (this.cfg.sound === "synth") {
@@ -335,6 +384,11 @@ export class StepPreviewEngine {
     }
     const gainDb = Math.max(0, Math.min(20, this.cfg.compressorGainDb ?? 0));
     this.compressorGain?.gain.setTargetAtTime(10 ** (gainDb / 20), now, 0.01);
+    const ring = this.cfg.ring;
+    if (ring && this.ringNodes) {
+      const live = ring.stepFrequency && this.lastStep >= 0 ? (this.cfg.steps[this.lastStep] ?? 0) : ring.frequency;
+      this.applyRing({ ...ring, frequency: live }, now);
+    }
     const vibrato = this.cfg.vibrato;
     if (vibrato && this.vib) {
       const hz = lfoRateHz(vibrato.rateIndex, this.cfg.bpm);
@@ -345,6 +399,14 @@ export class StepPreviewEngine {
           : {};
       this.applyVibrato({ ...vibrato, ...live }, now);
     }
+  }
+
+  private applyRing(r: RingPreview, t: number): void {
+    if (!this.ringNodes) return;
+    const balance = Math.max(0, Math.min(100, r.balance)) / 100;
+    this.ringNodes.carrier.frequency.setTargetAtTime(ringFrequencyHz(r.frequency), t, PARAM_GLIDE_SEC);
+    this.ringNodes.dry.gain.setTargetAtTime(1 - balance, t, PARAM_GLIDE_SEC);
+    this.ringNodes.wet.gain.setTargetAtTime(balance * 1.4, t, PARAM_GLIDE_SEC);
   }
 
   private applyVibrato(v: VibratoPreview, t: number): void {

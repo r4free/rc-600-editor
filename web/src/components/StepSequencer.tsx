@@ -2,8 +2,14 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { syncRateLabel, type InputFxStepLayout } from "@rc600/catalog/input-fx";
 import type { ParamDef } from "@rc600/catalog/params";
 import type { TagMap } from "@rc600/rc0/memory";
-import { StepPreviewEngine, type PreviewSound, type VibratoPreview } from "../audio/stepPreview";
+import {
+  StepPreviewEngine,
+  type PreviewSound,
+  type RingPreview,
+  type VibratoPreview,
+} from "../audio/stepPreview";
 import { RANDOM_STYLES, randomPattern, type RandomStyle } from "../audio/stepRandom";
+import { addTap, tapTempoBpm } from "../audio/tapTempo";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ScrubCard, TrackStateCard, type TrackStateView } from "./LoopTab";
@@ -13,6 +19,7 @@ const SOUNDS: { id: PreviewSound; label: string }[] = [
   { id: "tone", label: "Tone" },
   { id: "beat", label: "Beat" },
   { id: "synth", label: "Synth" },
+  { id: "ring", label: "Ring" },
 ];
 
 const TARGET_CAPTION = {
@@ -21,6 +28,7 @@ const TARGET_CAPTION = {
   pitch: "pitch",
   pan: "pan",
   vibrato: "vibrato depth",
+  ring: "ring modulator frequency",
 } as const;
 
 type Lane = "level" | "length";
@@ -122,7 +130,10 @@ export function StepSequencer({
   tags,
   slot,
   initialBpm,
+  memoryBpm,
+  defaultSound = "synth",
   vibrato,
+  ring,
   onSet,
 }: {
   idPrefix: string;
@@ -133,8 +144,14 @@ export function StepSequencer({
   /** FX letter, for the slot color. */
   slot: string;
   initialBpm: number;
+  /** Tempo saved in the current memory, if any. */
+  memoryBpm?: number;
   /** Vibrato effect settings, so the preview plays the effect itself. */
   vibrato?: Omit<VibratoPreview, "stepParam">;
+  /** Ring Modulator settings, so the preview plays the effect itself. */
+  ring?: Omit<RingPreview, "stepFrequency">;
+  /** Reference sound selected when the editor opens. */
+  defaultSound?: PreviewSound;
   onSet: (tags: Record<string, string>) => void;
 }) {
   const defFor = (tag: string) => defs.find((d) => d.tag === tag);
@@ -170,7 +187,7 @@ export function StepSequencer({
   const valuesOf = (lane: Lane) => (draft?.lane === lane ? draft.values : storedOf(lane));
   const levelSteps = valuesOf("level");
   const [bpm, setBpm] = useState(() => Math.round(initialBpm));
-  const [sound, setSound] = useState<PreviewSound>("synth");
+  const [sound, setSound] = useState<PreviewSound>(defaultSound);
   const [metronome, setMetronome] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(-1);
@@ -201,6 +218,7 @@ export function StepSequencer({
       compressorThresholdDb: compThreshold - 30,
       compressorGainDb: compGain,
       vibrato: vibrato ? { ...vibrato, stepParam: sequenceOff ? null : vibratoStepParam(targetName) } : undefined,
+      ring: ring ? { ...ring, stepFrequency: !sequenceOff && targetName === "Frequency" } : undefined,
     }),
     [
       levelSteps,
@@ -214,6 +232,7 @@ export function StepSequencer({
       compThreshold,
       compGain,
       vibrato,
+      ring,
       sequenceOff,
       targetName,
     ],
@@ -224,6 +243,13 @@ export function StepSequencer({
   }, [config]);
 
   useEffect(() => () => engineRef.current?.dispose(), []);
+
+  const bpmTapsRef = useRef<number[]>([]);
+  function tapBpm() {
+    bpmTapsRef.current = addTap(bpmTapsRef.current, performance.now());
+    const next = tapTempoBpm(bpmTapsRef.current, MIN_BPM, MAX_BPM);
+    if (next !== null) setBpm(next);
+  }
 
   function togglePlay() {
     if (!engineRef.current) engineRef.current = new StepPreviewEngine(config, setPlayhead);
@@ -409,6 +435,27 @@ export function StepSequencer({
             }}
           />
         </label>
+        <button
+          type="button"
+          className="btn step-seq-bpm-tap"
+          title="Tap at least twice in time to set the preview BPM"
+          onClick={tapBpm}
+        >
+          <Icon name="tempo" size={14} />
+          Tap
+        </button>
+        {memoryBpm !== undefined ? (
+          <button
+            type="button"
+            className="btn"
+            disabled={bpm === Math.round(memoryBpm)}
+            title={`Use the tempo saved in this memory (${memoryBpm} BPM)`}
+            onClick={() => setBpm(Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(memoryBpm))))}
+          >
+            <Icon name="restore" size={14} />
+            Memory {memoryBpm}
+          </button>
+        ) : null}
         <label className="step-seq-field">
           <span>Sound</span>
           <select value={sound} onChange={(e) => setSound(e.target.value as PreviewSound)}>

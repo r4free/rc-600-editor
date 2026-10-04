@@ -51,6 +51,11 @@ describe("input FX type catalog", () => {
     assert.equal(inputFxStepLayout(14)!.target, "pitch");
     assert.equal(inputFxStepLayout(30)!.target, "pan");
 
+    const ring = inputFxStepLayout(9)!;
+    assert.equal(ring.target, "ring");
+    assert.deepEqual(ring.targetPreviews, ["ring"]);
+    assert.deepEqual(inputFxTypeParams(9).map((d) => d.name), ["Frequency", "Balance", "Mode"]);
+
     const vibrato = inputFxStepLayout(33)!;
     assert.equal(vibrato.source, "seq");
     assert.equal(vibrato.target, "vibrato");

@@ -376,9 +376,23 @@ const RADIO_PARAMS: ParamDef[] = [
 ];
 
 const RING_MOD_PARAMS: ParamDef[] = [
-  intP("A", "Frequency", 0, 100, 50, "Sets the frequency of the internal oscillator."),
-  intP("B", "Balance", 0, 100, 50, "Volume balance between the direct sound and the effect sound."),
-  boolP("C", "Mode", 1, "Additional ring modulator setting."),
+  intP(
+    "A",
+    "Frequency",
+    0,
+    100,
+    50,
+    "Sets the frequency of the internal oscillator that multiplies the sound. Low values give a fast wobble; high values a metallic, bell-like tone. When the step sequence is on and its Target is Frequency, each step sets it instead.",
+  ),
+  intP(
+    "B",
+    "Balance",
+    0,
+    100,
+    50,
+    "Adjusts the volume balance between the direct sound (0) and the effect sound (100).",
+  ),
+  boolP("C", "Mode", 1, "Additional ring modulator setting stored with this effect (not described in the Parameter Guide)."),
 ];
 
 const G2B_PARAMS: ParamDef[] = [
@@ -957,7 +971,7 @@ const STEP_SLICER_TYPE = 35;
 const STEP_COUNT = 16;
 
 /** What a step value shapes in the browser preview (not the real effect). */
-export type StepTarget = "volume" | "filter" | "pitch" | "pan" | "vibrato";
+export type StepTarget = "volume" | "filter" | "pitch" | "pan" | "vibrato" | "ring";
 
 export interface InputFxStepLayout {
   /** `seq`: steps live in the `*_SEQ` block; `block`: in the type block (Step Slicer). */
@@ -985,12 +999,14 @@ export interface InputFxStepLayout {
 }
 
 const FILTER_TARGET = new Set([1, 2, 3, 4, 5, 6, 27]);
-const PITCH_TARGET = new Set([9, 14, 15, 22, 28]);
+const RING_MOD_TYPE = 9;
+const PITCH_TARGET = new Set([14, 15, 22, 28]);
 const PAN_TARGET = new Set([30]);
 
 function stepTarget(type: number, targetName?: string): StepTarget {
   if (targetName && /Level$/.test(targetName)) return "volume";
   if (type === VIBRATO_TYPE) return "vibrato";
+  if (type === RING_MOD_TYPE) return "ring";
   if (FILTER_TARGET.has(type)) return "filter";
   if (PITCH_TARGET.has(type)) return "pitch";
   if (PAN_TARGET.has(type)) return "pan";

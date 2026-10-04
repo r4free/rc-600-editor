@@ -14,15 +14,20 @@ import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon } from "./Icon";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
-import { ScrubCard, type PatchHandler } from "./LoopTab";
+import { onOffView, ScrubCard, TrackStateCard, type PatchHandler } from "./LoopTab";
 import { rateCardValue, StepSequencer } from "./StepSequencer";
 
 const DEFAULT_BPM = 120;
 
+const RING_MOD_TYPE = 9;
 const VIBRATO_TYPE = 33;
 const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
 
 const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
+  [RING_MOD_TYPE]: {
+    main: "Frequency is the pitch of the oscillator that multiplies your sound: low values wobble, high values sound metallic and bell-like.",
+    mix: "Balance goes from the original sound (0) to the ring-modulated sound (100).",
+  },
   [VIBRATO_TYPE]: {
     main: "Rate is how fast the pitch wobbles, Depth is how far it swings, and Color makes the wobble less regular.",
     mix: "D.Level is the original sound, E.Level the sound with vibrato. Raise both for a chorus-like blend.",
@@ -125,6 +130,7 @@ export function InputFxEditModal({
           wetLevel: tagValue("E"),
         }
       : undefined;
+  const ring = type === RING_MOD_TYPE ? { frequency: tagValue("A"), balance: tagValue("B") } : undefined;
 
   function blockControl(def: (typeof params)[number]) {
     const value = num(tags, def.tag, def.default ?? 0);
@@ -180,6 +186,18 @@ export function InputFxEditModal({
         />
       );
     }
+    if (layout && def.kind === "bool") {
+      return (
+        <TrackStateCard
+          key={def.tag}
+          id={id}
+          def={def}
+          view={onOffView(def.name, "power", `${def.name} is off.`, `${def.name} is on.`)}
+          value={value}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
     if (isSyncRate(def)) {
       return (
         <ScrubCard
@@ -206,7 +224,9 @@ export function InputFxEditModal({
         meter={
           layout && def.kind === "int" && !MIX_PARAM.test(def.name)
             ? { caption: def.name, color: () => "var(--slot-color)" }
-            : undefined
+            : layout && def.name === "Balance"
+              ? { caption: "Direct ↔ Effect" }
+              : undefined
         }
         onChange={(v) => setBlockTag(section!, def.tag, v)}
       />
@@ -238,7 +258,10 @@ export function InputFxEditModal({
           tags={model.ifxBlocks[stepSection] ?? {}}
           slot={FX_BANKS[slot]!}
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
           vibrato={vibrato}
+          ring={ring}
+          defaultSound={ring ? "ring" : undefined}
           onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
         />
       ) : null}
