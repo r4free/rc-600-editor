@@ -1320,6 +1320,28 @@ textarea {
   transform: translateX(-50%);
 }
 
+.filter-cut-param .volume-param-segments i {
+  transition: background-color 80ms ease, box-shadow 80ms ease, height 120ms ease;
+}
+
+.filter-cut-param .volume-param-segments i.is-position {
+  background: var(--text);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--slot-color) 70%, transparent);
+}
+
+.filter-cut-param .volume-param-value {
+  font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+}
+
+.filter-cut-param .volume-param-scale span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-cut-param.is-flat .volume-param-value {
+  color: var(--muted);
+}
+
 .pan-param .pan-param-segments i.is-position {
   background: var(--accent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 65%, transparent);
@@ -2214,9 +2236,10 @@ textarea {
   color: #fb7185;
 }
 
-.fx-preview-caption {
-  flex: 1 1 18rem;
-  margin: 0;
+.fx-preview-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--muted);
@@ -2451,9 +2474,9 @@ textarea {
 
 .ifx-group-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.4rem;
   margin-bottom: 0.5rem;
 }
 
@@ -2466,16 +2489,28 @@ textarea {
   color: var(--slot-color);
 }
 
-.ifx-group-head p {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
 .ifx-group-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  grid-auto-rows: 1fr;
   gap: 0.75rem;
+}
+
+.ifx-groups .ifx-control > .param-row {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 7.25rem;
+}
+
+.ifx-groups .ifx-control > .volume-param {
+  justify-content: space-between;
+  align-content: space-between;
+}
+
+.ifx-groups .volume-param-head .param-label label,
+.ifx-groups .volume-param-value,
+.ifx-groups .volume-param-scale span {
+  white-space: nowrap;
 }
 
 .ifx-group-grid.is-mix {
@@ -2485,6 +2520,10 @@ textarea {
 .ifx-control {
   position: relative;
   display: grid;
+}
+
+.ifx-group-grid .ifx-control.is-wide {
+  grid-column: span 2;
 }
 
 .ifx-control.is-sequenced > .param-row {

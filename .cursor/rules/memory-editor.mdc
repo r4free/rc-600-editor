@@ -30,6 +30,7 @@ Layout: labels sit **above** the control. Parameters flow in a responsive column
 - Use the bundled MDI set (`web/src/components/Icon.tsx` + `iconify-mdi.json`), same pattern as gm-800-editor.
 - To add an icon: copy the glyph from `@iconify-json/mdi` into `iconify-mdi.json` and add a name in `ICONS`.
 - Every parameter with Parameter Guide text gets an **Info** icon (`InfoTip`). Click toggles the explanation; hover tooltips are optional extras.
+- Longer explanations (group captions, preview descriptions, how-to text) always go in an `InfoTip` next to the title — never as inline paragraphs above or between cards, so card rows stay aligned.
 
 ## Sources
 

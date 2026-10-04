@@ -13,7 +13,9 @@ import { memoryTempo, type MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { cutLabelHz } from "../audio/chorusPreview";
 import { ChorusPreviewBar } from "./ChorusPreviewBar";
+import { FilterCutControl } from "./FilterCutControl";
 import { Icon } from "./Icon";
+import { InfoTip } from "./InfoTip";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
 import { onOffView, ScrubCard, TrackStateCard, type PatchHandler } from "./LoopTab";
@@ -55,6 +57,8 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
     mix: "D.Level is the original sound, E.Level the sound with vibrato. Raise both for a chorus-like blend.",
   },
 };
+
+const CUT_PARAM = /^(Lo Cut|High Cut)$/;
 
 function isSyncRate(def: { kind: string; name: string; options?: { label: string }[] }) {
   return def.kind === "enum" && def.name === "Rate" && def.options?.[0]?.label === "4MEAS";
@@ -270,6 +274,17 @@ export function InputFxEditModal({
         />
       );
     }
+    if (grouped && def.kind === "enum" && CUT_PARAM.test(def.name)) {
+      return (
+        <FilterCutControl
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
     if (isSyncRate(def)) {
       return (
         <ScrubCard
@@ -310,7 +325,7 @@ export function InputFxEditModal({
     return (
       <div
         key={def.tag}
-        className={`ifx-control${sequenced ? " is-sequenced" : ""}`}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) ? " is-wide" : ""}`}
         title={sequenced ? "The step sequence is changing this parameter." : undefined}
       >
         {blockControl(def)}
@@ -346,6 +361,7 @@ export function InputFxEditModal({
           key={`${section}-${type}`}
           slot={FX_BANKS[slot]!}
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
           settings={chorus}
         />
       ) : null}
@@ -363,7 +379,7 @@ export function InputFxEditModal({
             <div className="ifx-group">
               <div className="ifx-group-head">
                 <h4>{title}</h4>
-                {captions?.main ? <p>{captions.main}</p> : null}
+                {captions?.main ? <InfoTip label={title} text={captions.main} /> : null}
               </div>
               <div className="ifx-group-grid">{mainParams.map(control)}</div>
             </div>
@@ -372,7 +388,7 @@ export function InputFxEditModal({
             <div className="ifx-group">
               <div className="ifx-group-head">
                 <h4>Mix</h4>
-                <p>{captions?.mix ?? "Volume of the original and the effect sound."}</p>
+                <InfoTip label="Mix" text={captions?.mix ?? "Volume of the original and the effect sound."} />
               </div>
               <div className="ifx-group-grid is-mix">{mixParams.map(control)}</div>
             </div>
