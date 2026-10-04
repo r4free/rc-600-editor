@@ -6,7 +6,7 @@ import {
   phraseTagsForImport,
   trackHasPhrase,
 } from "@rc600/files/phrase-tags";
-import { formatDuration, wavBytesToAudioBuffer } from "@rc600/files/wav-format";
+import { wavBytesToAudioBuffer } from "@rc600/files/wav-format";
 import {
   clearTrackWav,
   listMemoryTrackWavs,
@@ -23,6 +23,7 @@ import { fetchMemoryWaveFiles, fetchTrackWaveFile } from "../api";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import type { PatchHandler } from "./LoopTab";
+import { computePeaks, WaveformSeek } from "./WaveformSeek";
 
 const TRACK_NOS = [1, 2, 3, 4, 5, 6] as const;
 
@@ -39,13 +40,6 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatClock(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return "0:00.0";
-  const m = Math.floor(seconds / 60);
-  const s = seconds - m * 60;
-  return `${m}:${s.toFixed(1).padStart(4, "0")}`;
 }
 
 export function AudioTab({
@@ -71,6 +65,10 @@ export function AudioTab({
   const [positions, setPositions] = useState<number[]>(() => Array.from({ length: 6 }, () => 0));
   /** Decoded duration per track (seconds); 0 if unknown. */
   const [durations, setDurations] = useState<number[]>(() => Array.from({ length: 6 }, () => 0));
+  /** Waveform peaks per track once the WAV is decoded. */
+  const [peaks, setPeaks] = useState<Array<number[] | null>>(() =>
+    Array.from({ length: 6 }, () => null),
+  );
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importTrackRef = useRef<number | null>(null);
@@ -79,7 +77,6 @@ export function AudioTab({
   const buffersRef = useRef<Map<number, AudioBuffer>>(new Map());
   const positionsRef = useRef(positions);
   positionsRef.current = positions;
-  const scrubbingRef = useRef<Set<number>>(new Set());
 
   const folderReady = Boolean(dirHandle);
 
@@ -135,16 +132,17 @@ export function AudioTab({
 
   // Clear players when switching memory
   useEffect(() => {
-    stopAllTracks();
+    pauseAllTracks();
     buffersRef.current.clear();
     setPositions(Array.from({ length: 6 }, () => 0));
     setDurations(Array.from({ length: 6 }, () => 0));
+    setPeaks(Array.from({ length: 6 }, () => null));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on slot change
   }, [model.slot]);
 
   useEffect(() => {
     return () => {
-      stopAllTracks();
+      pauseAllTracks();
       void audioCtxRef.current?.close();
       audioCtxRef.current = null;
     };
@@ -162,7 +160,6 @@ export function AudioTab({
         const next = [...prev];
         let changed = false;
         for (const [track, player] of playersRef.current) {
-          if (scrubbingRef.current.has(track)) continue;
           const pos = Math.min(
             player.buffer.duration,
             player.offsetSec + (ctx.currentTime - player.startedAt),
@@ -227,11 +224,28 @@ export function AudioTab({
     setPlaying(track, false);
   }
 
+  function stopTrack(track: number) {
+    stopTrackSource(track, true);
+    setPositions((prev) => {
+      const next = [...prev];
+      next[track - 1] = 0;
+      return next;
+    });
+  }
+
+  function pauseAllTracks() {
+    for (const track of [...playersRef.current.keys()]) {
+      stopTrackSource(track);
+    }
+    setPlayingTracks(new Set());
+  }
+
   function stopAllTracks() {
     for (const track of [...playersRef.current.keys()]) {
       stopTrackSource(track, true);
     }
     setPlayingTracks(new Set());
+    setPositions(Array.from({ length: 6 }, () => 0));
   }
 
   async function ensureCtx(): Promise<AudioContext> {
@@ -292,6 +306,12 @@ export function AudioTab({
     setDurations((prev) => {
       const next = [...prev];
       next[track - 1] = buffer.duration;
+      return next;
+    });
+    const trackPeaks = computePeaks(buffer);
+    setPeaks((prev) => {
+      const next = [...prev];
+      next[track - 1] = trackPeaks;
       return next;
     });
     return buffer;
@@ -450,6 +470,11 @@ export function AudioTab({
     markBusy(track, true);
     stopTrackSource(track, true);
     buffersRef.current.delete(track);
+    setPeaks((prev) => {
+      const next = [...prev];
+      next[track - 1] = null;
+      return next;
+    });
     try {
       const { wav, frames } = await convertAudioFileToRc600Wav(await file.arrayBuffer());
       const info = await writeTrackWav(dirHandle, model.slot, track, wav);
@@ -484,6 +509,11 @@ export function AudioTab({
     markBusy(track, true);
     stopTrackSource(track, true);
     buffersRef.current.delete(track);
+    setPeaks((prev) => {
+      const next = [...prev];
+      next[track - 1] = null;
+      return next;
+    });
     try {
       await clearTrackWav(dirHandle, model.slot, track);
       setWavInfos((prev) => {
@@ -510,10 +540,13 @@ export function AudioTab({
   }
 
   const anyPlaying = playingTracks.size > 0;
-  const anyPlayable = TRACK_NOS.some((n) => {
+  const playableCount = TRACK_NOS.filter((n) => {
     const t = model.tracks[n - 1] ?? {};
     return trackHasPhrase(t) || Boolean(wavInfos[n - 1]);
-  });
+  }).length;
+  const anyPlayable = playableCount > 0;
+  const allPlaying = anyPlayable && playingTracks.size >= playableCount;
+  const anyMoved = positions.some((p) => p > 0);
 
   return (
     <div className="audio-tab">
@@ -556,43 +589,66 @@ export function AudioTab({
         <p className="error">{localError}</p>
       ) : null}
 
-      <div className="audio-transport">
+      <div className={`audio-transport${anyPlaying ? " is-playing" : ""}`}>
         {folderReady ? (
           <>
-            <button
-              type="button"
-              className="btn primary"
-              disabled={!anyPlayable}
-              onClick={() => void playAllRecorded()}
-            >
-              <Icon name="play" size={14} /> Play all
-            </button>
-            <button
-              type="button"
-              className="btn ghost"
-              disabled={!anyPlaying}
-              onClick={stopAllTracks}
-            >
-              <Icon name="stop" size={14} /> Stop all
-            </button>
+            <div className="audio-transport-buttons" role="group" aria-label="All tracks">
+              <button
+                type="button"
+                className={`audio-transport-btn play${anyPlaying ? " is-active" : ""}`}
+                disabled={!anyPlayable || allPlaying}
+                title="Play every track that has audio, from its current position"
+                onClick={() => void playAllRecorded()}
+              >
+                <Icon name="play" size={18} />
+                <span>Play all</span>
+              </button>
+              <button
+                type="button"
+                className="audio-transport-btn"
+                disabled={!anyPlaying}
+                title="Pause every track and keep its position"
+                onClick={pauseAllTracks}
+              >
+                <Icon name="pause" size={18} />
+                <span>Pause all</span>
+              </button>
+              <button
+                type="button"
+                className="audio-transport-btn"
+                disabled={!anyPlaying && !anyMoved}
+                title="Stop every track and return to the start"
+                onClick={stopAllTracks}
+              >
+                <Icon name="stop" size={18} />
+                <span>Stop all</span>
+              </button>
+            </div>
+            <span className="audio-transport-status" role="status">
+              <span className="audio-transport-led" aria-hidden="true" />
+              {anyPlaying
+                ? `${playingTracks.size} of ${playableCount} playing`
+                : playableCount > 0
+                  ? `${playableCount} ${playableCount === 1 ? "track" : "tracks"} with audio`
+                  : "No tracks with audio"}
+            </span>
           </>
         ) : null}
         <span className="tabs-help">
           <InfoTip
             label="Audio"
-            text="Manage phrase audio under WAVE/ for this memory. Play several tracks at once and drag each Position slider to scrub. Large imported songs may take a few seconds to load the first time. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save memory after import or clear so the pedal sees the new phrase length."
+            text="Manage phrase audio under WAVE/ for this memory. Play several tracks at once and click or drag each waveform to jump to a position. Pause keeps the position; Stop returns to the start. Large imported songs may take a few seconds to load the first time. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save memory after import or clear so the pedal sees the new phrase length."
           />
         </span>
       </div>
 
-      <div className="channel-grid channel-grid-wide">
+      <div className="audio-track-grid">
         {TRACK_NOS.map((n) => {
           const track = model.tracks[n - 1] ?? {};
           const recorded = trackHasPhrase(track);
           const rc0Duration = phraseDurationSeconds(track);
           const bufDuration = durations[n - 1] || 0;
           const durationSec = bufDuration || rc0Duration;
-          const durationLabel = durationSec > 0 ? formatDuration(durationSec) : "—";
           const wav = wavInfos[n - 1] ?? null;
           const busy = busyTracks.has(n);
           const playing = playingTracks.has(n);
@@ -608,122 +664,128 @@ export function AudioTab({
               : busy
                 ? "Busy"
                 : null;
+          const hasAudio = recorded || hasFile;
+          const fileLabel = wav
+            ? wav.fileName
+            : !folderReady
+              ? hasAudio
+                ? "Open the ROLAND folder to load audio"
+                : "No audio"
+              : recorded
+                ? "On USB — press Play to load"
+                : "No audio";
+          const cardClass = [
+            "audio-track-card",
+            hasAudio ? "has-audio" : "is-empty",
+            playing ? "is-playing" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
 
           return (
-            <section key={n} className="channel-card audio-track-card">
-              <h3 className="section-title">
-                <Icon name="mfx" size={14} /> Track {n}
-              </h3>
+            <section key={n} className={cardClass} data-track={n}>
+              <header className="audio-track-head">
+                <h3 className="audio-track-title">
+                  <Icon name="mfx" size={16} /> Track {n}
+                </h3>
+                <span
+                  className="audio-track-status"
+                  role="img"
+                  aria-label={hasAudio ? "Has audio" : "Empty"}
+                  title={
+                    hasAudio
+                      ? "This track has audio (RC0 tag X greater than zero)"
+                      : "This track is empty"
+                  }
+                />
+              </header>
 
-              <div className="param-columns">
-                <div className="param-row readonly">
-                  <div className="param-label">
-                    <span>Phrase</span>
-                    <InfoTip
-                      label="Phrase"
-                      text="Recorded when RC0 tag X is greater than zero (stereo frame count of the WAV). Empty tracks keep X at 0."
-                    />
-                  </div>
-                  <div className="param-control">
-                    <span className="param-val">{recorded ? "Recorded" : "Empty"}</span>
-                  </div>
-                </div>
-
-                <div className="param-row readonly">
-                  <div className="param-label">
-                    <span>Duration</span>
-                  </div>
-                  <div className="param-control">
-                    <span className="param-val">{recorded || bufDuration ? durationLabel : "—"}</span>
-                  </div>
-                </div>
-
-                <div className="param-row readonly">
-                  <div className="param-label">
-                    <span>File</span>
-                  </div>
-                  <div className="param-control">
-                    <span className="param-val audio-file-meta">
-                      {wav
-                        ? `${wav.fileName} · ${formatBytes(wav.size)}`
-                        : !folderReady
-                          ? "n/a"
-                          : recorded
-                            ? "On USB — press Play to load"
-                            : "—"}
-                    </span>
-                  </div>
-                </div>
+              <div
+                className="audio-file-line"
+                title={wav ? `${wav.fileName} · ${formatBytes(wav.size)}` : fileLabel}
+              >
+                <Icon name="fileMusic" size={14} />
+                <span className="audio-file-name">{fileLabel}</span>
+                {wav ? <span className="audio-file-size">{formatBytes(wav.size)}</span> : null}
               </div>
 
-              {(recorded || hasFile) && folderReady ? (
-                <div className="audio-seek">
-                  <label className="audio-seek-label" htmlFor={`audio-seek-${n}`}>
-                    Position
-                  </label>
-                  <input
-                    id={`audio-seek-${n}`}
-                    type="range"
-                    min={0}
-                    max={Math.max(durationSec, 0.1)}
-                    step={0.05}
-                    value={Math.min(pos, Math.max(durationSec, 0.1))}
-                    disabled={!playOk && !playing}
-                    onPointerDown={() => scrubbingRef.current.add(n)}
-                    onPointerUp={() => scrubbingRef.current.delete(n)}
-                    onChange={(e) => seekTrack(n, Number(e.target.value))}
-                  />
-                  <div className="audio-seek-readout">
-                    {formatClock(pos)} / {formatClock(durationSec)}
-                  </div>
-                </div>
-              ) : null}
+              <WaveformSeek
+                label={`Track ${n} position`}
+                seed={n}
+                peaks={peaks[n - 1] ?? null}
+                position={pos}
+                duration={durationSec}
+                hasAudio={hasAudio}
+                disabled={!playOk && !playing}
+                onSeek={(sec) => seekTrack(n, sec)}
+              />
 
               <div className="audio-track-actions">
-                {playing ? (
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    disabled={busy}
-                    onClick={() => stopTrackSource(n)}
-                  >
-                    <Icon name="stop" size={14} /> Stop
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    disabled={!playOk}
-                    title={playDisabledReason ?? "Play this track (other tracks keep playing)"}
-                    onClick={() => void playTrack(n)}
-                  >
-                    <Icon name="play" size={14} /> Play
-                  </button>
-                )}
                 <button
                   type="button"
-                  className="btn ghost"
+                  className={`audio-icon-btn transport play${playing ? " is-active" : ""}`}
+                  disabled={!playOk || playing}
+                  title={
+                    playing
+                      ? "Playing"
+                      : (playDisabledReason ?? "Play this track (other tracks keep playing)")
+                  }
+                  aria-label={`Play track ${n}`}
+                  aria-pressed={playing}
+                  onClick={() => void playTrack(n)}
+                >
+                  <Icon name="play" size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="audio-icon-btn transport"
+                  disabled={!playing || busy}
+                  title="Pause (keeps the position)"
+                  aria-label={`Pause track ${n}`}
+                  onClick={() => stopTrackSource(n)}
+                >
+                  <Icon name="pause" size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="audio-icon-btn transport"
+                  disabled={!playing && pos <= 0}
+                  title="Stop and return to the start"
+                  aria-label={`Stop track ${n}`}
+                  onClick={() => stopTrack(n)}
+                >
+                  <Icon name="stop" size={18} />
+                </button>
+                <span className="audio-actions-spacer" />
+                <button
+                  type="button"
+                  className="audio-icon-btn"
                   disabled={!writeOk}
+                  title="Import audio file into this track"
+                  aria-label={`Import audio into track ${n}`}
                   onClick={() => requestImport(n)}
                 >
-                  <Icon name="upload" size={14} /> Import
+                  <Icon name="importAudio" size={17} />
                 </button>
                 <button
                   type="button"
-                  className="btn ghost"
+                  className="audio-icon-btn"
                   disabled={!exportOk}
                   title="Export this track WAV"
+                  aria-label={`Export track ${n} WAV`}
                   onClick={() => void exportTrack(n)}
                 >
-                  <Icon name="download" size={14} /> Export
+                  <Icon name="exportAudio" size={17} />
                 </button>
                 <button
                   type="button"
-                  className="btn ghost"
-                  disabled={!writeOk || (!recorded && !wav)}
+                  className="audio-icon-btn danger"
+                  disabled={!writeOk || !hasAudio}
+                  title="Clear this track (deletes the WAV)"
+                  aria-label={`Clear track ${n}`}
                   onClick={() => void clearTrack(n)}
                 >
-                  <Icon name="deleteOutline" size={14} /> Clear
+                  <Icon name="trash" size={17} />
                 </button>
               </div>
             </section>

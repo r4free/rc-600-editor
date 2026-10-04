@@ -41,10 +41,13 @@ export function MixerTab({
   const groups = sub === "input" ? MIXER_INPUT_GROUPS : MIXER_OUTPUT_GROUPS;
   const visible = visibleMixerGroups(groups, model.input, model.output);
 
-  function setMixer(tag: string, value: number) {
-    const partial: TagMap = { [tag]: String(value) };
-    const partner = mixerLinkPartner(tag, model.input, model.output);
-    if (partner) partial[partner] = String(value);
+  function setMixer(values: Record<string, number>) {
+    const partial: TagMap = {};
+    for (const [tag, value] of Object.entries(values)) {
+      partial[tag] = String(value);
+      const partner = mixerLinkPartner(tag, model.input, model.output);
+      if (partner) partial[partner] = String(value);
+    }
     onPatch({ type: "section", section: "MIXER", tags: partial, scope });
   }
 
@@ -69,7 +72,7 @@ export function MixerTab({
             label={sub === "input" ? "Input Mixer" : "Output Mixer"}
             text={
               sub === "input"
-                ? "Input levels and mutes. Stereo link on Input → Setup hides the paired jack and keeps both in sync."
+                ? "Input levels. Drag a Level all the way left to mute that input. Stereo link on Input → Setup hides the paired jack and keeps both in sync."
                 : "Output levels. Stereo link on Output → Setup hides the paired jack and keeps both in sync."
             }
           />
@@ -77,22 +80,30 @@ export function MixerTab({
       </div>
 
       <div className="channel-grid">
-        {visible.map((group: MixerGroup) => (
-          <section key={group.title} className="channel-card">
-            <h3 className="section-title">{mixerGroupTitle(group, model.input, model.output)}</h3>
-            <div className="param-columns">
-              {group.params.map((def) => (
-                <ParamControl
-                  key={def.tag}
-                  id={`mix-${def.tag}`}
-                  def={def}
-                  value={num(model.mixer, def.tag, def.default ?? 0)}
-                  onChange={(v) => setMixer(def.tag, v)}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+        {visible.map((group: MixerGroup) => {
+          // Mute has no switch of its own: Level at far left (0) is Mute.
+          const mute = group.params.find((p) => p.kind === "bool");
+          const muted = mute ? num(model.mixer, mute.tag) === 1 : false;
+          const title = mixerGroupTitle(group, model.input, model.output);
+          const controls = group.params
+            .filter((def) => def !== mute)
+            .map((def) => (
+              <ParamControl
+                key={def.tag}
+                id={`mix-${def.tag}`}
+                def={{ ...def, name: title }}
+                value={muted ? (def.min ?? 0) : num(model.mixer, def.tag, def.default ?? 0)}
+                onChange={(v) =>
+                  setMixer(
+                    mute
+                      ? { [def.tag]: v, [mute.tag]: v <= (def.min ?? 0) ? 1 : 0 }
+                      : { [def.tag]: v },
+                  )
+                }
+              />
+            ));
+          return controls;
+        })}
       </div>
     </div>
   );

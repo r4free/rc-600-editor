@@ -627,39 +627,39 @@ export function OutputTab({
       ) : null}
 
       {sub === "eq" ? (
-        <>
-          <div className="tabs tabs-sub" role="tablist" aria-label="Output EQ">
-            {eqChannels.map((ch) => (
-              <button
-                key={ch.section}
-                type="button"
-                role="tab"
-                aria-selected={eqSection === ch.section}
-                className={`tab ${eqSection === ch.section ? "active" : ""}`}
-                onClick={() => setEqCh(ch.section)}
-              >
-                <Icon
-                  name={destIcon(
-                    OUTPUT_ROUTE_DESTS.find((d) => d.linkTag === ch.linkTag) ?? OUTPUT_ROUTE_DESTS[0],
-                  )}
-                  size={12}
-                />
-                {outputEqChannelLabel(ch, model.output)}
-              </button>
-            ))}
-          </div>
-          <EqPanel
-            idPrefix={`out-eq-${eqSection}`}
-            title={outputEqChannelLabel(
-              OUTPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? OUTPUT_EQ_CHANNELS[0],
-              model.output,
-            )}
-            viewKey={`outputEq.view.${scope}`}
-            params={OUTPUT_EQ_PARAMS}
-            tags={eqTags}
-            onChange={setEq}
-          />
-        </>
+        <EqPanel
+          idPrefix={`out-eq-${eqSection}`}
+          title={outputEqChannelLabel(
+            OUTPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? OUTPUT_EQ_CHANNELS[0],
+            model.output,
+          )}
+          heading={
+            <div className="tabs tabs-sub eq-toolbar-tabs" role="tablist" aria-label="Output EQ">
+              {eqChannels.map((ch) => (
+                <button
+                  key={ch.section}
+                  type="button"
+                  role="tab"
+                  aria-selected={eqSection === ch.section}
+                  className={`tab ${eqSection === ch.section ? "active" : ""}`}
+                  onClick={() => setEqCh(ch.section)}
+                >
+                  <Icon
+                    name={destIcon(
+                      OUTPUT_ROUTE_DESTS.find((d) => d.linkTag === ch.linkTag) ?? OUTPUT_ROUTE_DESTS[0],
+                    )}
+                    size={12}
+                  />
+                  {outputEqChannelLabel(ch, model.output)}
+                </button>
+              ))}
+            </div>
+          }
+          viewKey={`outputEq.view.${scope}`}
+          params={OUTPUT_EQ_PARAMS}
+          tags={eqTags}
+          onChange={setEq}
+        />
       ) : null}
 
       {sub === "mfx" ? (

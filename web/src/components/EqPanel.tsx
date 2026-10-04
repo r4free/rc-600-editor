@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ParamDef } from "@rc600/catalog/params";
 import type { TagMap } from "@rc600/rc0/memory";
 import { usePersistedTab } from "../uiTabs";
@@ -34,6 +35,7 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
 export function EqPanel({
   idPrefix,
   title,
+  heading,
   viewKey,
   params,
   tags,
@@ -41,6 +43,8 @@ export function EqPanel({
 }: {
   idPrefix: string;
   title: string;
+  /** Replaces the title on the left of the toolbar (e.g. channel tabs). */
+  heading?: ReactNode;
   viewKey: string;
   params: ParamDef[];
   tags: TagMap;
@@ -51,7 +55,7 @@ export function EqPanel({
   return (
     <>
       <div className="eq-toolbar">
-        <h3 className="section-title">{title}</h3>
+        {heading ?? <h3 className="section-title">{title}</h3>}
         <div className="view-toggle" role="radiogroup" aria-label="EQ view">
           {EQ_VIEW_OPTIONS.map((o) => (
             <button
