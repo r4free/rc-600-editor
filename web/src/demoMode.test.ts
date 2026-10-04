@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { demoSetlist, isDemoPage, isDemoPath } from "./demoMode.ts";
+import { demoSetlist, isDemoPage, isDemoPath } from "./demoMode";
 
 describe("demo page", () => {
   it("recognizes the demo path but keeps the page closed", () => {
