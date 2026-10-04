@@ -32,7 +32,8 @@ import {
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
-import type { PatchHandler } from "./LoopTab";
+import { linkView, preferenceView } from "./InputTab";
+import { TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
 const OUTPUT_SUBS = ["setup", "routing", "eq", "mfx"] as const;
@@ -51,6 +52,40 @@ const ROUTING_SUBS: { id: RoutingSub; label: string; icon: IconName }[] = [
   { id: "input", label: "Input/Rhythm", icon: "mic" },
   { id: "phones", label: "Phones Out", icon: "master" },
 ];
+
+const OUTPUT_SETUP_VIEWS: Record<string, TrackStateView> = {
+  A: {
+    label: "Output Knob",
+    variant: "output-knob",
+    states: [
+      { icon: "master", text: "All", title: "The OUTPUT LEVEL knob sets MASTER OUT and PHONES OUT." },
+      {
+        icon: "speaker",
+        text: "Master",
+        title: "The OUTPUT LEVEL knob sets MAIN / SUB 1 / SUB 2 only.",
+        color: "#c084fc",
+        alert: true,
+      },
+      {
+        icon: "headphones",
+        text: "Phones",
+        title: "The OUTPUT LEVEL knob sets PHONES OUT only.",
+        color: "#38bdf8",
+        alert: true,
+      },
+      {
+        icon: "volumeOff",
+        text: "Off",
+        title: "The OUTPUT LEVEL knob does nothing; only mixer levels apply.",
+        color: "var(--warn)",
+        alert: true,
+      },
+    ],
+  },
+  B: linkView("MAIN", "MAIN L and R"),
+  C: linkView("SUB 1", "SUB 1 L and R"),
+  D: linkView("SUB 2", "SUB 2 L and R"),
+};
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -185,40 +220,42 @@ export function OutputTab({
               ? "System output defaults. Preference chooses whether each jack uses MEMORY or SYSTEM settings on the pedal."
               : "Output knob, stereo link, routing, EQ, and Master FX are stored in this memory. MEMORY vs SYSTEM preference lives in System → Output → Setup."}
           </p>
-          <div className="channel-grid">
-            {OUTPUT_SETUP_GROUPS.map((group) => (
-              <section key={group.title} className="channel-card">
+          {OUTPUT_SETUP_GROUPS.map((group) => (
+            <section key={group.title}>
+              {group.params.length === 1 && group.params[0].name === group.title ? null : (
                 <h3 className="section-title">{group.title}</h3>
-                <div className="param-columns">
-                  {group.params.map((def) => (
-                    <ParamControl
-                      key={def.tag}
-                      id={`out-setup-${def.tag}`}
-                      def={def}
-                      value={num(model.output, def.tag, def.default ?? 0)}
-                      onChange={(v) => setSetup(def.tag, v)}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-            {preference ? (
-              <section className="channel-card">
-                <h3 className="section-title">{PREF_OUTPUT_GROUP.title}</h3>
-                <div className="param-columns">
-                  {PREF_OUTPUT_GROUP.params.map((def) => (
-                    <ParamControl
-                      key={def.tag}
-                      id={`out-pref-${def.tag}`}
-                      def={def}
-                      value={num(preference.tags, def.tag, def.default ?? 0)}
-                      onChange={(v) => preference.onChange(def.tag, v)}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </div>
+              )}
+              <div className="track-state-cards">
+                {group.params.map((def) => (
+                  <TrackStateCard
+                    key={def.tag}
+                    id={`out-setup-${def.tag}`}
+                    def={def}
+                    view={OUTPUT_SETUP_VIEWS[def.tag]}
+                    value={num(model.output, def.tag, def.default ?? 0)}
+                    onChange={(v) => setSetup(def.tag, v)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {preference ? (
+            <section>
+              <h3 className="section-title">{PREF_OUTPUT_GROUP.title}</h3>
+              <div className="track-state-cards">
+                {PREF_OUTPUT_GROUP.params.map((def) => (
+                  <TrackStateCard
+                    key={def.tag}
+                    id={`out-pref-${def.tag}`}
+                    def={def}
+                    view={preferenceView(def.name)}
+                    value={num(preference.tags, def.tag, def.default ?? 0)}
+                    onChange={(v) => preference.onChange(def.tag, v)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </>
       ) : null}
 

@@ -98,6 +98,11 @@ const ICONS = {
   recEnd: "mdi:stop-circle-outline",
   phantom: "mdi:flash",
   phantomOff: "mdi:flash-off-outline",
+  compressor: "mdi:arrow-collapse-vertical",
+  noiseGate: "mdi:gate",
+  headphones: "mdi:headphones",
+  volumeOff: "mdi:volume-off",
+  speaker: "mdi:speaker",
 } as const;
 
 export type IconName = keyof typeof ICONS;

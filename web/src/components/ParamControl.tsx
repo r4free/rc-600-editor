@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ParamDef } from "@rc600/catalog/params";
 import { displayParam } from "@rc600/catalog/params";
+import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 
 const VOLUME_SEGMENTS = 32;
@@ -36,10 +37,13 @@ function volumeSegmentColor(segmentValue: number): string {
   return `hsl(0 72% ${44 - progress * 16}%)`;
 }
 
-function ParamLabel({ def, id }: { def: ParamDef; id: string }) {
+function ParamLabel({ def, id, icon }: { def: ParamDef; id: string; icon?: IconName }) {
   return (
     <div className="param-label">
-      <label htmlFor={id}>{def.name}</label>
+      <label htmlFor={id}>
+        {icon ? <Icon name={icon} className="param-label-icon" /> : null}
+        {def.name}
+      </label>
       {def.info ? <InfoTip label={def.name} text={def.info} /> : null}
     </div>
   );
@@ -74,18 +78,31 @@ function PowerSwitch({
   );
 }
 
+/** Forces the segmented volume layout on an int param. */
+export type MeterStyle = {
+  caption: string;
+  /** Segment color for a value inside min–max. */
+  color?: (segmentValue: number) => string;
+  /** Shown before the label (e.g. the input jack). */
+  labelIcon?: IconName;
+  /** Shown beside the value (e.g. the effect). */
+  valueIcon?: IconName;
+};
+
 export function ParamControl({
   def,
   value,
   onChange,
   id,
   disabled = false,
+  meter,
 }: {
   def: ParamDef;
   value: number;
   onChange: (v: number) => void;
   id: string;
   disabled?: boolean;
+  meter?: MeterStyle;
 }) {
   if (def.kind === "bool") {
     return (
@@ -172,14 +189,18 @@ export function ParamControl({
     );
   }
 
-  if (isVolumeParam(def)) {
+  if (meter || isVolumeParam(def)) {
     const progress = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)));
     const activeSegments = Math.round(progress * VOLUME_SEGMENTS);
+    const segmentColor = meter?.color ?? volumeSegmentColor;
     return (
-      <div className={`param-row volume-param${disabled ? " readonly" : ""}`}>
+      <div className={`param-row volume-param${value <= min ? " is-zero" : ""}${disabled ? " readonly" : ""}`}>
         <div className="volume-param-head">
-          <ParamLabel def={def} id={id} />
-          <strong className="volume-param-value">{displayParam(def, value)}</strong>
+          <ParamLabel def={def} id={id} icon={meter?.labelIcon} />
+          <strong className="volume-param-value">
+            {meter?.valueIcon ? <Icon name={meter.valueIcon} className="volume-param-value-icon" /> : null}
+            {displayParam(def, value)}
+          </strong>
         </div>
         <div className="volume-param-slider">
           <div className="volume-param-segments" aria-hidden="true">
@@ -190,7 +211,7 @@ export function ParamControl({
                 style={
                   {
                     height: `${35 + (index / (VOLUME_SEGMENTS - 1)) * 65}%`,
-                    "--volume-segment-color": volumeSegmentColor(
+                    "--volume-segment-color": segmentColor(
                       min + (index / (VOLUME_SEGMENTS - 1)) * (max - min),
                     ),
                   } as CSSProperties
@@ -210,7 +231,7 @@ export function ParamControl({
         </div>
         <div className="volume-param-scale" aria-hidden="true">
           <span>{min}</span>
-          <span>Volume</span>
+          <span>{meter?.caption ?? "Volume"}</span>
           <span>{max}</span>
         </div>
       </div>

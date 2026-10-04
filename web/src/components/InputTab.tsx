@@ -18,6 +18,7 @@ import type { PatchOp } from "@rc600/rc0/ops";
 import { EqFaderBoard, eqDisplay, eqRange } from "./EqFaders";
 import { Icon, type IconName } from "./Icon";
 import { ScrubCard, TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
+import { ParamControl, type MeterStyle } from "./ParamControl";
 import { usePersistedTab } from "../uiTabs";
 
 const INPUT_SUBS = ["setup", "eq", "dynamics"] as const;
@@ -62,7 +63,7 @@ function gainView(label: string): TrackStateView {
   };
 }
 
-function linkView(label: string, pair: string): TrackStateView {
+export function linkView(label: string, pair: string): TrackStateView {
   return {
     label,
     variant: "stereo-link",
@@ -83,7 +84,7 @@ const INPUT_SETUP_VIEWS: Record<string, TrackStateView> = {
   G: linkView("INST 2", "INST 2 L and R"),
 };
 
-function preferenceView(label: string): TrackStateView {
+export function preferenceView(label: string): TrackStateView {
   return {
     label,
     variant: "preference",
@@ -119,6 +120,15 @@ const EQ_VIEW_OPTIONS: { id: EqView; label: string; icon: IconName; title: strin
   { id: "eq", label: "EQ", icon: "equalizer", title: "Vertical faders, like a graphic EQ." },
   { id: "cards", label: "Cards", icon: "blocks", title: "One card per parameter." },
 ];
+
+/** Green at light settings, warming to orange as the effect gets heavier (0–100). */
+function depthColor(v: number): string {
+  const p = Math.max(0, Math.min(1, v / 100));
+  return `hsl(${150 - p * 125} 68% ${40 + p * 12}%)`;
+}
+
+const COMP_METER: MeterStyle = { caption: "Compressor", color: depthColor, valueIcon: "compressor" };
+const NS_METER: MeterStyle = { caption: "Noise Suppressor", color: depthColor, valueIcon: "noiseGate" };
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -353,7 +363,7 @@ export function InputTab({
 
       {sub === "dynamics" ? (
         <>
-          <div className="track-state-cards">
+          <div className="meter-columns">
             {INPUT_DYNAMICS_GROUPS.filter(
               (group) => group.role !== "secondary" || !inputStereoLinked(model.input, "E"),
             ).flatMap((group) => {
@@ -361,24 +371,19 @@ export function InputTab({
                 group.linkTag && inputStereoLinked(model.input, group.linkTag)
                   ? (group.linkedTitle ?? group.title)
                   : group.title;
-              return group.params.map((def) => {
-                const value = num(model.input, def.tag, def.default ?? 0);
-                return (
-                  <ScrubCard
-                    key={def.tag}
-                    id={`in-dyn-${def.tag}`}
-                    def={{ ...def, name: `${title} ${def.name}` }}
-                    value={value}
-                    min={def.min ?? 0}
-                    max={def.max ?? 0}
-                    format={(v) =>
-                      def.format === "comp" && v === 0 ? { value: "Off" } : { value: String(v) }
-                    }
-                    alert={value !== (def.default ?? 0)}
-                    onChange={(v) => setDynamics(def.tag, v)}
-                  />
-                );
-              });
+              return group.params.map((def) => (
+                <ParamControl
+                  key={def.tag}
+                  id={`in-dyn-${def.tag}`}
+                  def={{ ...def, name: `${title} ${def.name}` }}
+                  value={num(model.input, def.tag, def.default ?? 0)}
+                  onChange={(v) => setDynamics(def.tag, v)}
+                  meter={{
+                    ...(def.format === "comp" ? COMP_METER : NS_METER),
+                    labelIcon: group.title.startsWith("MIC") ? "mic" : "guitar",
+                  }}
+                />
+              ));
             })}
           </div>
         </>
