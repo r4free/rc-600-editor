@@ -12,7 +12,7 @@ export interface ParamDef {
   options?: EnumOption[];
   /** How int values are shown next to the slider. */
   /** `count`: stored 0-based, shown 1-based (e.g. Step Max 0–15 → 1–16). */
-  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan" | "mixer" | "count";
+  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan" | "mixer" | "count" | "sec10" | "ms";
   /** Parameter Guide text shown by the Info icon. */
   info?: string;
 }
@@ -3000,6 +3000,8 @@ export function displayParam(def: ParamDef, raw: number): string {
   if (def.format === "bipolar12") return bipolarLabel(raw, 12);
   if (def.format === "mixer") return mixerLabel(raw);
   if (def.format === "count") return String(raw + 1);
+  if (def.format === "sec10") return `${(raw / 10).toFixed(1)} s`;
+  if (def.format === "ms") return `${raw} ms`;
   if (def.format === "pan" || (def.tag === "C" && def.name === "Pan")) return panLabel(raw);
   if (def.tag === "F" && def.name === "Loop Length") return loopLengthLabel(raw);
   if (def.kind === "enum") return enumLabel(def, raw);

@@ -852,17 +852,57 @@ const CHORUS_PARAMS: ParamDef[] = [
   intP("F", "E.Level", 0, 100, 50, "Sets the volume of the effect sound."),
 ];
 
-function reverbParams(timeDef: number, densDef: number): ParamDef[] {
+function reverbParams(timeDef: number, third: ParamDef): ParamDef[] {
   return [
-    intP("A", "Time", 0, 100, timeDef, "Sets the length of the reverberation."),
-    enumP("B", "Lo Cut", LO_CUT, 0, "Frequency at which the low cut filter begins to take effect."),
-    intP("C", "Density", 0, 100, densDef, "Density of the reverberation."),
-    enumP("D", "High Cut", HI_CUT, 0, "Frequency at which the high cut filter begins to take effect."),
-    enumP("E", "Pre Delay", LO_CUT, 29, "Pre-delay / tone setting for the reverb."),
+    intP("A", "Time", 1, 100, timeDef, "Sets the length (time) of reverberation (0.1–10 s).", "sec10"),
+    intP("B", "Pre Delay", 0, 500, 0, "Sets the time until the reverb sound appears (0–500 ms).", "ms"),
+    third,
+    enumP(
+      "D",
+      "Lo Cut",
+      LO_CUT,
+      0,
+      "Frequency at which the low cut filter begins to take effect on the reverb sound. FLAT leaves the lows untouched.",
+    ),
+    enumP(
+      "E",
+      "High Cut",
+      HI_CUT,
+      29,
+      "Frequency at which the high cut filter begins to take effect on the reverb sound. FLAT leaves the highs untouched.",
+    ),
     intP("F", "D.Level", 0, 100, 100, "Sets the volume of the direct sound."),
-    intP("G", "E.Level", 0, 100, 50, "Sets the volume of the effect sound."),
+    intP("G", "E.Level", 0, 100, 50, "Sets the volume of the reverb sound."),
   ];
 }
+
+const REVERB_PARAMS = reverbParams(
+  30,
+  intP("C", "Density", 1, 10, 4, "Sets the density of the reverb sound: low values sound grainy, high values smooth."),
+);
+const GATE_REVERB_PARAMS = reverbParams(
+  30,
+  intP(
+    "C",
+    "Threshold",
+    0,
+    100,
+    50,
+    "Sets the level at which the reverberation is cut. The reverberation is cut once its level falls below this setting.",
+  ),
+);
+const REVERSE_REVERB_PARAMS = reverbParams(
+  5,
+  intP(
+    "C",
+    "Gate Time",
+    1,
+    10,
+    5,
+    "Sets the time at which the reverberations start getting louder (0.1–1 s).",
+    "sec10",
+  ),
+);
 
 /** Shared step-sequence parameters (A–F header + G–V step values). */
 export const INPUT_FX_SEQ_PARAMS: ParamDef[] = [
@@ -937,9 +977,9 @@ const TYPE_PARAMS: ParamDef[][] = [
   ROLL2_PARAMS,
   FREEZE_PARAMS,
   CHORUS_PARAMS,
-  reverbParams(30, 4),
-  reverbParams(30, 50),
-  reverbParams(5, 5),
+  REVERB_PARAMS,
+  GATE_REVERB_PARAMS,
+  REVERSE_REVERB_PARAMS,
 ];
 
 export function inputFxTypeParams(type: number): ParamDef[] {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { filterBars } from "./FilterCutControl";
+import { filterBarColor, filterBars } from "./FilterCutControl";
 
 describe("filter cut mini equalizer", () => {
   it("shows every band passed when FLAT", () => {
@@ -15,5 +15,10 @@ describe("filter cut mini equalizer", () => {
     assert.deepEqual(high.map((b) => b.passed), [true, true, true, false, false, false]);
     assert.ok(high[5]!.height < high[3]!.height);
     assert.ok(high.every((b) => b.height >= 10));
+  });
+
+  it("colors the bands from yellow to orange", () => {
+    assert.equal(filterBarColor(0, 29), "hsl(50 95% 56%)");
+    assert.equal(filterBarColor(28, 29), "hsl(24 95% 52%)");
   });
 });

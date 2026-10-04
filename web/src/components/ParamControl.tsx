@@ -20,6 +20,10 @@ function isPanParam(def: ParamDef): boolean {
   return def.kind === "int" && def.name.trim().toLowerCase() === "pan";
 }
 
+function scaleLabel(def: ParamDef, raw: number): string | number {
+  return def.format === "mixer" || def.format === "sec10" || def.format === "ms" ? displayParam(def, raw) : raw;
+}
+
 function volumeSegmentColor(segmentValue: number): string {
   if (segmentValue <= 100) {
     const progress = Math.max(0, segmentValue) / 100;
@@ -230,9 +234,9 @@ export function ParamControl({
           />
         </div>
         <div className="volume-param-scale" aria-hidden="true">
-          <span>{def.format === "mixer" ? displayParam(def, min) : min}</span>
+          <span>{scaleLabel(def, min)}</span>
           <span>{def.format === "mixer" ? "0" : (meter?.caption ?? "Volume")}</span>
-          <span>{def.format === "mixer" ? displayParam(def, max) : max}</span>
+          <span>{scaleLabel(def, max)}</span>
         </div>
       </div>
     );

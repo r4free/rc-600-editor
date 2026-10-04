@@ -16,7 +16,7 @@ import {
   syncRateBeats,
   syncRateLabel,
 } from "./input-fx.js";
-import { INPUT_FX_TYPE_OPTIONS } from "./params.js";
+import { displayParam, INPUT_FX_TYPE_OPTIONS } from "./params.js";
 import { parseMemory } from "../rc0/memory.js";
 import { applyOpsToModel } from "../rc0/ops.js";
 import { assemble, patchIfxSection } from "../rc0/writer.js";
@@ -47,6 +47,23 @@ describe("input FX type catalog", () => {
     assert.equal(label("C", 0), "FLAT");
     assert.equal(label("D", 29), "FLAT");
     assert.equal(label("D", 0), "20.0 Hz");
+  });
+
+  it("decodes the Reverb family in the factory order", () => {
+    const names = (type: number) => inputFxTypeParams(type).map((d) => d.name);
+    const tail = ["Lo Cut", "High Cut", "D.Level", "E.Level"];
+    assert.deepEqual(names(49), ["Time", "Pre Delay", "Density", ...tail]);
+    assert.deepEqual(names(50), ["Time", "Pre Delay", "Threshold", ...tail]);
+    assert.deepEqual(names(51), ["Time", "Pre Delay", "Gate Time", ...tail]);
+    assert.deepEqual(inputFxDefaultTags(49), { A: "30", B: "0", C: "4", D: "0", E: "29", F: "100", G: "50" });
+    assert.deepEqual(inputFxDefaultTags(50), { A: "30", B: "0", C: "50", D: "0", E: "29", F: "100", G: "50" });
+    assert.deepEqual(inputFxDefaultTags(51), { A: "5", B: "0", C: "5", D: "0", E: "29", F: "100", G: "50" });
+    const reverb = inputFxTypeParams(49);
+    const def = (tag: string) => reverb.find((d) => d.tag === tag)!;
+    assert.equal(displayParam(def("A"), 30), "3.0 s");
+    assert.equal(displayParam(def("B"), 120), "120 ms");
+    assert.equal(def("D").options![0]!.label, "FLAT");
+    assert.equal(def("E").options![29]!.label, "FLAT");
   });
 
   it("describes step sequencer layouts", () => {

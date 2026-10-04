@@ -17,6 +17,12 @@ export function filterBars(bandCount: number, cutBand: number | null, low: boole
   });
 }
 
+/** Yellow at the lowest band to orange at the highest. */
+export function filterBarColor(index: number, bandCount: number): string {
+  const t = bandCount > 1 ? index / (bandCount - 1) : 0;
+  return `hsl(${Math.round(50 - t * 26)} 95% ${Math.round(56 - t * 4)}%)`;
+}
+
 /**
  * Lo Cut / High Cut as a mini equalizer: one bar per frequency, FLAT at the end where the
  * filter does nothing (left for Lo Cut, right for High Cut).
@@ -59,7 +65,12 @@ export function FilterCutControl({
             <i
               key={bands[i]!.value}
               className={`${bar.passed ? "is-active" : ""}${i === cutBand ? " is-position" : ""}`}
-              style={{ height: `${bar.height}%`, "--volume-segment-color": "var(--slot-color)" } as CSSProperties}
+              style={
+                {
+                  height: `${bar.height}%`,
+                  "--volume-segment-color": filterBarColor(i, bands.length),
+                } as CSSProperties
+              }
             />
           ))}
         </div>

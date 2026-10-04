@@ -8,11 +8,13 @@ import {
   inputFxTypeLabel,
   inputFxTypeParams,
 } from "@rc600/catalog/input-fx";
-import { FX_BANKS } from "@rc600/catalog/params";
+import { FX_BANKS, fxSlotSection } from "@rc600/catalog/params";
 import { memoryTempo, type MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { cutLabelHz } from "../audio/chorusPreview";
+import type { ReverbKind } from "../audio/reverbPreview";
 import { ChorusPreviewBar } from "./ChorusPreviewBar";
+import { ReverbPreviewBar } from "./ReverbPreviewBar";
 import { FilterCutControl } from "./FilterCutControl";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
@@ -29,6 +31,29 @@ const RING_MOD_TYPE = 9;
 const TREMOLO_TYPE = 32;
 const VIBRATO_TYPE = 33;
 const CHORUS_TYPE = 48;
+const REVERB_TYPE = 49;
+const GATE_REVERB_TYPE = 50;
+const REVERSE_REVERB_TYPE = 51;
+const REVERB_TYPES = [
+  {
+    type: REVERB_TYPE,
+    label: "Reverb",
+    title: "Natural reverberation that fades out.",
+  },
+  {
+    type: GATE_REVERB_TYPE,
+    label: "Gate",
+    title: "Reverb cut off before its natural length, once it falls below the Threshold.",
+  },
+  {
+    type: REVERSE_REVERB_TYPE,
+    label: "Reverse",
+    title: "Gate reverb whose reverberation fades in instead of fading out.",
+  },
+];
+const REVERB_MIX = "D.Level is the original sound, E.Level the reverb sound.";
+const REVERB_FILTERS =
+  "Lo Cut and High Cut trim the lows and highs of the reverb sound only (FLAT = no filtering).";
 const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
 
 const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
@@ -55,6 +80,18 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
   [VIBRATO_TYPE]: {
     main: "Rate is how fast the pitch wobbles, Depth is how far it swings, and Color makes the wobble less regular.",
     mix: "D.Level is the original sound, E.Level the sound with vibrato. Raise both for a chorus-like blend.",
+  },
+  [REVERB_TYPE]: {
+    main: `Time is how long the reverb rings, Pre Delay the gap before it starts, and Density how smooth it sounds. ${REVERB_FILTERS}`,
+    mix: REVERB_MIX,
+  },
+  [GATE_REVERB_TYPE]: {
+    main: `Time is how long the reverb rings, Pre Delay the gap before it starts, and Threshold the level where the tail is cut off. ${REVERB_FILTERS}`,
+    mix: REVERB_MIX,
+  },
+  [REVERSE_REVERB_TYPE]: {
+    main: `Time is how long the reverb rings, Pre Delay the gap before it starts, and Gate Time when the swell begins to rise. ${REVERB_FILTERS}`,
+    mix: REVERB_MIX,
   },
 };
 
@@ -143,6 +180,7 @@ export function InputFxEditModal({
       ? inputFxSeqTargets(type)[num(seqTags, "D")]?.tag
       : undefined;
   const captions = GROUP_CAPTIONS[type];
+  const reverbFamily = REVERB_TYPES.some((r) => r.type === type);
   const grouped = Boolean(layout || captions);
   const mainParams = grouped ? blockParams.filter((def) => !MIX_PARAM.test(def.name)) : blockParams;
   const mixParams = grouped ? blockParams.filter((def) => MIX_PARAM.test(def.name)) : [];
@@ -198,6 +236,20 @@ export function InputFxEditModal({
           wetLevel: tagValue("F"),
         }
       : undefined;
+  const reverb = reverbFamily
+    ? {
+        kind: (type === GATE_REVERB_TYPE ? "gate" : type === REVERSE_REVERB_TYPE ? "reverse" : "reverb") as ReverbKind,
+        timeSec: tagValue("A") / 10,
+        preDelayMs: tagValue("B"),
+        density: type === REVERB_TYPE ? tagValue("C") : 10,
+        threshold: type === GATE_REVERB_TYPE ? tagValue("C") : 0,
+        gateTimeSec: type === REVERSE_REVERB_TYPE ? tagValue("C") / 10 : 0.5,
+        loCutHz: cutHz("D"),
+        hiCutHz: cutHz("E"),
+        dryLevel: tagValue("F"),
+        wetLevel: tagValue("G"),
+      }
+    : undefined;
   const defaultSound = ring
     ? "ring"
     : phaser
@@ -325,7 +377,7 @@ export function InputFxEditModal({
     return (
       <div
         key={def.tag}
-        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) ? " is-wide" : ""}`}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
         title={sequenced ? "The step sequence is changing this parameter." : undefined}
       >
         {blockControl(def)}
@@ -365,6 +417,15 @@ export function InputFxEditModal({
           settings={chorus}
         />
       ) : null}
+      {reverb ? (
+        <ReverbPreviewBar
+          key={`reverb-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={reverb}
+        />
+      ) : null}
       {blockParams.length > 0 && !grouped ? (
         <section className="ifx-effect-controls" data-fx-slot={FX_BANKS[slot]!}>
           <div className="param-columns">{blockParams.map(blockControl)}</div>
@@ -380,6 +441,26 @@ export function InputFxEditModal({
               <div className="ifx-group-head">
                 <h4>{title}</h4>
                 {captions?.main ? <InfoTip label={title} text={captions.main} /> : null}
+                {reverbFamily ? (
+                  <div className="view-toggle ifx-type-toggle" role="radiogroup" aria-label="Reverb type">
+                    {REVERB_TYPES.map((r) => (
+                      <button
+                        key={r.type}
+                        type="button"
+                        role="radio"
+                        aria-checked={type === r.type}
+                        className={`view-toggle-btn${type === r.type ? " active" : ""}`}
+                        title={r.title}
+                        onClick={() =>
+                          type !== r.type &&
+                          onPatch({ type: "ifx", section: fxSlotSection(bank, slot), tags: { C: String(r.type) } })
+                        }
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="ifx-group-grid">{mainParams.map(control)}</div>
             </div>
