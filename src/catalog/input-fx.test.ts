@@ -39,6 +39,16 @@ describe("input FX type catalog", () => {
     assert.ok(!INPUT_FX_SEQ_TYPES.has(23));
   });
 
+  it("decodes Chorus in the factory order: Lo Cut / High Cut enums, then D.Level and E.Level", () => {
+    const chorus = inputFxTypeParams(48);
+    assert.deepEqual(chorus.map((d) => d.name), ["Rate", "Depth", "Lo Cut", "High Cut", "D.Level", "E.Level"]);
+    assert.deepEqual(inputFxDefaultTags(48), { A: "64", B: "50", C: "0", D: "29", E: "100", F: "50" });
+    const label = (tag: string, v: number) => chorus.find((d) => d.tag === tag)!.options!.find((o) => o.value === v)?.label;
+    assert.equal(label("C", 0), "FLAT");
+    assert.equal(label("D", 29), "FLAT");
+    assert.equal(label("D", 0), "20.0 Hz");
+  });
+
   it("describes step sequencer layouts", () => {
     const tremolo = inputFxStepLayout(32)!;
     assert.equal(tremolo.source, "seq");
@@ -46,10 +56,31 @@ describe("input FX type catalog", () => {
     assert.equal(tremolo.stepTags[0], "G");
     assert.equal(tremolo.stepTags[15], "V");
     assert.equal(tremolo.stepMaxTag, "F");
-    assert.equal(tremolo.target, "volume");
+    assert.equal(tremolo.target, "tremolo");
+    assert.deepEqual(tremolo.targetPreviews, ["tremolo", "tremolo"]);
+    assert.deepEqual(
+      inputFxSeqParams(32).find((d) => d.tag === "D")!.options?.map((o) => o.label),
+      ["Rate", "Depth"],
+    );
     assert.equal(inputFxStepLayout(1)!.target, "filter");
     assert.equal(inputFxStepLayout(14)!.target, "pitch");
     assert.equal(inputFxStepLayout(30)!.target, "pan");
+
+    const phaser = inputFxStepLayout(4)!;
+    assert.equal(phaser.target, "phaser");
+    assert.deepEqual(phaser.targetPreviews, ["phaser", "phaser", "phaser", "volume", "volume"]);
+    assert.deepEqual(
+      inputFxSeqParams(4).find((d) => d.tag === "D")!.options?.map((o) => o.label),
+      ["Depth", "Resonance", "Manual", "D.Level", "E.Level"],
+    );
+
+    const flanger = inputFxStepLayout(5)!;
+    assert.equal(flanger.target, "flanger");
+    assert.deepEqual(flanger.targetPreviews, ["flanger", "flanger", "flanger", "flanger", "volume", "volume"]);
+    assert.deepEqual(
+      inputFxSeqParams(5).find((d) => d.tag === "D")!.options?.map((o) => o.label),
+      ["Depth", "Resonance", "Manual", "Separation", "D.Level", "E.Level"],
+    );
 
     const ring = inputFxStepLayout(9)!;
     assert.equal(ring.target, "ring");

@@ -4,8 +4,11 @@ import type { ParamDef } from "@rc600/catalog/params";
 import type { TagMap } from "@rc600/rc0/memory";
 import {
   StepPreviewEngine,
+  type FlangerPreview,
+  type PhaserPreview,
   type PreviewSound,
   type RingPreview,
+  type TremoloPreview,
   type VibratoPreview,
 } from "../audio/stepPreview";
 import { RANDOM_STYLES, randomPattern, type RandomStyle } from "../audio/stepRandom";
@@ -20,6 +23,9 @@ const SOUNDS: { id: PreviewSound; label: string }[] = [
   { id: "beat", label: "Beat" },
   { id: "synth", label: "Synth" },
   { id: "ring", label: "Ring" },
+  { id: "phaser", label: "Phaser" },
+  { id: "flanger", label: "Flanger" },
+  { id: "tremolo", label: "Tremolo" },
 ];
 
 const TARGET_CAPTION = {
@@ -29,6 +35,9 @@ const TARGET_CAPTION = {
   pan: "pan",
   vibrato: "vibrato depth",
   ring: "ring modulator frequency",
+  phaser: "phaser sweep",
+  flanger: "flanger sweep",
+  tremolo: "tremolo pulse",
 } as const;
 
 type Lane = "level" | "length";
@@ -84,6 +93,27 @@ function vibratoStepParam(name: string | undefined): VibratoPreview["stepParam"]
   return null;
 }
 
+function tremoloStepParam(name: string | undefined): TremoloPreview["stepParam"] {
+  if (name === "Rate") return "rate";
+  if (name === "Depth") return "depth";
+  return null;
+}
+
+function phaserStepParam(name: string | undefined): PhaserPreview["stepParam"] {
+  const param = sweepStepParam(name);
+  return param === "separation" ? null : param;
+}
+
+function sweepStepParam(name: string | undefined): FlangerPreview["stepParam"] {
+  if (name === "Depth") return "depth";
+  if (name === "Resonance") return "resonance";
+  if (name === "Manual") return "manual";
+  if (name === "Separation") return "separation";
+  if (name === "D.Level") return "dryLevel";
+  if (name === "E.Level") return "wetLevel";
+  return null;
+}
+
 function targetView(def: ParamDef): TrackStateView {
   return {
     label: def.name,
@@ -134,6 +164,9 @@ export function StepSequencer({
   defaultSound = "synth",
   vibrato,
   ring,
+  phaser,
+  flanger,
+  tremolo,
   onSet,
 }: {
   idPrefix: string;
@@ -150,6 +183,12 @@ export function StepSequencer({
   vibrato?: Omit<VibratoPreview, "stepParam">;
   /** Ring Modulator settings, so the preview plays the effect itself. */
   ring?: Omit<RingPreview, "stepFrequency">;
+  /** Phaser settings, so the preview plays the effect itself. */
+  phaser?: Omit<PhaserPreview, "stepParam">;
+  /** Flanger settings, so the preview plays the effect itself. */
+  flanger?: Omit<FlangerPreview, "stepParam">;
+  /** Tremolo settings, so the preview plays the effect itself. */
+  tremolo?: Omit<TremoloPreview, "stepParam">;
   /** Reference sound selected when the editor opens. */
   defaultSound?: PreviewSound;
   onSet: (tags: Record<string, string>) => void;
@@ -174,6 +213,8 @@ export function StepSequencer({
   const targetDef = layout.targetTag ? defFor(layout.targetTag) : undefined;
   const targetName = targetDef?.options?.find((o) => o.value === targetIndex)?.label;
   const sequenceOff = layout.switchTag ? num(tags, layout.switchTag, 0) === 0 : false;
+  const stepSync = layout.syncTag ? num(tags, layout.syncTag, 0) === 1 : false;
+  const retrigger = layout.retriggerTag ? num(tags, layout.retriggerTag, 0) === 1 : true;
   const previewTags = layout.previewTags;
   const depth = previewTags ? num(tags, previewTags.depth, defFor(previewTags.depth)?.default ?? 100) : 100;
   const compThreshold = previewTags
@@ -214,11 +255,16 @@ export function StepSequencer({
       target,
       sound,
       metronome,
+      stepSync,
+      retrigger,
       depth,
       compressorThresholdDb: compThreshold - 30,
       compressorGainDb: compGain,
       vibrato: vibrato ? { ...vibrato, stepParam: sequenceOff ? null : vibratoStepParam(targetName) } : undefined,
       ring: ring ? { ...ring, stepFrequency: !sequenceOff && targetName === "Frequency" } : undefined,
+      phaser: phaser ? { ...phaser, stepParam: sequenceOff ? null : phaserStepParam(targetName) } : undefined,
+      flanger: flanger ? { ...flanger, stepParam: sequenceOff ? null : sweepStepParam(targetName) } : undefined,
+      tremolo: tremolo ? { ...tremolo, stepParam: sequenceOff ? null : tremoloStepParam(targetName) } : undefined,
     }),
     [
       levelSteps,
@@ -228,11 +274,16 @@ export function StepSequencer({
       target,
       sound,
       metronome,
+      stepSync,
+      retrigger,
       depth,
       compThreshold,
       compGain,
       vibrato,
       ring,
+      phaser,
+      flanger,
+      tremolo,
       sequenceOff,
       targetName,
     ],
@@ -243,6 +294,12 @@ export function StepSequencer({
   }, [config]);
 
   useEffect(() => () => engineRef.current?.dispose(), []);
+
+  useEffect(() => {
+    if (!sequenceOff || !engineRef.current?.playing) return;
+    engineRef.current.stop();
+    setPlaying(false);
+  }, [sequenceOff]);
 
   const bpmTapsRef = useRef<number[]>([]);
   function tapBpm() {
@@ -257,7 +314,7 @@ export function StepSequencer({
     if (engine.playing) {
       engine.stop();
       setPlaying(false);
-    } else {
+    } else if (!sequenceOff) {
       engine.update(config);
       engine.start();
       setPlaying(true);
@@ -398,6 +455,8 @@ export function StepSequencer({
           className={`btn step-seq-play${playing ? " is-on" : ""}`}
           onClick={togglePlay}
           aria-pressed={playing}
+          disabled={sequenceOff && !playing}
+          title={sequenceOff ? "Turn Sequence on to play the steps" : undefined}
         >
           <Icon name={playing ? "stop" : "play"} size={14} />
           {playing ? "Stop" : "Play"}
@@ -533,7 +592,7 @@ export function StepSequencer({
               Steps change <strong>{targetName}</strong>
             </span>
           ) : null}
-          {sequenceOff ? <span>Sequence is OFF — the pedal ignores these steps until you turn it on.</span> : null}
+          {sequenceOff ? <span>Sequence is OFF — the pedal ignores these steps (and Play stays locked) until you turn it on.</span> : null}
         </p>
       ) : null}
 

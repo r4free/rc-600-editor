@@ -11,6 +11,8 @@ import {
 import { FX_BANKS } from "@rc600/catalog/params";
 import { memoryTempo, type MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
+import { cutLabelHz } from "../audio/chorusPreview";
+import { ChorusPreviewBar } from "./ChorusPreviewBar";
 import { Icon } from "./Icon";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
@@ -19,14 +21,34 @@ import { rateCardValue, StepSequencer } from "./StepSequencer";
 
 const DEFAULT_BPM = 120;
 
+const PHASER_TYPE = 4;
+const FLANGER_TYPE = 5;
 const RING_MOD_TYPE = 9;
+const TREMOLO_TYPE = 32;
 const VIBRATO_TYPE = 33;
+const CHORUS_TYPE = 48;
 const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
 
 const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
+  [PHASER_TYPE]: {
+    main: "Rate is how fast the swirl sweeps, Depth how wide it sweeps, Resonance how sharp it sounds, and Manual where the sweep is centered.",
+    mix: "The swirl comes from mixing D.Level (original) with E.Level (phase-shifted). Keep both up for the classic phaser sound.",
+  },
+  [FLANGER_TYPE]: {
+    main: "Rate is how fast the jet-plane whoosh sweeps, Depth how wide it sweeps, Resonance how metallic it rings, Manual where the sweep is centered, and Separation how wide it spreads between left and right.",
+    mix: "The whoosh comes from mixing D.Level (original) with E.Level (slightly delayed). Keep both up for the classic flanger sound.",
+  },
   [RING_MOD_TYPE]: {
     main: "Frequency is the pitch of the oscillator that multiplies your sound: low values wobble, high values sound metallic and bell-like.",
     mix: "Balance goes from the original sound (0) to the ring-modulated sound (100).",
+  },
+  [CHORUS_TYPE]: {
+    main: "Rate is how fast the shimmer moves and Depth how strongly the doubled sound is detuned. Lo Cut and High Cut trim the lows and highs of the chorus sound only (FLAT = no filtering).",
+    mix: "D.Level is the original sound, E.Level the chorus sound. Raise both for a wide, doubled sound.",
+  },
+  [TREMOLO_TYPE]: {
+    main: "Rate is how fast the volume pulses, Depth how far it dips, and Waveform the shape: smooth and wavy at low values, choppy on/off at high values.",
+    mix: "Level is the volume of the effect sound (50 keeps the same loudness).",
   },
   [VIBRATO_TYPE]: {
     main: "Rate is how fast the pitch wobbles, Depth is how far it swings, and Color makes the wobble less regular.",
@@ -116,9 +138,10 @@ export function InputFxEditModal({
     layout?.source === "seq" && num(seqTags, "A") === 1
       ? inputFxSeqTargets(type)[num(seqTags, "D")]?.tag
       : undefined;
-  const mainParams = layout ? blockParams.filter((def) => !MIX_PARAM.test(def.name)) : blockParams;
-  const mixParams = layout ? blockParams.filter((def) => MIX_PARAM.test(def.name)) : [];
   const captions = GROUP_CAPTIONS[type];
+  const grouped = Boolean(layout || captions);
+  const mainParams = grouped ? blockParams.filter((def) => !MIX_PARAM.test(def.name)) : blockParams;
+  const mixParams = grouped ? blockParams.filter((def) => MIX_PARAM.test(def.name)) : [];
   const tagValue = (tag: string) => num(tags, tag, params.find((d) => d.tag === tag)?.default ?? 0);
   const vibrato =
     type === VIBRATO_TYPE
@@ -131,6 +154,55 @@ export function InputFxEditModal({
         }
       : undefined;
   const ring = type === RING_MOD_TYPE ? { frequency: tagValue("A"), balance: tagValue("B") } : undefined;
+  const phaser =
+    type === PHASER_TYPE
+      ? {
+          rateIndex: tagValue("A"),
+          depth: tagValue("B"),
+          resonance: tagValue("C"),
+          manual: tagValue("D"),
+          dryLevel: tagValue("E"),
+          wetLevel: tagValue("F"),
+        }
+      : undefined;
+  const flanger =
+    type === FLANGER_TYPE
+      ? {
+          rateIndex: tagValue("A"),
+          depth: tagValue("B"),
+          resonance: tagValue("C"),
+          manual: tagValue("D"),
+          separation: tagValue("E"),
+          dryLevel: tagValue("F"),
+          wetLevel: tagValue("G"),
+        }
+      : undefined;
+  const tremolo =
+    type === TREMOLO_TYPE
+      ? { rateIndex: tagValue("A"), depth: tagValue("B"), waveform: tagValue("C"), level: tagValue("D") }
+      : undefined;
+  const cutHz = (tag: string) =>
+    cutLabelHz(params.find((d) => d.tag === tag)?.options?.find((o) => o.value === tagValue(tag))?.label);
+  const chorus =
+    type === CHORUS_TYPE
+      ? {
+          rateIndex: tagValue("A"),
+          depth: tagValue("B"),
+          loCutHz: cutHz("C"),
+          hiCutHz: cutHz("D"),
+          dryLevel: tagValue("E"),
+          wetLevel: tagValue("F"),
+        }
+      : undefined;
+  const defaultSound = ring
+    ? "ring"
+    : phaser
+      ? "phaser"
+      : flanger
+        ? "flanger"
+        : tremolo
+          ? "tremolo"
+          : undefined;
 
   function blockControl(def: (typeof params)[number]) {
     const value = num(tags, def.tag, def.default ?? 0);
@@ -186,7 +258,7 @@ export function InputFxEditModal({
         />
       );
     }
-    if (layout && def.kind === "bool") {
+    if (grouped && def.kind === "bool") {
       return (
         <TrackStateCard
           key={def.tag}
@@ -222,9 +294,9 @@ export function InputFxEditModal({
         def={def}
         value={value}
         meter={
-          layout && def.kind === "int" && !MIX_PARAM.test(def.name)
+          grouped && def.kind === "int" && !MIX_PARAM.test(def.name)
             ? { caption: def.name, color: () => "var(--slot-color)" }
-            : layout && def.name === "Balance"
+            : grouped && def.name === "Balance"
               ? { caption: "Direct ↔ Effect" }
               : undefined
         }
@@ -252,6 +324,7 @@ export function InputFxEditModal({
       {target}
       {layout && stepSection ? (
         <StepSequencer
+          key={`${stepSection}-${type}`}
           idPrefix={`ifx-edit-${stepSection}`}
           layout={layout}
           defs={layout.source === "seq" ? inputFxSeqParams(type) : params}
@@ -261,16 +334,27 @@ export function InputFxEditModal({
           memoryBpm={memoryTempo(model)}
           vibrato={vibrato}
           ring={ring}
-          defaultSound={ring ? "ring" : undefined}
+          phaser={phaser}
+          flanger={flanger}
+          tremolo={tremolo}
+          defaultSound={defaultSound}
           onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
         />
       ) : null}
-      {blockParams.length > 0 && !layout ? (
+      {chorus && !layout ? (
+        <ChorusPreviewBar
+          key={`${section}-${type}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          settings={chorus}
+        />
+      ) : null}
+      {blockParams.length > 0 && !grouped ? (
         <section className="ifx-effect-controls" data-fx-slot={FX_BANKS[slot]!}>
           <div className="param-columns">{blockParams.map(blockControl)}</div>
         </section>
       ) : null}
-      {blockParams.length > 0 && layout ? (
+      {blockParams.length > 0 && grouped ? (
         <section
           className={`ifx-effect-controls ifx-groups${mainParams.length > 0 && mixParams.length > 0 ? " has-mix" : ""}`}
           data-fx-slot={FX_BANKS[slot]!}

@@ -327,25 +327,37 @@ const FILTER_PARAMS: ParamDef[] = [
 ];
 
 const PHASER_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 3, "Sets the speed of the effect."),
-  intP("B", "Depth", 0, 100, 50, "Sets the richness of the effect."),
-  intP("C", "Resonance", 0, 100, 50, "Sets the intensity of the effect."),
-  intP("D", "Manual", 0, 100, 50, "Sets the center frequency of the phaser effect."),
-  intP("E", "D.Level", 0, 100, 100, "Sets the volume of the direct sound."),
+  enumP(
+    "A",
+    "Rate",
+    SYNC_RATE,
+    3,
+    "Sets the speed of the effect: how fast the swirl sweeps up and down. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+  ),
+  intP("B", "Depth", 0, 100, 50, "Sets the richness of the effect: how wide the sweep is."),
+  intP("C", "Resonance", 0, 100, 50, "Sets the intensity of the effect: higher values give a sharper, more whistling swirl."),
+  intP("D", "Manual", 0, 100, 50, "Sets the center frequency of the phaser effect: low values sound darker, high values brighter."),
+  intP("E", "D.Level", 0, 100, 100, "Sets the volume of the direct sound. The phaser swirl comes from mixing it with the effect sound."),
   intP("F", "E.Level", 0, 100, 100, "Sets the volume level of the effect sound."),
-  intP("G", "Mode", 0, 100, 0, "Additional phaser setting."),
-  boolP("H", "Bi-Phase", 1, "Additional phaser mode stored with this effect."),
+  intP("G", "Mode", 0, 100, 0, "Additional phaser setting stored with this effect (not described in the Parameter Guide)."),
+  boolP("H", "Bi-Phase", 1, "Additional phaser mode stored with this effect (not described in the Parameter Guide)."),
 ];
 
 const FLANGER_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 2, "Sets the speed of the effect."),
-  intP("B", "Depth", 0, 100, 50, "Sets the richness of the effect."),
-  intP("C", "Resonance", 0, 100, 70, "Sets the intensity of the effect."),
-  intP("D", "Manual", 0, 100, 50, "Sets the center frequency of the flanger effect."),
-  intP("E", "Separation", 0, 100, 0, "Sets the amount of separation (how wide the sound seems)."),
-  intP("F", "D.Level", 0, 100, 100, "Sets the volume of the direct sound."),
+  enumP(
+    "A",
+    "Rate",
+    SYNC_RATE,
+    2,
+    "Sets the speed of the effect: how fast the jet-plane whoosh sweeps up and down. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+  ),
+  intP("B", "Depth", 0, 100, 50, "Sets the richness of the effect: how wide the whoosh sweeps."),
+  intP("C", "Resonance", 0, 100, 70, "Sets the intensity of the effect: higher values give a more metallic, ringing whoosh."),
+  intP("D", "Manual", 0, 100, 50, "Sets the center frequency of the flanger effect: low values sound darker, high values brighter."),
+  intP("E", "Separation", 0, 100, 0, "Sets the amount of separation: higher values spread the effect between left and right for a wider sound."),
+  intP("F", "D.Level", 0, 100, 100, "Sets the volume of the direct sound. The flanger whoosh comes from mixing it with the effect sound."),
   intP("G", "E.Level", 0, 100, 100, "Sets the volume of the effect sound."),
-  intP("H", "Mode", 0, 100, 0, "Additional flanger setting."),
+  intP("H", "Mode", 0, 100, 0, "Additional flanger setting stored with this effect (not described in the Parameter Guide)."),
 ];
 
 const SYNTH_PARAMS: ParamDef[] = [
@@ -669,9 +681,22 @@ const STEREO_ENHANCE_PARAMS: ParamDef[] = [
 ];
 
 const TREMOLO_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 99, "Sets the frequency (speed) of the change."),
-  intP("B", "Depth", 0, 100, 50, "Sets the depth of the effect."),
-  intP("C", "Waveform", 0, 100, 50, "How the volume level changes. Higher values create more abrupt change."),
+  enumP(
+    "A",
+    "Rate",
+    SYNC_RATE,
+    99,
+    "Sets the frequency (speed) of the change: how fast the volume pulses. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+  ),
+  intP("B", "Depth", 0, 100, 50, "Sets the depth of the effect: how far the volume dips on each pulse."),
+  intP(
+    "C",
+    "Waveform",
+    0,
+    100,
+    50,
+    "How the volume level changes. Low values give a smooth, wavy pulse; higher values create a more abrupt, choppy on/off change.",
+  ),
   intP("D", "Level", 0, 100, 50, "Sets the volume of the effect sound."),
 ];
 
@@ -807,11 +832,23 @@ const FREEZE_PARAMS: ParamDef[] = [
 ];
 
 const CHORUS_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", [...SYNC_RATE], 64, "Sets the rate of the chorus effect."),
-  intP("B", "Depth", 0, 100, 50, "Sets the depth of the chorus effect."),
-  intP("C", "D.Level", 0, 100, 0, "Sets the volume of the direct sound."),
-  enumP("D", "Lo Cut", LO_CUT, 29, "Frequency at which the low cut filter begins to take effect."),
-  intP("E", "High Cut", 0, 100, 100, "Frequency at which the high cut filter begins to take effect (FLAT at high values)."),
+  enumP("A", "Rate", [...SYNC_RATE], 64, "Sets the rate of the chorus effect: how fast the shimmer moves."),
+  intP("B", "Depth", 0, 100, 50, "Sets the depth of the chorus effect: how strongly the doubled sound is detuned."),
+  enumP(
+    "C",
+    "Lo Cut",
+    LO_CUT,
+    0,
+    "Frequency at which the low cut filter begins to take effect on the chorus sound. FLAT leaves the lows untouched.",
+  ),
+  enumP(
+    "D",
+    "High Cut",
+    HI_CUT,
+    29,
+    "Frequency at which the high cut filter begins to take effect on the chorus sound. FLAT leaves the highs untouched.",
+  ),
+  intP("E", "D.Level", 0, 100, 100, "Sets the volume of the direct sound."),
   intP("F", "E.Level", 0, 100, 50, "Sets the volume of the effect sound."),
 ];
 
@@ -971,7 +1008,16 @@ const STEP_SLICER_TYPE = 35;
 const STEP_COUNT = 16;
 
 /** What a step value shapes in the browser preview (not the real effect). */
-export type StepTarget = "volume" | "filter" | "pitch" | "pan" | "vibrato" | "ring";
+export type StepTarget =
+  | "volume"
+  | "filter"
+  | "pitch"
+  | "pan"
+  | "vibrato"
+  | "ring"
+  | "phaser"
+  | "flanger"
+  | "tremolo";
 
 export interface InputFxStepLayout {
   /** `seq`: steps live in the `*_SEQ` block; `block`: in the type block (Step Slicer). */
@@ -993,12 +1039,18 @@ export interface InputFxStepLayout {
   target: StepTarget;
   /** Sequence on/off switch (`seq` source). */
   switchTag?: string;
+  /** Step Sync and Retrigger switches (`seq` source). */
+  syncTag?: string;
+  retriggerTag?: string;
   /** TARGET tag and the preview target for each of its values (`seq` source). */
   targetTag?: string;
   targetPreviews?: StepTarget[];
 }
 
-const FILTER_TARGET = new Set([1, 2, 3, 4, 5, 6, 27]);
+const FILTER_TARGET = new Set([1, 2, 3, 6, 27]);
+const PHASER_TYPE = 4;
+const FLANGER_TYPE = 5;
+const TREMOLO_TYPE = 32;
 const RING_MOD_TYPE = 9;
 const PITCH_TARGET = new Set([14, 15, 22, 28]);
 const PAN_TARGET = new Set([30]);
@@ -1007,6 +1059,9 @@ function stepTarget(type: number, targetName?: string): StepTarget {
   if (targetName && /Level$/.test(targetName)) return "volume";
   if (type === VIBRATO_TYPE) return "vibrato";
   if (type === RING_MOD_TYPE) return "ring";
+  if (type === PHASER_TYPE) return "phaser";
+  if (type === FLANGER_TYPE) return "flanger";
+  if (type === TREMOLO_TYPE) return "tremolo";
   if (FILTER_TARGET.has(type)) return "filter";
   if (PITCH_TARGET.has(type)) return "pitch";
   if (PAN_TARGET.has(type)) return "pan";
@@ -1035,6 +1090,8 @@ export function inputFxStepLayout(type: number): InputFxStepLayout | null {
     headerTags: ["A", "B", "C", "D"],
     target: stepTarget(type),
     switchTag: "A",
+    syncTag: "B",
+    retriggerTag: "C",
     targetTag: "D",
     targetPreviews: inputFxSeqTargets(type).map((d) => stepTarget(type, d.name)),
   };

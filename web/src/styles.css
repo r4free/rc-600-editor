@@ -2171,8 +2171,12 @@ textarea {
 .modal-sheet.ifx-edit-modal {
   max-width: none;
   width: 80vw;
-  height: 80vh;
+  height: 95dvh;
   max-height: none;
+}
+
+.modal-backdrop:has(> .ifx-edit-modal) {
+  padding-block: 2.5dvh;
 }
 
 .step-seq {
@@ -2208,6 +2212,14 @@ textarea {
 .step-seq-tap-off:not(:disabled) {
   border-color: color-mix(in srgb, #fb7185 55%, var(--line));
   color: #fb7185;
+}
+
+.fx-preview-caption {
+  flex: 1 1 18rem;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 
 .step-seq-status {

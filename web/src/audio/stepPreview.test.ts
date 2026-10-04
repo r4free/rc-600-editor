@@ -2,12 +2,64 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   applyStepDepth,
+  flangerSettings,
+  freeRateIndex,
   lfoRateHz,
+  tremoloCurve,
+  tremoloSettings,
+  phaserSettings,
   ringFrequencyHz,
   stepDurationSec,
   stepValueToTarget,
   vibratoDelay,
 } from "./stepPreview";
+
+describe("tremolo preview", () => {
+  it("maps Depth, Waveform and Level", () => {
+    assert.deepEqual(tremoloSettings(0, 0, 50), { swing: 0, sharpness: 1, outputGain: 1 });
+    assert.deepEqual(tremoloSettings(100, 100, 100), { swing: 1, sharpness: 31, outputGain: 2 });
+  });
+
+  it("shapes the LFO from sine-like to square-like and maps steps to free rates", () => {
+    const smooth = tremoloCurve(1, 101);
+    const choppy = tremoloCurve(31, 101);
+    assert.ok(Math.abs(smooth[100]! - 1) < 1e-6 && Math.abs(choppy[100]! - 1) < 1e-6);
+    assert.ok(choppy[60]! > 0.99);
+    assert.ok(smooth[60]! < 0.3);
+    assert.equal(freeRateIndex(0), 18);
+    assert.equal(freeRateIndex(100), 118);
+    assert.equal(freeRateIndex(140), 118);
+  });
+});
+
+describe("flanger preview", () => {
+  it("maps Manual to a shorter delay, Depth to a safe swing, Resonance to feedback, Separation to sweep direction", () => {
+    const dark = flangerSettings(0, 100, 0, 0);
+    const bright = flangerSettings(100, 100, 100, 100);
+    assert.ok(Math.abs(dark.delaySec - 0.008) < 1e-9);
+    assert.ok(Math.abs(bright.delaySec - 0.0005) < 1e-9);
+    assert.ok(dark.delaySec - dark.sweepSec >= 0.0001 - 1e-9);
+    assert.ok(bright.delaySec - bright.sweepSec >= 0.0001 - 1e-9);
+    assert.equal(dark.feedback, 0);
+    assert.equal(bright.feedback, 0.9);
+    assert.equal(dark.rightSweep, 1);
+    assert.equal(bright.rightSweep, -1);
+    assert.equal(flangerSettings(50, 0, 50, 50).sweepSec, 0);
+  });
+});
+
+describe("phaser preview", () => {
+  it("maps Manual, Depth and Resonance to sweep settings", () => {
+    const low = phaserSettings(0, 0, 0);
+    assert.equal(low.centerHz, 150);
+    assert.equal(low.sweepCents, 0);
+    assert.ok(Math.abs(low.q - 0.4) < 1e-9);
+    const high = phaserSettings(100, 100, 100);
+    assert.equal(high.centerHz, 150 * 32);
+    assert.equal(high.sweepCents, 2400);
+    assert.equal(high.q, 8);
+  });
+});
 
 describe("ring modulator preview", () => {
   it("maps Frequency exponentially from 30 Hz to 3 kHz", () => {

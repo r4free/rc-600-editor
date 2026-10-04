@@ -95,10 +95,10 @@ const FACTORY_SPECS: FactorySpec[] = [
   { id: "vibrato-gentle", name: "Vibrato Gentle", type: 33, tags: { A: "40", B: "30", C: "40", D: "0", E: "100" } },
   { id: "vibrato-deep", name: "Vibrato Deep", type: 33, tags: { A: "55", B: "75", C: "60", D: "0", E: "100" } },
   { id: "vibrato-fast", name: "Vibrato Fast Warble", type: 33, tags: { A: "90", B: "50", C: "70", D: "20", E: "90" } },
-  { id: "chorus-clean", name: "Chorus Clean Width", type: 48, tags: { A: "50", B: "40", C: "80", D: "29", E: "100", F: "45" } },
-  { id: "chorus-rich", name: "Chorus Rich", type: 48, tags: { A: "64", B: "70", C: "50", D: "29", E: "100", F: "65" } },
-  { id: "chorus-detune", name: "Chorus Detune", type: 48, tags: { A: "30", B: "85", C: "60", D: "20", E: "90", F: "70" } },
-  { id: "chorus-subtle", name: "Chorus Subtle Doubling", type: 48, tags: { A: "45", B: "25", C: "90", D: "29", E: "100", F: "30" } },
+  { id: "chorus-clean", name: "Chorus Clean Width", type: 48, tags: { A: "50", B: "40", C: "0", D: "29", E: "80", F: "45" } },
+  { id: "chorus-rich", name: "Chorus Rich", type: 48, tags: { A: "64", B: "70", C: "0", D: "29", E: "50", F: "65" } },
+  { id: "chorus-detune", name: "Chorus Detune", type: 48, tags: { A: "30", B: "85", C: "8", D: "26", E: "60", F: "70" } },
+  { id: "chorus-subtle", name: "Chorus Subtle Doubling", type: 48, tags: { A: "45", B: "25", C: "0", D: "29", E: "90", F: "30" } },
 
   // —— Pitch ——
   { id: "synth-lead", name: "Synth Lead Filter", type: 6, tags: { A: "65", B: "70", C: "40", D: "75" } },
