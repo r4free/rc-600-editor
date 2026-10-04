@@ -45,6 +45,18 @@ describe("track FX type catalog", () => {
     const vinyl = trackFxDefaultTags(55);
     assert.equal(vinyl.A, "50");
   });
+
+  it("offers THRU plus note values for Length and Shift", () => {
+    for (const type of [52, 53, 54]) {
+      const def = trackFxTypeParams(type).find((p) => p.tag === "B")!;
+      assert.equal(def.options?.[0]?.label, "THRU");
+      assert.equal(def.options?.length, 16);
+    }
+    assert.deepEqual(
+      trackFxTypeParams(53).find((p) => p.tag === "A")?.options?.map((o) => o.label),
+      ["FORWARD", "REWIND", "MIX"],
+    );
+  });
 });
 
 describe("track FX blocks in memory model", () => {

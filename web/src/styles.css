@@ -2409,6 +2409,44 @@ button.unlock-guide {
   color: var(--muted);
 }
 
+.btn.fx-preview-fx.is-on {
+  color: var(--slot-color, var(--accent));
+  border-color: var(--slot-color, var(--accent));
+  background: color-mix(in srgb, var(--slot-color, var(--accent)) 16%, transparent);
+  box-shadow: 0 0 0.6rem color-mix(in srgb, var(--slot-color, var(--accent)) 35%, transparent);
+}
+
+.fx-preview-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.fx-preview-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.fx-preview-status.is-active {
+  color: var(--slot-color, var(--accent));
+  border-color: color-mix(in srgb, var(--slot-color, var(--accent)) 60%, transparent);
+  background: color-mix(in srgb, var(--slot-color, var(--accent)) 12%, transparent);
+}
+
+.fx-preview-status.is-active .fx-preview-status-dot {
+  background: var(--slot-color, var(--accent));
+  box-shadow: 0 0 0.45rem var(--slot-color, var(--accent));
+}
+
 .step-seq-status {
   display: flex;
   flex-wrap: wrap;
@@ -3927,6 +3965,90 @@ button.unlock-guide {
 .isolator-band-scale span.is-selected {
   color: var(--text);
   font-weight: 700;
+}
+
+.scatter-pattern {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--slot-color, var(--accent)) 5%, transparent);
+  min-width: 0;
+}
+
+.scatter-pattern.is-off .scatter-row {
+  opacity: 0.4;
+}
+
+.scatter-row {
+  display: grid;
+  grid-template-columns: 2.6rem repeat(8, minmax(0, 1fr));
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.scatter-row-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scatter-cell {
+  --hue: calc(200 + var(--slice) * 20);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: 1.9rem;
+  border-radius: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--hue) 85% 82%);
+  background: hsl(var(--hue) 60% 40% / 0.35);
+  border: 1px solid hsl(var(--hue) 70% 60% / 0.55);
+}
+
+.scatter-cell.is-source {
+  height: 1.3rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.scatter-cell.is-moved {
+  box-shadow: 0 0 0 1px hsl(var(--hue) 80% 70% / 0.5) inset;
+}
+
+.scatter-cell.is-reverse {
+  background: repeating-linear-gradient(
+    135deg,
+    hsl(var(--hue) 60% 40% / 0.45) 0 4px,
+    hsl(var(--hue) 60% 30% / 0.3) 4px 8px
+  );
+  border-color: #ef4444;
+}
+
+.scatter-dir {
+  font-size: 0.55rem;
+  opacity: 0.8;
+}
+
+.scatter-cell.is-reverse .scatter-dir {
+  color: #fca5a5;
+  opacity: 1;
+}
+
+.scatter-pattern figcaption {
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .riff-phrase {
@@ -8169,8 +8291,20 @@ button[role="switch"]:focus-visible {
 }
 
 .modal-sheet {
-  padding: 1.15rem;
+  --modal-pad: 1.15rem;
+  padding: var(--modal-pad);
   box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 38%);
+}
+
+/* Scroll areas reach the sheet edge so the scrollbar sits on the border and content keeps equal side gaps. */
+.modal-sheet:is(.ifx-edit-modal, .ifx-type-modal) .modal-body {
+  margin-inline: calc(-1 * var(--modal-pad));
+  padding-inline: var(--modal-pad);
+}
+
+.modal-sheet.ifx-library-modal .ifx-library-results {
+  margin-right: calc(-1 * var(--modal-pad));
+  padding-right: var(--modal-pad);
 }
 
 @media (max-width: 720px) {

@@ -115,8 +115,20 @@ const BEAT_LENGTH: EnumOption[] = [
 ];
 
 const BEAT_SCATTER_PARAMS: ParamDef[] = [
-  enumP("A", "Type", opts("P1", "P2", "P3", "P4"), 2, "Sets the type of scrub playback."),
-  enumP("B", "Length", BEAT_LENGTH, 4, "Sets the length of scrub playback."),
+  enumP(
+    "A",
+    "Type",
+    opts("P1", "P2", "P3", "P4"),
+    2,
+    "Sets the scrub playback pattern (P1–P4). Each pattern scrubs the track differently in time with the beat.",
+  ),
+  enumP(
+    "B",
+    "Length",
+    BEAT_LENGTH,
+    4,
+    "Sets the length of the scrub playback, as a note value synced to the tempo. THRU turns the effect off.",
+  ),
 ];
 
 const BEAT_REPEAT_PARAMS: ParamDef[] = [
@@ -125,9 +137,15 @@ const BEAT_REPEAT_PARAMS: ParamDef[] = [
     "Type",
     opts("FORWARD", "REWIND", "MIX"),
     1,
-    "Direction of repeat playback. FORWARD plays forward, REWIND reverse, MIX alternates.",
+    "Direction of the repeat playback. FORWARD: plays forward. REWIND: plays in reverse. MIX: alternates between forward and reverse.",
   ),
-  enumP("B", "Length", BEAT_LENGTH, 8, "Sets the repeat length."),
+  enumP(
+    "B",
+    "Length",
+    BEAT_LENGTH,
+    8,
+    "Sets the length of the repeated section, as a note value synced to the tempo. THRU turns the effect off.",
+  ),
 ];
 
 const BEAT_SHIFT_PARAMS: ParamDef[] = [
@@ -136,13 +154,26 @@ const BEAT_SHIFT_PARAMS: ParamDef[] = [
     "Type",
     opts("FUTURE", "PAST"),
     0,
-    "Direction in which the playback position will be shifted.",
+    "Direction in which the playback position is shifted. FUTURE: ahead of the beat. PAST: behind the beat.",
   ),
-  enumP("B", "Shift", BEAT_LENGTH, 6, "Amount by which the playback position will be shifted."),
+  enumP(
+    "B",
+    "Shift",
+    BEAT_LENGTH,
+    6,
+    "Amount by which the playback position is shifted, as a note value synced to the tempo. THRU turns the effect off.",
+  ),
 ];
 
 const VINYL_FLICK_PARAMS: ParamDef[] = [
-  intP("A", "Flick", 0, 100, 50, "Sets the playback speed of the turntable."),
+  intP(
+    "A",
+    "Flick",
+    0,
+    100,
+    50,
+    "Sets the playback speed of the turntable, as if you were touching the record. Below 50 drags it slower, above 50 pushes it faster.",
+  ),
 ];
 
 const TRACK_ONLY_PARAMS: Record<number, ParamDef[]> = {

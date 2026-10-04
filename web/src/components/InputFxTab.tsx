@@ -7,6 +7,8 @@ import {
   IFX_SELECTED_BANK,
   IFX_SLOT_PARAMS,
   INPUT_FX_TYPE_OPTIONS,
+  TFX_SLOT_PARAMS,
+  TRACK_FX_TYPE_OPTIONS,
   fxSlotSection,
   inputFxInsertDef,
   type ParamDef,
@@ -19,6 +21,9 @@ import { InfoTip } from "./InfoTip";
 import { InputFxEditModal } from "./InputFxEditModal";
 import { InputFxLibraryModal } from "./InputFxLibraryModal";
 import { TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
+import { TrackFxLibraryModal } from "./TrackFxLibraryModal";
+
+export type FxKind = "ifx" | "tfx";
 const IFX_PAGES = ["setup", ...FX_BANKS] as const;
 type IfxPage = (typeof IFX_PAGES)[number];
 const IFX_SLOTS = [0, 1, 2, 3] as const;
@@ -39,6 +44,8 @@ const SLOT_SWITCH_DEF: ParamDef = {
   info: `${slotParam("A").info} ${slotParam("B").info} Click to cycle Off → Toggle → Moment.`,
 };
 const SLOT_TYPE_DEF = slotParam("C");
+const TFX_SLOT_TYPE_DEF = TFX_SLOT_PARAMS.find((p) => p.tag === "C")!;
+const TFX_INSERT_DEF = TFX_SLOT_PARAMS.find((p) => p.tag === "D")!;
 
 const SLOT_SWITCH_VIEW: TrackStateView = {
   label: "Switch",
@@ -70,17 +77,18 @@ function slotSwitchTags(value: number): Record<string, string> {
 function insertIcon(label: string): IconName {
   if (label.startsWith("MIC")) return "mic";
   if (label.startsWith("INST")) return "guitar";
+  if (label.startsWith("TRACK")) return "loop";
   return "merge";
 }
 
-function insertView(def: ParamDef): TrackStateView {
+function insertView(def: ParamDef, kind: FxKind = "ifx"): TrackStateView {
   return {
     label: "Insert",
     variant: "fx-insert",
     states: (def.options ?? []).map((o) => ({
       icon: insertIcon(o.label),
       text: o.label,
-      title: o.value === 0 ? "Applied to all inputs." : `Applied to ${o.label} only.`,
+      title: o.value === 0 ? `Applied to all ${kind === "tfx" ? "tracks" : "inputs"}.` : `Applied to ${o.label} only.`,
       alert: o.value !== 0,
       color: o.value === 0 ? undefined : "var(--slot-color, #38bdf8)",
     })),
@@ -104,6 +112,10 @@ function letterView(label: string, title: (letter: string) => string): TrackStat
 const SELECTED_BANK_VIEW = letterView(
   "Selected Bank",
   (l) => `The RC-600 plays and edits Input FX bank ${l}.`,
+);
+const TFX_SELECTED_BANK_VIEW = letterView(
+  "Selected Bank",
+  (l) => `The RC-600 plays and edits Track FX bank ${l}.`,
 );
 
 const BANK_VIEWS: Record<string, TrackStateView> = {
@@ -143,8 +155,9 @@ function bankIndex(letter: (typeof FX_BANKS)[number]): number {
   return FX_BANKS.indexOf(letter);
 }
 
-function typeLabel(type: number): string {
-  return INPUT_FX_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? `Type ${type}`;
+function typeLabel(type: number, kind: FxKind = "ifx"): string {
+  const options = kind === "tfx" ? TRACK_FX_TYPE_OPTIONS : INPUT_FX_TYPE_OPTIONS;
+  return options.find((o) => o.value === type)?.label ?? `Type ${type}`;
 }
 
 export function InputFxTab({
@@ -156,6 +169,7 @@ export function InputFxTab({
   saving,
   onCopyToMemories,
   pedalMemories,
+  kind = "ifx",
 }: {
   model: MemoryModel;
   onPatch: PatchHandler;
@@ -165,8 +179,15 @@ export function InputFxTab({
   saving?: boolean;
   onCopyToMemories?: (targets: number[]) => void | Promise<void>;
   pedalMemories?: () => CaptureMemory[];
+  /** Input FX (default) or Track FX: picks the memory sections, labels, and Track-only effects. */
+  kind?: FxKind;
 }) {
-  const [page, setPage] = usePersistedTab<IfxPage>("ifx", "setup", IFX_PAGES);
+  const track = kind === "tfx";
+  const fxName = track ? "Track FX" : "Input FX";
+  const fxSetup = track ? model.tfxSetup : model.ifxSetup;
+  const fxBanks = track ? model.tfxBanks : model.ifxBanks;
+  const fxSlots = track ? model.tfxSlots : model.ifxSlots;
+  const [page, setPage] = usePersistedTab<IfxPage>(kind, "setup", IFX_PAGES);
   const [copyTargets, setCopyTargets] = useState<Set<number>>(() => new Set());
   const [editSlot, setEditSlot] = useState<number | null>(null);
   const [librarySlot, setLibrarySlot] = useState<number | null>(null);
@@ -177,16 +198,16 @@ export function InputFxTab({
     onCopyToMemories !== undefined;
 
   function setSetup(tag: string, value: number) {
-    onPatch({ type: "ifx", section: "SETUP", tags: { [tag]: String(value) } });
+    onPatch({ type: kind, section: "SETUP", tags: { [tag]: String(value) } });
   }
 
   function collapseOps(bankNo: number, keepSlot: number): PatchOp[] {
-    const slots = model.ifxSlots[bankNo] ?? [];
+    const slots = fxSlots[bankNo] ?? [];
     const ops: PatchOp[] = [];
     for (let s = 0; s < FX_BANKS.length; s++) {
       if (s === keepSlot) continue;
       if (num(slots[s] ?? {}, "A") === 1) {
-        ops.push({ type: "ifx", section: fxSlotSection(bankNo, s), tags: { A: "0" } });
+        ops.push({ type: kind, section: fxSlotSection(bankNo, s), tags: { A: "0" } });
       }
     }
     return ops;
@@ -194,11 +215,11 @@ export function InputFxTab({
 
   function setBank(bankNo: number, tag: string, value: number) {
     const ops: PatchOp[] = [
-      { type: "ifx", section: FX_BANKS[bankNo], tags: { [tag]: String(value) } },
+      { type: kind, section: FX_BANKS[bankNo], tags: { [tag]: String(value) } },
     ];
     if (tag === "B" && value === IFX_MODE_SINGLE) {
-      const slots = model.ifxSlots[bankNo] ?? [];
-      const target = num(model.ifxBanks[bankNo] ?? {}, "C");
+      const slots = fxSlots[bankNo] ?? [];
+      const target = num(fxBanks[bankNo] ?? {}, "C");
       let keep = num(slots[target] ?? {}, "A") === 1 ? target : slots.findIndex((s) => num(s, "A") === 1);
       if (keep < 0) keep = 0;
       ops.push(...collapseOps(bankNo, keep));
@@ -208,21 +229,21 @@ export function InputFxTab({
 
   function setSlotTags(bankNo: number, slotNo: number, tags: Record<string, string>) {
     const ops: PatchOp[] = [];
-    if (tags.A === "1" && num(model.ifxBanks[bankNo] ?? {}, "B") === IFX_MODE_SINGLE) {
+    if (tags.A === "1" && num(fxBanks[bankNo] ?? {}, "B") === IFX_MODE_SINGLE) {
       ops.push(...collapseOps(bankNo, slotNo));
     }
-    ops.push({ type: "ifx", section: fxSlotSection(bankNo, slotNo), tags });
+    ops.push({ type: kind, section: fxSlotSection(bankNo, slotNo), tags });
     onPatch(ops);
   }
 
   return (
-    <div className="ifx-tab">
+    <div className={`ifx-tab${track ? " tfx-tab" : ""}`}>
       {showCopy ? (
       <div className="copy-panel ifx-memory-copy">
         <h3 className="section-title">
-          Copy Input FX from memory {sourceSlot}
+          Copy {fxName} from memory {sourceSlot}
           <InfoTip
-            label="Copy Input FX"
+            label={`Copy ${fxName}`}
             text="Copies Setup, all banks, and all FX slots into the selected memories. Writes immediately (same as the Copy tab)."
           />
         </h3>
@@ -256,7 +277,7 @@ export function InputFxTab({
       </div>
       ) : null}
 
-      <div className="tabs tabs-sub" role="tablist" aria-label="Input FX">
+      <div className="tabs tabs-sub" role="tablist" aria-label={fxName}>
         {PAGES.map((t) => (
           <button
             key={t.id}
@@ -274,13 +295,13 @@ export function InputFxTab({
         <span className="tabs-help">
           {page === "setup" ? (
             <InfoTip
-              label="Input FX Setup"
+              label={`${fxName} Setup`}
               text="Selected Bank is the bank the RC-600 plays and edits. SINGLE mode allows only one of FX A–D on."
             />
           ) : (
             <InfoTip
-              label="Input FX"
-              text="Each FX slot shows the selected effect. Use Edit to change its parameters, or Library to load a preconfigured effect."
+              label={fxName}
+              text={`Each FX slot shows the selected effect. Use Edit to change its parameters, or Library to load a preconfigured effect.${track ? " Beat Scatter, Beat Repeat, Beat Shift, and Vinyl Flick are Track FX only; in MULTI mode they work on FX A." : ""}`}
             />
           )}
         </span>
@@ -291,10 +312,10 @@ export function InputFxTab({
           <section aria-label="Selected Bank">
             <div className="track-state-cards">
               <TrackStateCard
-                id="ifx-selected-bank"
+                id={`${kind}-selected-bank`}
                 def={IFX_SELECTED_BANK}
-                view={SELECTED_BANK_VIEW}
-                value={num(model.ifxSetup, "A", IFX_SELECTED_BANK.default ?? 0)}
+                view={track ? TFX_SELECTED_BANK_VIEW : SELECTED_BANK_VIEW}
+                value={num(fxSetup, "A", IFX_SELECTED_BANK.default ?? 0)}
                 onChange={(v) => setSetup("A", v)}
               />
             </div>
@@ -306,10 +327,10 @@ export function InputFxTab({
                   <TrackStateCard
                     key={def.tag}
                     group={`Bank ${letter}`}
-                    id={`ifx-bank-${letter}-${def.tag}`}
+                    id={`${kind}-bank-${letter}-${def.tag}`}
                     def={def}
                     view={BANK_VIEWS[def.tag]}
-                    value={num(model.ifxBanks[i] ?? {}, def.tag, def.default ?? 0)}
+                    value={num(fxBanks[i] ?? {}, def.tag, def.default ?? 0)}
                     onChange={(v) => setBank(i, def.tag, v)}
                   />
                 ))}
@@ -320,9 +341,9 @@ export function InputFxTab({
       ) : (
         <div className="ifx-slot-grid">
           {IFX_SLOTS.map((slotNo) => {
-            const tags = model.ifxSlots[bank]?.[slotNo] ?? {};
+            const tags = fxSlots[bank]?.[slotNo] ?? {};
             const insertValue = num(tags, "D");
-            const insertDef = inputFxInsertDef(model.input, insertValue);
+            const insertDef = track ? TFX_INSERT_DEF : inputFxInsertDef(model.input, insertValue);
             const insertOptions = insertDef.options ?? [];
             const insertIndex = Math.max(
               0,
@@ -340,7 +361,7 @@ export function InputFxTab({
                 <div className="ifx-slot-cards">
                   <TrackStateCard
                     group={`FX ${FX_BANKS[slotNo]}`}
-                    id={`ifx-slot-${page}-${slotNo}-switch`}
+                    id={`${kind}-slot-${page}-${slotNo}-switch`}
                     def={SLOT_SWITCH_DEF}
                     view={SLOT_SWITCH_VIEW}
                     value={switchValue}
@@ -348,9 +369,9 @@ export function InputFxTab({
                   />
                   <TrackStateCard
                     group={`FX ${FX_BANKS[slotNo]}`}
-                    id={`ifx-slot-${page}-${slotNo}-insert`}
+                    id={`${kind}-slot-${page}-${slotNo}-insert`}
                     def={insertDef}
-                    view={insertView(insertDef)}
+                    view={insertView(insertDef, kind)}
                     value={insertIndex}
                     onChange={(i) =>
                       setSlotTags(bank, slotNo, { D: String(insertOptions[i]?.value ?? 0) })
@@ -358,8 +379,9 @@ export function InputFxTab({
                   />
                   <EffectCard
                     group={`FX ${FX_BANKS[slotNo]}`}
-                    id={`ifx-slot-${page}-${slotNo}-effect`}
+                    id={`${kind}-slot-${page}-${slotNo}-effect`}
                     type={type}
+                    kind={kind}
                     onLibrary={() => setLibrarySlot(slotNo)}
                     onEdit={() => setEditSlot(slotNo)}
                   />
@@ -375,7 +397,8 @@ export function InputFxTab({
           model={model}
           bank={bank}
           slot={editSlot}
-          type={num(model.ifxSlots[bank]?.[editSlot] ?? {}, "C")}
+          type={num(fxSlots[bank]?.[editSlot] ?? {}, "C")}
+          kind={kind}
           onPatch={onPatch}
           onClose={() => setEditSlot(null)}
           onOpenLibrary={() => {
@@ -384,7 +407,20 @@ export function InputFxTab({
           }}
         />
       ) : null}
-      {librarySlot !== null && page !== "setup" ? (
+      {librarySlot !== null && page !== "setup" && track ? (
+        <TrackFxLibraryModal
+          model={model}
+          bank={bank}
+          slot={librarySlot}
+          onPatch={onPatch}
+          onClose={() => setLibrarySlot(null)}
+          onOpenEdit={() => {
+            setEditSlot(librarySlot);
+            setLibrarySlot(null);
+          }}
+        />
+      ) : null}
+      {librarySlot !== null && page !== "setup" && !track ? (
         <InputFxLibraryModal
           model={model}
           bank={bank}
@@ -406,22 +442,25 @@ function EffectCard({
   id,
   group,
   type,
+  kind,
   onLibrary,
   onEdit,
 }: {
   id: string;
   group: string;
   type: number;
+  kind: FxKind;
   onLibrary: () => void;
   onEdit: () => void;
 }) {
-  const name = typeLabel(type);
+  const name = typeLabel(type, kind);
   const thru = type === 0;
+  const typeDef = kind === "tfx" ? TFX_SLOT_TYPE_DEF : SLOT_TYPE_DEF;
   return (
     <div className={`param-row play-state-param is-fx-effect has-footer${thru ? " is-dim" : ""}`}>
       <div className="param-label">
         <label htmlFor={id}>{group}</label>
-        <InfoTip label={SLOT_TYPE_DEF.name} text={SLOT_TYPE_DEF.info ?? ""} />
+        <InfoTip label={typeDef.name} text={typeDef.info ?? ""} />
       </div>
       <button
         id={id}

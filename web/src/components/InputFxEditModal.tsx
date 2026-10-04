@@ -9,7 +9,17 @@ import {
   inputFxTypeLabel,
   inputFxTypeParams,
 } from "@rc600/catalog/input-fx";
+import {
+  trackFxCategory,
+  trackFxSeqSection,
+  trackFxSection,
+  trackFxTypeLabel,
+  trackFxTypeParams,
+} from "@rc600/catalog/track-fx";
 import { FX_BANKS, fxSlotSection, noteFromC1 } from "@rc600/catalog/params";
+import { beatLengthBeats, type BeatFxEffect } from "../audio/beatFxPreview";
+import { BeatFxPreviewBar } from "./BeatFxPreviewBar";
+import { ScatterPattern } from "./ScatterPattern";
 import { memoryTempo, type MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { cutLabelHz } from "../audio/chorusPreview";
@@ -127,6 +137,55 @@ const TWIST_RELEASE_VIEW: TrackStateView = {
     { icon: "fadeOut", text: "Fade", title: "Switching off fades the sound out while it keeps rotating.", alert: true },
   ],
 };
+const BEAT_SCATTER_TYPE = 52;
+const BEAT_REPEAT_TYPE = 53;
+const BEAT_SHIFT_TYPE = 54;
+const VINYL_FLICK_TYPE = 55;
+const BEAT_EFFECTS: Record<number, BeatFxEffect> = {
+  [BEAT_SCATTER_TYPE]: "scatter",
+  [BEAT_REPEAT_TYPE]: "repeat",
+  [BEAT_SHIFT_TYPE]: "shift",
+  [VINYL_FLICK_TYPE]: "flick",
+};
+const TRACK_ONLY_NOTE =
+  "Track FX only: it works on the track's playback, and can only be used with FX A when Track FX Mode is MULTI.";
+const BEAT_SCATTER_VIEW: TrackStateView = {
+  label: "Type",
+  variant: "input",
+  states: [
+    { icon: "shuffle", text: "P1", title: "Pattern 1: stutters each slice twice." },
+    { icon: "shuffle", text: "P2", title: "Pattern 2: every other slice plays in reverse.", alert: true },
+    { icon: "shuffle", text: "P3", title: "Pattern 3: slices are played out of order." },
+    { icon: "shuffle", text: "P4", title: "Pattern 4: slices out of order, some in reverse.", alert: true },
+  ],
+};
+const BEAT_REPEAT_VIEW: TrackStateView = {
+  label: "Type",
+  variant: "input",
+  states: [
+    { icon: "fastForward", text: "Forward", title: "The repeated slice plays forward." },
+    { icon: "rewind", text: "Rewind", title: "The repeated slice plays in reverse.", color: "#ef4444", alert: true },
+    { icon: "xfade", text: "Mix", title: "Alternates between forward and reverse.", alert: true },
+  ],
+};
+const BEAT_SHIFT_VIEW: TrackStateView = {
+  label: "Type",
+  variant: "input",
+  states: [
+    { icon: "skipNext", text: "Future", title: "Playback jumps ahead by the Shift amount." },
+    { icon: "skipPrevious", text: "Past", title: "Playback falls behind by the Shift amount.", alert: true },
+  ],
+};
+/** LENGTH / SHIFT label → card value. */
+function beatLengthCard(label: string): { value: string; unit: string } {
+  if (label === "THRU") return { value: "Off", unit: "Thru" };
+  const meas = /^(\d+)MEAS$/.exec(label);
+  if (meas) return { value: meas[1]!, unit: meas[1] === "1" ? "Measure" : "Measures" };
+  if (label.endsWith("T")) return { value: label.slice(0, -1), unit: "Triplet" };
+  if (label.endsWith(".")) return { value: label.slice(0, -1), unit: "Dotted" };
+  return { value: label, unit: "Note" };
+}
+const FLICK_BALANCE = { left: "Slower", right: "Faster", center: "0", value: (v: number) => (v === 50 ? "0" : `${v > 50 ? "+" : "−"}${Math.abs(v - 50)}`) };
 /** OCTAVE label → card value. */
 function octaveCard(label: string): { value: string; unit: string } {
   if (label === "-2OCT") return { value: "−2", unit: "Two octaves below" };
@@ -402,6 +461,22 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: st
     main: "Produces a dream-like sound: while the effect is on, what you play melts into a slowly wobbling, washed-out haze. It has a single setting: Level, the volume of the effect sound.",
     mixMatch: /^$/,
   },
+  [BEAT_SCATTER_TYPE]: {
+    main: `The track is scrubbed in time with the beat. Type picks the scrub pattern (P1–P4), and Length the length of each scrubbed slice as a note value that follows the tempo (THRU = no effect). ${TRACK_ONLY_NOTE}`,
+    mixMatch: /^$/,
+  },
+  [BEAT_REPEAT_TYPE]: {
+    main: `Plays the track repeatedly in time with the beat: the slice playing when you turn the effect on keeps repeating. Type sets the direction: Forward, Rewind (reverse), or Mix (alternates forward and reverse). Length sets the length of the repeated slice as a note value that follows the tempo (THRU = no effect). ${TRACK_ONLY_NOTE}`,
+    mixMatch: /^$/,
+  },
+  [BEAT_SHIFT_TYPE]: {
+    main: `The track plays shifted by the length of the beat. Type sets the direction: Future jumps ahead, Past falls behind. Shift sets how far, as a note value that follows the tempo (THRU = no effect). ${TRACK_ONLY_NOTE}`,
+    mixMatch: /^$/,
+  },
+  [VINYL_FLICK_TYPE]: {
+    main: `The track sounds as though you are touching the turntable. Flick sets the playback speed of the turntable: below 0 drags the record slower, above 0 pushes it faster (0 = normal speed). ${TRACK_ONLY_NOTE}`,
+    mixMatch: /^$/,
+  },
   [TWIST_TYPE]: {
     main: "Produces an aggressive sense of rotation that speeds up after you turn the effect on. Rise sets how long it takes to reach full rotation. Release selects how the rotation stops when you turn the effect off: Fall stops it at once, Fade fades the sound out while it keeps rotating, over the Fall time (Fall is only used with Fade).",
     mix: "Level is the volume of the effect sound.",
@@ -578,6 +653,7 @@ export function InputFxEditModal({
   onPatch,
   onClose,
   onOpenLibrary,
+  kind = "ifx",
 }: {
   model: MemoryModel;
   bank: number;
@@ -586,22 +662,27 @@ export function InputFxEditModal({
   onPatch: PatchHandler;
   onClose: () => void;
   onOpenLibrary: () => void;
+  /** Input FX (default) or Track FX: picks the catalog, the memory blocks, and the patch type. */
+  kind?: "ifx" | "tfx";
 }) {
-  const section = inputFxSection(bank, slot, type);
-  const seqSection = inputFxSeqSection(bank, slot, type);
-  const params = inputFxTypeParams(type);
-  const title = inputFxTypeLabel(type);
+  const track = kind === "tfx";
+  const section = track ? trackFxSection(bank, slot, type) : inputFxSection(bank, slot, type);
+  const seqSection = track ? trackFxSeqSection(bank, slot, type) : inputFxSeqSection(bank, slot, type);
+  const params = track ? trackFxTypeParams(type) : inputFxTypeParams(type);
+  const title = track ? trackFxTypeLabel(type) : inputFxTypeLabel(type);
+  const blocks = track ? model.tfxBlocks : model.ifxBlocks;
   const [typePickerOpen, setTypePickerOpen] = useState(false);
 
   function setBlockTag(sec: string, tag: string, value: number) {
-    const op: PatchOp = { type: "ifx", section: sec, tags: { [tag]: String(value) } };
+    const op: PatchOp = { type: kind, section: sec, tags: { [tag]: String(value) } };
     onPatch(op);
   }
 
   const target = (
     <div className="ifx-edit-head">
       <span className="ifx-library-target-slot">
-        Bank {FX_BANKS[bank]} · FX {FX_BANKS[slot]} · {inputFxCategory(type)}
+        {track ? "Track FX · " : ""}Bank {FX_BANKS[bank]} · FX {FX_BANKS[slot]} ·{" "}
+        {track ? trackFxCategory(type) : inputFxCategory(type)}
       </span>
       <div className="ifx-type-picker">
         <span>Effect</span>
@@ -622,12 +703,13 @@ export function InputFxEditModal({
       </div>
       {typePickerOpen ? (
         <InputFxTypePickerModal
+          kind={kind}
           bank={bank}
           slot={slot}
           currentType={type}
           onClose={() => setTypePickerOpen(false)}
           onPick={(next) => {
-            if (next !== type) onPatch({ type: "ifx", section: fxSlotSection(bank, slot), tags: { C: String(next) } });
+            if (next !== type) setBlockTag(fxSlotSection(bank, slot), "C", next);
             setTypePickerOpen(false);
           }}
         />
@@ -650,7 +732,7 @@ export function InputFxEditModal({
     );
   }
 
-  const tags = model.ifxBlocks[section] ?? {};
+  const tags = blocks[section] ?? {};
   const layout = inputFxStepLayout(type);
   const stepSection = layout?.source === "seq" ? seqSection : section;
   const sequencerTags = new Set(
@@ -666,7 +748,7 @@ export function InputFxEditModal({
   );
   const blockParams = params.filter((def) => !sequencerTags.has(def.tag));
   const previewTags = layout?.previewTags;
-  const seqTags = seqSection ? (model.ifxBlocks[seqSection] ?? {}) : {};
+  const seqTags = seqSection ? (blocks[seqSection] ?? {}) : {};
   const sequencedTag =
     layout?.source === "seq" && num(seqTags, "A") === 1
       ? inputFxSeqTargets(type)[num(seqTags, "D")]?.tag
@@ -884,6 +966,19 @@ export function InputFxEditModal({
           balance: tagValue("E"),
         }
       : undefined;
+  const beatEffect = track ? BEAT_EFFECTS[type] : undefined;
+  const lengthDef = params.find((d) => d.tag === "B");
+  const beatFx = beatEffect
+    ? {
+        effect: beatEffect,
+        mode: beatEffect === "flick" ? 0 : tagValue("A"),
+        lengthBeats:
+          beatEffect === "flick"
+            ? null
+            : beatLengthBeats(lengthDef?.options?.find((o) => o.value === tagValue("B"))?.label ?? "THRU"),
+        flick: beatEffect === "flick" ? tagValue("A") : 50,
+      }
+    : undefined;
   const oscBot =
     type === OSC_BOT_TYPE
       ? {
@@ -1061,6 +1156,55 @@ export function InputFxEditModal({
           id={id}
           def={def}
           value={value}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (beatEffect === "scatter" && def.name === "Type") {
+      return (
+        <div key={def.tag} className="riff-phrase">
+          <TrackStateCard
+            id={id}
+            def={def}
+            view={BEAT_SCATTER_VIEW}
+            value={value}
+            onChange={(v) => setBlockTag(section!, def.tag, v)}
+          />
+          <ScatterPattern
+            pattern={value}
+            lengthLabel={lengthDef?.options?.find((o) => o.value === tagValue("B"))?.label ?? "THRU"}
+          />
+        </div>
+      );
+    }
+    if (beatEffect && def.name === "Type") {
+      return (
+        <TrackStateCard
+          key={def.tag}
+          id={id}
+          def={def}
+          view={
+            beatEffect === "scatter" ? BEAT_SCATTER_VIEW : beatEffect === "repeat" ? BEAT_REPEAT_VIEW : BEAT_SHIFT_VIEW
+          }
+          value={value}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (beatEffect && (def.name === "Length" || def.name === "Shift")) {
+      const labelOf = (v: number) => def.options?.find((o) => o.value === v)?.label ?? "THRU";
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={def.options?.at(-1)?.value ?? 15}
+          format={(v) => beatLengthCard(labelOf(v))}
+          alert={value !== 0}
+          color="var(--slot-color)"
+          valueIcon={value === 0 ? "power" : "note"}
           onChange={(v) => setBlockTag(section!, def.tag, v)}
         />
       );
@@ -1616,6 +1760,8 @@ export function InputFxEditModal({
                 ? TONE_BALANCE
                 : (type === VOCODER_TYPE || type === OSC_VOC_TYPE || type === OSC_BOT_TYPE) && def.name === "Mod Sens"
                   ? MOD_SENS_BALANCE
+                : beatEffect === "flick" && def.name === "Flick"
+                  ? FLICK_BALANCE
                 : type === TAPE_ECHO2_TYPE && def.name === "Bass"
                   ? BASS_BALANCE
                 : type === TAPE_ECHO2_TYPE && def.name === "Treble"
@@ -1665,7 +1811,7 @@ export function InputFxEditModal({
     return (
       <div
         key={def.tag}
-        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) || (type === AUTO_RIFF_TYPE && def.name === "Phrase") || (type === ISOLATOR_TYPE && def.name === "Band") || (type === TRANSPOSE_TYPE && def.name === "Trans") || (type === RADIO_TYPE && def.name === "Lo-Fi") || (type === ROBOT_TYPE && (def.name === "Note" || def.name === "Formant")) || (type === ELECTRIC_TYPE && ["Shift", "Scale", "Formant", "Stability"].includes(def.name)) || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Formant") || ((type === VOCODER_TYPE || type === OSC_VOC_TYPE || type === OSC_BOT_TYPE) && (def.name === "Tone" || def.name === "Mod Sens")) || (type === OSC_VOC_TYPE && def.name === "Carrier") || (type === OSC_BOT_TYPE && (def.name === "Wave" || def.name === "Note")) || (type === OCTAVE_TYPE && def.name === "Octave") || (type === TAPE_ECHO2_TYPE && (def.name === "Bass" || def.name === "Treble")) || ((type === ROLL1_TYPE || type === ROLL2_TYPE) && def.name === "Roll") || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Voice") ? " is-wide" : ""}${(type === ELECTRIC_TYPE && def.name === "Scale") || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Voice") ? " is-wider" : ""}${(type === DIST_TYPE && def.name === "Type") || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Pan") || def.format === "pan" ? " is-full" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) || (type === AUTO_RIFF_TYPE && def.name === "Phrase") || (type === ISOLATOR_TYPE && def.name === "Band") || (type === TRANSPOSE_TYPE && def.name === "Trans") || (type === RADIO_TYPE && def.name === "Lo-Fi") || (type === ROBOT_TYPE && (def.name === "Note" || def.name === "Formant")) || (type === ELECTRIC_TYPE && ["Shift", "Scale", "Formant", "Stability"].includes(def.name)) || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Formant") || ((type === VOCODER_TYPE || type === OSC_VOC_TYPE || type === OSC_BOT_TYPE) && (def.name === "Tone" || def.name === "Mod Sens")) || (type === OSC_VOC_TYPE && def.name === "Carrier") || (type === OSC_BOT_TYPE && (def.name === "Wave" || def.name === "Note")) || (type === OCTAVE_TYPE && def.name === "Octave") || (type === TAPE_ECHO2_TYPE && (def.name === "Bass" || def.name === "Treble")) || (beatEffect === "flick" && def.name === "Flick") || ((type === ROLL1_TYPE || type === ROLL2_TYPE) && def.name === "Roll") || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Voice") ? " is-wide" : ""}${(type === ELECTRIC_TYPE && def.name === "Scale") || (beatEffect === "scatter" && def.name === "Type") || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Voice") ? " is-wider" : ""}${(type === DIST_TYPE && def.name === "Type") || ((type === HRM_MANUAL_TYPE || type === HRM_AUTO_TYPE) && def.name === "Pan") || def.format === "pan" ? " is-full" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
         title={sequenced ? "The step sequence is changing this parameter." : undefined}
       >
         {blockControl(def)}
@@ -1683,7 +1829,7 @@ export function InputFxEditModal({
           idPrefix={`ifx-edit-${stepSection}`}
           layout={layout}
           defs={layout.source === "seq" ? inputFxSeqParams(type) : params}
-          tags={model.ifxBlocks[stepSection] ?? {}}
+          tags={blocks[stepSection] ?? {}}
           slot={FX_BANKS[slot]!}
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
           memoryBpm={memoryTempo(model)}
@@ -1700,7 +1846,7 @@ export function InputFxEditModal({
           oscBot={oscBot}
           octave={octave}
           defaultSound={defaultSound}
-          onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
+          onSet={(next) => onPatch({ type: kind, section: stepSection, tags: next })}
         />
       ) : null}
       {chorus && !layout ? (
@@ -1728,6 +1874,15 @@ export function InputFxEditModal({
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
           memoryBpm={memoryTempo(model)}
           settings={eqFx}
+        />
+      ) : null}
+      {beatFx ? (
+        <BeatFxPreviewBar
+          key={`beat-${bank}-${slot}-${type}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={beatFx}
         />
       ) : null}
       {freeze ? (
@@ -1936,7 +2091,7 @@ export function InputFxEditModal({
                         title={r.title}
                         onClick={() =>
                           type !== r.type &&
-                          onPatch({ type: "ifx", section: fxSlotSection(bank, slot), tags: { C: String(r.type) } })
+                          setBlockTag(fxSlotSection(bank, slot), "C", r.type)
                         }
                       >
                         {r.label}

@@ -38,12 +38,14 @@ export function TrackFxLibraryModal({
   slot,
   onPatch,
   onClose,
+  onOpenEdit,
 }: {
   model: MemoryModel;
   bank: number;
   slot: number;
   onPatch: PatchHandler;
   onClose: () => void;
+  onOpenEdit?: () => void;
 }) {
   const viewOnly = useDemoMode();
   const [user, setUser] = useState<TrackFxPreset[]>(() => loadUserTrackFxPresets());
@@ -114,7 +116,19 @@ export function TrackFxLibraryModal({
   }
 
   return (
-    <Modal title="Effect library" onClose={onClose} wide>
+    <Modal
+      title="Effect library"
+      onClose={onClose}
+      wide
+      actions={
+        onOpenEdit && currentType !== 0 ? (
+          <button type="button" className="btn" title="Edit the current effect" onClick={onOpenEdit}>
+            <Icon name="tune" size={14} />
+            Edit
+          </button>
+        ) : undefined
+      }
+    >
       <div className="ifx-library-toolbar">
         <label className="drum-pad-field drum-preset-filter">
           <Icon name="search" />
