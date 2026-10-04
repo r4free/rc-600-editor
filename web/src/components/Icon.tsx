@@ -96,6 +96,8 @@ const ICONS = {
   fill: "mdi:music-note-plus",
   introRec: "mdi:record-rec",
   recEnd: "mdi:stop-circle-outline",
+  phantom: "mdi:flash",
+  phantomOff: "mdi:flash-off-outline",
 } as const;
 
 export type IconName = keyof typeof ICONS;

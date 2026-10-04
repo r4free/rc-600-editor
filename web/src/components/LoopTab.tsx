@@ -63,7 +63,7 @@ type TrackState = {
 };
 
 /** One state per parameter value (index = stored value); clicks cycle through them. */
-type TrackStateView = {
+export type TrackStateView = {
   label: string;
   variant: string;
   states: TrackState[];
@@ -269,7 +269,7 @@ const TRACK_STATE_VIEWS: Record<string, TrackStateView> = {
 };
 
 /** OFF greyed out, ON green and outlined (inclusion toggles). */
-function onOffView(label: string, icon: IconName, offTitle: string, onTitle: string): TrackStateView {
+export function onOffView(label: string, icon: IconName, offTitle: string, onTitle: string): TrackStateView {
   return {
     label,
     variant: "input",
@@ -345,7 +345,7 @@ const REC_STATE_VIEWS: Record<string, TrackStateView> = {
   ),
 };
 
-function TrackStateCard({
+export function TrackStateCard({
   id,
   def,
   view,
@@ -549,7 +549,7 @@ function ScrubValue({ value, unit }: { value: string; unit?: string }) {
 }
 
 /** Card whose value is scrubbed instead of picked from a list. */
-function ScrubCard({
+export function ScrubCard({
   id,
   def,
   value,
