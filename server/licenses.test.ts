@@ -48,6 +48,12 @@ describe("licenses", () => {
     assert.equal(hashLicenseKey(key.toLowerCase()), record.keyHash);
   });
 
+  it("creates lifetime keys when no days are given", () => {
+    const { key, record } = createLicense({ note: "lifetime" });
+    assert.equal(record.expiresAt, undefined);
+    assert.equal(findValidLicense(key)?.id, record.id);
+  });
+
   it("rejects unknown keys", () => {
     assert.equal(findValidLicense("RC600-DEAD-BEEF-0000"), null);
   });

@@ -65,7 +65,7 @@ export const TONEX_EDITOR_URL = editorUrl(
 
 export type LicenseInfo = {
   id: string;
-  expiresAt: string;
+  expiresAt?: string;
   note?: string;
 };
 

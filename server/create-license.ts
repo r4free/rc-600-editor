@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Create a test license key.
+ * Create a license key. Keys never expire unless --days is given.
  *
  * Usage:
- *   npx tsx server/create-license.ts --days 30 --note "beta alice"
- *   npx tsx server/create-license.ts --days 7
+ *   npx tsx server/create-license.ts --note "buyer@example.com-Name"
+ *   npx tsx server/create-license.ts --days 7 --note "trial alice"
  */
 import { recordIssuedLicense } from "./issued-licenses.js";
 import { createLicense } from "./licenses.js";
@@ -15,11 +15,12 @@ function arg(name: string): string | undefined {
   return process.argv[i + 1];
 }
 
-const days = Number(arg("--days") || "30");
+const daysArg = arg("--days");
+const days = daysArg === undefined ? undefined : Number(daysArg);
 const note = arg("--note");
 
-if (!Number.isFinite(days) || days < 1) {
-  console.error("Usage: tsx server/create-license.ts --days 30 [--note \"label\"]");
+if (days !== undefined && (!Number.isFinite(days) || days < 1)) {
+  console.error("Usage: tsx server/create-license.ts [--days 30] [--note \"label\"]");
   process.exit(1);
 }
 
@@ -34,7 +35,7 @@ try {
   });
   console.log("License created");
   console.log(`  id:        ${record.id}`);
-  console.log(`  expires:   ${record.expiresAt}`);
+  console.log(`  expires:   ${record.expiresAt ?? "never"}`);
   if (record.note) console.log(`  note:      ${record.note}`);
   console.log(`  key:       ${key}`);
   console.log("");

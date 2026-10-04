@@ -14,7 +14,6 @@ describe("stripe license fulfillment", () => {
   let prevFulfill: string | undefined;
   let prevSecret: string | undefined;
   let prevAmount: string | undefined;
-  let prevDays: string | undefined;
   const originalFetch = globalThis.fetch;
 
   before(() => {
@@ -23,12 +22,10 @@ describe("stripe license fulfillment", () => {
     prevFulfill = process.env.RC600_STRIPE_FULFILLMENTS_PATH;
     prevSecret = process.env.STRIPE_SECRET_KEY;
     prevAmount = process.env.RC600_STRIPE_AMOUNT_CENTS;
-    prevDays = process.env.RC600_LICENSE_DAYS;
     process.env.RC600_LICENSES_PATH = join(dir, "licenses.json");
     process.env.RC600_STRIPE_FULFILLMENTS_PATH = join(dir, "stripe-fulfillments.json");
     process.env.STRIPE_SECRET_KEY = "sk_test_secret";
     process.env.RC600_STRIPE_AMOUNT_CENTS = "3900";
-    process.env.RC600_LICENSE_DAYS = "30";
   });
 
   after(() => {
@@ -37,7 +34,6 @@ describe("stripe license fulfillment", () => {
     restore("RC600_STRIPE_FULFILLMENTS_PATH", prevFulfill);
     restore("STRIPE_SECRET_KEY", prevSecret);
     restore("RC600_STRIPE_AMOUNT_CENTS", prevAmount);
-    restore("RC600_LICENSE_DAYS", prevDays);
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -63,6 +59,7 @@ describe("stripe license fulfillment", () => {
     assert.equal(second.ok, true);
     if (!first.ok || !second.ok) return;
     assert.equal(first.key, second.key);
+    assert.equal(first.expiresAt, undefined);
     assert.equal(findValidLicense(first.key)?.id, first.licenseId);
     const html = paidLicensePageHtml(first, SESSION);
     assert.match(html, new RegExp(first.key));

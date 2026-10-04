@@ -8,14 +8,13 @@ import { STRIPE_PAYMENT_LINK } from "../src/buy-link.js";
 import { createLicense, findValidLicense } from "./licenses.js";
 
 const DEFAULT_AMOUNT_CENTS = 3900;
-const DEFAULT_LICENSE_DAYS = 3650;
 
 type FulfillmentFile = {
-  sessions: Record<string, { key: string; licenseId: string; expiresAt: string }>;
+  sessions: Record<string, { key: string; licenseId: string; expiresAt?: string }>;
 };
 
 export type FulfillResult =
-  | { ok: true; key: string; licenseId: string; expiresAt: string }
+  | { ok: true; key: string; licenseId: string; expiresAt?: string }
   | { ok: false; status: 400 | 402 | 502 | 503; error: string };
 
 export function stripePaymentLink(): string {
@@ -59,10 +58,7 @@ export async function fulfillStripeCheckout(sessionId: string): Promise<FulfillR
   const again = readFulfillment(sessionId);
   if (again && findValidLicense(again.key)) return { ok: true, ...again };
 
-  const { key, record } = createLicense({
-    days: licenseDays(),
-    note: `stripe:${sessionId}`,
-  });
+  const { key, record } = createLicense({ note: `stripe:${sessionId}` });
   const issued = { key, licenseId: record.id, expiresAt: record.expiresAt };
   writeFulfillment(sessionId, issued);
   return { ok: true, ...issued };
@@ -161,24 +157,18 @@ function expectedAmountCents(): number {
   return Math.floor(raw);
 }
 
-function licenseDays(): number {
-  const raw = Number(process.env.RC600_LICENSE_DAYS ?? DEFAULT_LICENSE_DAYS);
-  if (!Number.isFinite(raw) || raw < 1) return DEFAULT_LICENSE_DAYS;
-  return Math.floor(raw);
-}
-
 function fulfillmentsPath(): string {
   return resolve(process.cwd(), process.env.RC600_STRIPE_FULFILLMENTS_PATH || "data/stripe-fulfillments.json");
 }
 
-function readFulfillment(sessionId: string): { key: string; licenseId: string; expiresAt: string } | null {
+function readFulfillment(sessionId: string): { key: string; licenseId: string; expiresAt?: string } | null {
   const file = loadFulfillments();
   return file.sessions[sessionId] ?? null;
 }
 
 function writeFulfillment(
   sessionId: string,
-  issued: { key: string; licenseId: string; expiresAt: string },
+  issued: { key: string; licenseId: string; expiresAt?: string },
 ): void {
   const file = loadFulfillments();
   file.sessions[sessionId] = issued;

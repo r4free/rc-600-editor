@@ -11,7 +11,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **Navigation breadcrumb:** the path above the workspace content follows the currently visible tabs, including nested tracks, routing and EQ channels. Earlier levels return focus to that level's tabs without resetting edits or changing the pedal.
 - **3D Model panel:** next to Chain, open a photo-textured RC-600 model with rotation, keyboard controls, zoom, panel and rear views. This first integration is visual only.
 
-- **Paid activation:** on the hosted site, a welcoming first screen introduces the editor's memory, backup/MIDI, and performance tools; returning users can enter a license key, while new users can open Stripe Checkout or explore the user guide. The key is sent by email after payment. The editor pages and scripts stay on the server until that key is accepted. Local development still opens the editor without a key.
+- **Paid activation:** on the hosted site, a welcoming first screen introduces the editor's memory, backup/MIDI, and performance tools; returning users can enter a license key, while new users can open Stripe Checkout or explore the user guide. The key is sent by email after payment and never expires. The editor pages and scripts stay on the server until that key is accepted. Local development still opens the editor without a key.
 - **User guide:** the Guide link opens an English beginner walkthrough in a new tab, with real editor screenshots, all main tabs and sub-tabs, file/MIDI workflows, troubleshooting, light/dark themes and browser printing to PDF.
 - Memory / looper oriented web editor for the Boss RC-600.
 - Horizontal editor tabs and English-only UI (see Cursor rules).
@@ -55,7 +55,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **Breadcrumb de navegação:** o caminho acima do conteúdo acompanha as abas visíveis, incluindo pistas, roteamento e canais EQ aninhados. Níveis anteriores devolvem o foco às abas daquele nível sem reiniciar a edição nem alterar a pedaleira.
 - **Painel 3D Model:** ao lado de Chain, abre um modelo da RC-600 com fotos como texturas, rotação, controles por teclado, zoom e vistas do painel e da traseira. Esta primeira integração é apenas visual.
 
-- **Ativação paga:** no site hospedado, uma tela inicial mais acolhedora apresenta os recursos de memórias, backup/MIDI e performance do editor; quem já comprou informa a chave, enquanto novos usuários podem abrir o Stripe Checkout ou conhecer o guia. A chave é enviada por e-mail depois do pagamento. Páginas e scripts do editor ficam no servidor até a chave ser aceita. No desenvolvimento local, o editor ainda abre sem chave.
+- **Ativação paga:** no site hospedado, uma tela inicial mais acolhedora apresenta os recursos de memórias, backup/MIDI e performance do editor; quem já comprou informa a chave, enquanto novos usuários podem abrir o Stripe Checkout ou conhecer o guia. A chave é enviada por e-mail depois do pagamento e não expira. Páginas e scripts do editor ficam no servidor até a chave ser aceita. No desenvolvimento local, o editor ainda abre sem chave.
 - **Guia de uso:** o link Guide abre em nova aba um passo a passo em inglês para iniciantes, com capturas reais do editor, abas e subabas, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro e impressão em PDF pelo navegador.
 - Editor web orientado a memória / looper para o Boss RC-600.
 - Abas horizontais e UI só em inglês (ver Cursor rules).
@@ -96,6 +96,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### 2026-10-04
 
+- **EN:** License keys no longer expire. Keys bought through Stripe and keys issued by hand are lifetime keys, and existing keys had their end date removed. The status bar shows "licensed" instead of an end date.
+- **PT:** As chaves de licença não expiram mais. Chaves compradas pelo Stripe e chaves emitidas manualmente são vitalícias, e as chaves já existentes perderam a data de término. A barra de status mostra "licensed" em vez de uma data de término.
 - **EN:** The step sequencer's BPM now has a **Tap** button (tap twice or more in time to set the preview tempo) and a **Memory** button that brings the BPM back to the tempo saved in the current memory (the sequencer still opens at that tempo).
 - **PT:** O BPM do sequenciador de steps ganhou um botão **Tap** (toque duas vezes ou mais no tempo para definir o andamento da prévia) e um botão **Memory**, que volta o BPM para o tempo salvo na memória atual (o sequenciador continua abrindo nesse tempo).
 - **EN:** The **Ring Modulator** editor now plays the effect itself: **Play** multiplies the sound by an internal oscillator at the Frequency you set (or at each step's value when Sequence is ON with Target Frequency), and **Balance** blends the original and the ring sound. A new **Ring** reference sound (a clean, sustained chord that makes the metallic tones easy to hear) is selected by default when you edit a Ring Modulator. Its controls are grouped like Vibrato, with Balance on the right and Mode as a card.

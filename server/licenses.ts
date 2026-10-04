@@ -6,8 +6,8 @@ export type LicenseRecord = {
   id: string;
   /** sha256 hex of normalized key */
   keyHash: string;
-  /** ISO date (end of day UTC) or full ISO timestamp */
-  expiresAt: string;
+  /** ISO timestamp; absent means the key never expires */
+  expiresAt?: string;
   note?: string;
   createdAt: string;
   revoked?: boolean;
@@ -19,7 +19,7 @@ export type LicenseFile = {
 
 export type LicensePublic = {
   id: string;
-  expiresAt: string;
+  expiresAt?: string;
   note?: string;
 };
 
@@ -66,21 +66,24 @@ export function saveLicenses(file: LicenseFile): void {
 }
 
 export function createLicense(opts: {
-  days: number;
+  /** Omit for a lifetime key */
+  days?: number;
   note?: string;
   key?: string;
 }): { record: LicenseRecord; key: string } {
   const key = opts.key ? normalizeKey(opts.key) : generateLicenseKey();
-  const expires = new Date();
-  expires.setUTCDate(expires.getUTCDate() + Math.max(1, opts.days));
-  expires.setUTCHours(23, 59, 59, 999);
   const record: LicenseRecord = {
     id: randomBytes(6).toString("hex"),
     keyHash: hashLicenseKey(key),
-    expiresAt: expires.toISOString(),
     note: opts.note,
     createdAt: new Date().toISOString(),
   };
+  if (opts.days !== undefined) {
+    const expires = new Date();
+    expires.setUTCDate(expires.getUTCDate() + Math.max(1, opts.days));
+    expires.setUTCHours(23, 59, 59, 999);
+    record.expiresAt = expires.toISOString();
+  }
   const file = loadLicenses();
   if (file.licenses.some((l) => l.keyHash === record.keyHash)) {
     throw new Error("License key already exists");
@@ -92,14 +95,8 @@ export function createLicense(opts: {
 
 export function findValidLicense(key: string): LicenseRecord | null {
   const hash = hashLicenseKey(key);
-  const now = Date.now();
-  for (const lic of loadLicenses().licenses) {
-    if (lic.keyHash !== hash) continue;
-    if (lic.revoked) return null;
-    if (Date.parse(lic.expiresAt) < now) return null;
-    return lic;
-  }
-  return null;
+  const lic = loadLicenses().licenses.find((l) => l.keyHash === hash);
+  return lic && isLicenseStillValid(lic) ? lic : null;
 }
 
 export function licensePublic(lic: LicenseRecord): LicensePublic {
@@ -116,5 +113,5 @@ export function findLicenseById(id: string): LicenseRecord | null {
 
 export function isLicenseStillValid(lic: LicenseRecord): boolean {
   if (lic.revoked) return false;
-  return Date.parse(lic.expiresAt) >= Date.now();
+  return !lic.expiresAt || Date.parse(lic.expiresAt) >= Date.now();
 }

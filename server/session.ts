@@ -21,8 +21,8 @@ function sign(payload: string): string {
 }
 
 /** Payload: lic.<licenseId>.<expMs> */
-export function createLicenseSessionToken(licenseId: string, expiresAtIso: string): string {
-  const licenseExp = Date.parse(expiresAtIso);
+export function createLicenseSessionToken(licenseId: string, expiresAtIso?: string): string {
+  const licenseExp = expiresAtIso ? Date.parse(expiresAtIso) : Infinity;
   const sessionExp = Math.min(Date.now() + MAX_AGE_SEC * 1000, licenseExp);
   const payload = `lic.${licenseId}.${sessionExp}`;
   return `${payload}.${sign(payload)}`;

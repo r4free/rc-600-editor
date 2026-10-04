@@ -1450,7 +1450,9 @@ export function App() {
             ) : null}
             {rootLabel ?? "no folder"}
             {session.license
-              ? ` · license until ${session.license.expiresAt.slice(0, 10)}`
+              ? session.license.expiresAt
+                ? ` · license until ${session.license.expiresAt.slice(0, 10)}`
+                : " · licensed"
               : session.mode === "open"
                 ? " · public"
                 : ""}

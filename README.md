@@ -24,7 +24,10 @@ O select da barra superior abre o VG-800, GM-800 ou TONEX Pedal (`https://vg.tes
 ## License keys (editor pago)
 
 ```bash
-# gera uma key de teste (14 dias)
+# gera uma key vitalícia (sem data de expiração)
+npm run license:create -- --note "email@exemplo.com-Nome"
+
+# opcional: key de teste que expira em 14 dias
 npm run license:create -- --days 14 --note "beta alice"
 ```
 
