@@ -6,6 +6,7 @@ export function Modal({
   onClose,
   wide = false,
   foot,
+  actions,
   className,
 }: {
   title: string;
@@ -13,6 +14,8 @@ export function Modal({
   onClose: () => void;
   wide?: boolean;
   foot?: ReactNode;
+  /** Buttons shown next to Close. */
+  actions?: ReactNode;
   className?: string;
 }) {
   return (
@@ -26,9 +29,12 @@ export function Modal({
       >
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="btn ghost modal-close" onClick={onClose} aria-label="Close">
-            Close
-          </button>
+          <div className="modal-head-actions">
+            {actions}
+            <button type="button" className="btn ghost modal-close" onClick={onClose} aria-label="Close">
+              Close
+            </button>
+          </div>
         </div>
         <div className="modal-body">{children}</div>
         {foot ? <div className="modal-foot">{foot}</div> : null}

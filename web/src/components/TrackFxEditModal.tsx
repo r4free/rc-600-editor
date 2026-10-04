@@ -1,5 +1,5 @@
 import {
-  TRACK_FX_SEQ_PARAMS,
+  trackFxSeqParams,
   trackFxSeqSection,
   trackFxSection,
   trackFxTypeLabel,
@@ -71,7 +71,7 @@ export function TrackFxEditModal({
         <>
           <h3 className="section-title">Step Sequence</h3>
           <div className="param-columns">
-            {TRACK_FX_SEQ_PARAMS.map((def) => (
+            {trackFxSeqParams(type).map((def) => (
               <ParamControl
                 key={def.tag}
                 id={`tfx-edit-${seqSection}-${def.tag}`}

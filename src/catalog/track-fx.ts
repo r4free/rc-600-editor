@@ -10,12 +10,13 @@ import {
   inputFxCategory,
   inputFxDefaultSeqTags,
   inputFxDefaultTags,
+  inputFxSeqParams,
   inputFxTypeParams,
   type InputFxCategory,
 } from "./input-fx.js";
 import { FX_BANKS, TRACK_FX_TYPE_OPTIONS, type EnumOption, type ParamDef } from "./params.js";
 
-export { INPUT_FX_SEQ_PARAMS as TRACK_FX_SEQ_PARAMS };
+export { INPUT_FX_SEQ_PARAMS as TRACK_FX_SEQ_PARAMS, inputFxSeqParams as trackFxSeqParams };
 
 /** RC0 block suffix per type index (THRU = null). Order matches TRACK_FX_TYPE_OPTIONS. */
 export const TRACK_FX_BLOCK_SUFFIX: ReadonlyArray<string | null> = [

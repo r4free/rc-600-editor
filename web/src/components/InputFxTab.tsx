@@ -388,6 +388,10 @@ export function InputFxTab({
           slot={librarySlot}
           onPatch={onPatch}
           onClose={() => setLibrarySlot(null)}
+          onOpenEdit={() => {
+            setEditSlot(librarySlot);
+            setLibrarySlot(null);
+          }}
         />
       ) : null}
     </div>

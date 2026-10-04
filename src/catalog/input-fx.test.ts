@@ -9,7 +9,12 @@ import {
   inputFxBlockName,
   inputFxDefaultTags,
   inputFxSection,
+  inputFxSeqParams,
+  inputFxSeqTargets,
+  inputFxStepLayout,
   inputFxTypeParams,
+  syncRateBeats,
+  syncRateLabel,
 } from "./input-fx.js";
 import { INPUT_FX_TYPE_OPTIONS } from "./params.js";
 import { parseMemory } from "../rc0/memory.js";
@@ -32,6 +37,67 @@ describe("input FX type catalog", () => {
     assert.ok(!inputFxTypeParams(7).some((p) => p.tag === "C"));
     assert.ok(INPUT_FX_SEQ_TYPES.has(4));
     assert.ok(!INPUT_FX_SEQ_TYPES.has(23));
+  });
+
+  it("describes step sequencer layouts", () => {
+    const tremolo = inputFxStepLayout(32)!;
+    assert.equal(tremolo.source, "seq");
+    assert.equal(tremolo.stepTags.length, 16);
+    assert.equal(tremolo.stepTags[0], "G");
+    assert.equal(tremolo.stepTags[15], "V");
+    assert.equal(tremolo.stepMaxTag, "F");
+    assert.equal(tremolo.target, "volume");
+    assert.equal(inputFxStepLayout(1)!.target, "filter");
+    assert.equal(inputFxStepLayout(14)!.target, "pitch");
+    assert.equal(inputFxStepLayout(30)!.target, "pan");
+
+    const vibrato = inputFxStepLayout(33)!;
+    assert.equal(vibrato.source, "seq");
+    assert.equal(vibrato.target, "vibrato");
+    assert.deepEqual(vibrato.targetPreviews, ["vibrato", "volume", "volume"]);
+    assert.equal(vibrato.switchTag, "A");
+    const target = inputFxSeqParams(33).find((d) => d.tag === "D")!;
+    assert.equal(target.name, "Target");
+    assert.deepEqual(target.options?.map((o) => o.label), ["Depth", "D.Level", "E.Level"]);
+    assert.deepEqual(
+      inputFxSeqParams(33).filter((d) => d.tag < "G").map((d) => d.name),
+      ["Sequence", "Step Sync", "Retrigger", "Target", "Step Rate", "Step Max"],
+    );
+    for (const type of INPUT_FX_SEQ_TYPES) assert.ok(inputFxSeqTargets(type).length > 0, `type ${type}`);
+    assert.deepEqual(
+      inputFxTypeParams(33).map((d) => d.name),
+      ["Rate", "Depth", "Color", "D.Level", "E.Level"],
+    );
+
+    const slicer = inputFxStepLayout(35)!;
+    assert.equal(slicer.source, "block");
+    assert.deepEqual([slicer.stepTags[0], slicer.stepTags[15]], ["S", "7"]);
+    assert.deepEqual([slicer.lengthTags![0], slicer.lengthTags![15]], ["C", "R"]);
+    assert.equal(slicer.rateTag, "A");
+    const slicerParams = inputFxTypeParams(35);
+    assert.equal(slicerParams.length, 37);
+    assert.equal(slicerParams.find((p) => p.tag === "S")!.name, "Step 1 Level");
+    assert.equal(slicerParams.find((p) => p.tag === "C")!.name, "Step 1 Length");
+    assert.deepEqual(
+      ["8", "9", "#"].map((tag) => slicerParams.find((p) => p.tag === tag)!.name),
+      ["Depth", "Comp Threshold", "Comp Gain"],
+    );
+    assert.deepEqual(
+      ["F", "G"].map((tag) => inputFxTypeParams(34).find((p) => p.tag === tag)!.name),
+      ["Comp Threshold", "Comp Gain"],
+    );
+
+    assert.equal(inputFxStepLayout(34), null);
+    assert.equal(inputFxStepLayout(23), null);
+  });
+
+  it("converts sync rates to beats", () => {
+    assert.equal(syncRateLabel(14), "1/16");
+    assert.equal(syncRateBeats(14), 0.25);
+    assert.equal(syncRateLabel(8), "1/4");
+    assert.equal(syncRateBeats(8), 1);
+    assert.equal(syncRateBeats(2), 4);
+    assert.equal(syncRateBeats(18), null);
   });
 
   it("provides defaults for factory presets", () => {

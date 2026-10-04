@@ -9,6 +9,7 @@ const ICONS = {
   play: "mdi:play",
   playCircle: "mdi:play-circle-outline",
   stop: "mdi:stop",
+  dice: "mdi:dice-5",
   save: "mdi:content-save-outline",
   refresh: "mdi:refresh",
   usb: "mdi:usb",

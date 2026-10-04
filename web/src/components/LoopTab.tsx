@@ -562,6 +562,7 @@ export function ScrubCard({
   format,
   alert,
   color = "#c084fc",
+  valueIcon,
   onChange,
 }: {
   id: string;
@@ -572,6 +573,7 @@ export function ScrubCard({
   format: (v: number) => { value: string; unit?: string };
   alert: boolean;
   color?: string;
+  valueIcon?: IconName;
   onChange: (v: number) => void;
 }) {
   const shown = format(value);
@@ -591,6 +593,7 @@ export function ScrubCard({
         ariaLabel={`${def.name}: ${shown.value}${shown.unit ? ` ${shown.unit}` : ""}`}
         title="Scroll, drag sideways or use the arrows to change."
       >
+        {valueIcon ? <Icon name={valueIcon} className="play-state-icon" /> : null}
         <ScrubValue {...shown} />
       </ScrubControl>
     </div>

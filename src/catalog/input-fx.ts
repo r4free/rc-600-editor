@@ -297,6 +297,27 @@ function boolP(tag: string, name: string, def: number, info: string): ParamDef {
   return p(tag, name, "bool", { default: def, info });
 }
 
+/** Stored offset from the minimum: 0 = −30 dB, 30 = 0 dB. */
+function compThresholdP(tag: string): ParamDef {
+  return enumP(
+    tag,
+    "Comp Threshold",
+    Array.from({ length: 31 }, (_, i) => ({ value: i, label: `${i - 30} dB` })),
+    0,
+    "Adjust this as appropriate for the input signal. When the input signal level exceeds this threshold level, compression will be applied.",
+  );
+}
+
+function compGainP(tag: string, def: number): ParamDef {
+  return enumP(
+    tag,
+    "Comp Gain",
+    Array.from({ length: 21 }, (_, i) => ({ value: i, label: i === 0 ? "0 dB" : `+${i} dB` })),
+    def,
+    "Sets the volume of the sound.",
+  );
+}
+
 const FILTER_PARAMS: ParamDef[] = [
   enumP("A", "Rate", SYNC_RATE, 3, "Sets the rate of modulation."),
   intP("B", "Depth", 0, 100, 50, "Sets the depth of modulation."),
@@ -641,11 +662,24 @@ const TREMOLO_PARAMS: ParamDef[] = [
 ];
 
 const VIBRATO_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 64, "Sets the rate of the vibrato."),
-  intP("B", "Depth", 0, 100, 50, "Sets the depth of the vibrato."),
-  intP("C", "Color", 0, 100, 50, "Higher settings produce more complex modulation."),
-  intP("D", "D.Level", 0, 100, 0, "Sets the volume of the direct sound."),
-  intP("E", "E.Level", 0, 100, 100, "Sets the volume of the effect sound."),
+  enumP(
+    "A",
+    "Rate",
+    SYNC_RATE,
+    64,
+    "Sets the rate of the vibrato: how fast the pitch moves up and down. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+  ),
+  intP(
+    "B",
+    "Depth",
+    0,
+    100,
+    50,
+    "Sets the depth of the vibrato: how far the pitch swings. When the step sequence is on and its Target is Depth, each step sets the depth instead.",
+  ),
+  intP("C", "Color", 0, 100, 50, "Higher settings produce more complex modulation (a less regular wobble)."),
+  intP("D", "D.Level", 0, 100, 0, "Sets the volume of the direct sound (without vibrato). Mixing it with E.Level gives a chorus-like sound."),
+  intP("E", "E.Level", 0, 100, 100, "Sets the volume of the effect sound (with vibrato)."),
 ];
 
 const PATTERN_SLICER_PARAMS: ParamDef[] = [
@@ -660,21 +694,25 @@ const PATTERN_SLICER_PARAMS: ParamDef[] = [
     "Slice pattern used to cut the sound.",
   ),
   intP("E", "Depth", 0, 100, 100, "Depth to which the slice pattern is applied."),
-  intP("F", "Mode", 0, 100, 0, "Additional Pattern Slicer setting."),
-  intP("G", "Shuffle", 0, 100, 2, "Additional Pattern Slicer setting."),
+  compThresholdP("F"),
+  compGainP("G", 2),
 ];
+
+const STEP_SLICER_LENGTH_TAGS = "CDEFGHIJKLMNOPQR".split("");
+const STEP_SLICER_LEVEL_TAGS = "STUVWXYZ01234567".split("");
 
 const STEP_SLICER_PARAMS: ParamDef[] = [
   enumP("A", "Rate", SYNC_RATE, 6, "Sets the rate at which the sound will be cut."),
-  intP("B", "Step Max", 0, 15, 15, "Maximum number of steps (1–16)."),
-  intP("C", "Step Length", 0, 100, 50, "Sets the length of one step."),
-  ..."DEFGHIJKLMNOPQRSTUVWXYZ".split("").map((tag, i) =>
-    intP(tag, `Step ${i + 1}`, 0, 100, 50, `Volume of step ${i + 1}.`),
+  intP("B", "Step Max", 0, 15, 15, "Maximum number of steps (1–16).", "count"),
+  ...STEP_SLICER_LENGTH_TAGS.map((tag, i) =>
+    intP(tag, `Step ${i + 1} Length`, 0, 100, 50, `Sets the length of step ${i + 1}.`),
   ),
-  ..."0123456789".split("").map((tag, i) =>
-    intP(tag, `Step ${24 + i}`, 0, 100, tag === "9" ? 0 : 100, `Volume of step ${24 + i}.`),
+  ...STEP_SLICER_LEVEL_TAGS.map((tag, i) =>
+    intP(tag, `Step ${i + 1} Level`, 0, 100, 100, `Sets the volume of step ${i + 1}.`),
   ),
-  intP("#", "Depth", 0, 100, 6, "Depth to which the slice pattern is applied."),
+  intP("8", "Depth", 0, 100, 100, "Adjusts the depth to which the slice pattern is applied."),
+  compThresholdP("9"),
+  compGainP("#", 6),
 ];
 
 function delayFamilyParams(modDepth = false): ParamDef[] {
@@ -777,12 +815,22 @@ function reverbParams(timeDef: number, densDef: number): ParamDef[] {
 
 /** Shared step-sequence parameters (A–F header + G–V step values). */
 export const INPUT_FX_SEQ_PARAMS: ParamDef[] = [
-  boolP("A", "Sequence", 0, "Turns the FX step sequence on or off."),
-  boolP("B", "Step Sync", 0, "Synchronizes step timing to the tempo."),
-  boolP("C", "Retrigger", 0, "Retriggers the sequence when the effect is switched on."),
-  intP("D", "Mode", 0, 100, 0, "Additional sequence setting."),
-  enumP("E", "Step Rate", SYNC_RATE, 6, "Rate of the step sequence."),
-  intP("F", "Step Max", 0, 15, 15, "Maximum number of steps (1–16)."),
+  boolP("A", "Sequence", 0, "Sets the step sequence function on/off. When OFF, the effect ignores the steps."),
+  boolP(
+    "B",
+    "Step Sync",
+    0,
+    "Sets whether to synchronize loop playback with the step sequence (ON) or not (OFF). When ON, the beginning of the step sequence (step 1) is cued up.",
+  ),
+  boolP(
+    "C",
+    "Retrigger",
+    0,
+    "When ON, turning the effect on with a switch restarts the sequence at step 1, in sync with the start of the loop phrase.",
+  ),
+  intP("D", "Target", 0, 100, 0, "Sets the parameter that the step sequence changes (depends on the effect)."),
+  enumP("E", "Step Rate", SYNC_RATE, 6, "Sets the step's cycle: how fast the sequence moves to the next step."),
+  intP("F", "Step Max", 0, 15, 15, "Sets the maximum number of steps (1–16).", "count"),
   ..."GHIJKLMNOPQRSTUV".split("").map((tag, i) =>
     intP(tag, `Step ${i + 1}`, 0, 100, 0, `Value for sequence step ${i + 1}.`),
   ),
@@ -855,10 +903,136 @@ export function inputFxDefaultTags(type: number): Record<string, string> {
   return out;
 }
 
+/** Type-block tags a step sequence can drive (Parameter Guide ★ marks), in TARGET value order. */
+const SEQ_TARGET_TAGS: Record<number, string[]> = {
+  1: ["B", "D"],
+  2: ["B", "D"],
+  3: ["B", "D"],
+  4: ["B", "C", "D", "E", "F"],
+  5: ["B", "C", "D", "E", "F", "G"],
+  6: ["A", "B", "C"],
+  9: ["A"],
+  14: ["A"],
+  15: ["B"],
+  22: ["D"],
+  27: ["D"],
+  28: ["B"],
+  30: ["A"],
+  32: ["A", "B"],
+  33: ["B", "D", "E"],
+};
+
+/** Effect parameters the step sequence TARGET can select for this type. */
+export function inputFxSeqTargets(type: number): ParamDef[] {
+  const params = inputFxTypeParams(type);
+  return (SEQ_TARGET_TAGS[type] ?? [])
+    .map((tag) => params.find((d) => d.tag === tag))
+    .filter((d): d is ParamDef => Boolean(d));
+}
+
+/** Sequence block params with TARGET listing this effect's parameters. */
+export function inputFxSeqParams(type: number): ParamDef[] {
+  const targets = inputFxSeqTargets(type);
+  if (targets.length === 0) return INPUT_FX_SEQ_PARAMS;
+  const target = enumP(
+    "D",
+    "Target",
+    targets.map((d, value) => ({ value, label: d.name })),
+    0,
+    "Sets the parameter that the step sequence changes.",
+  );
+  return INPUT_FX_SEQ_PARAMS.map((d) => (d.tag === "D" ? target : d));
+}
+
 export function inputFxDefaultSeqTags(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const def of INPUT_FX_SEQ_PARAMS) {
     if (def.default !== undefined) out[def.tag] = String(def.default);
   }
   return out;
+}
+
+const VIBRATO_TYPE = 33;
+const STEP_SLICER_TYPE = 35;
+const STEP_COUNT = 16;
+
+/** What a step value shapes in the browser preview (not the real effect). */
+export type StepTarget = "volume" | "filter" | "pitch" | "pan" | "vibrato";
+
+export interface InputFxStepLayout {
+  /** `seq`: steps live in the `*_SEQ` block; `block`: in the type block (Step Slicer). */
+  source: "seq" | "block";
+  /** Always 16 tags; steps past Step Max are inactive. */
+  stepTags: string[];
+  stepMaxTag: string;
+  rateTag: string;
+  /** Other sequence settings shown in the sequencer toolbar (same block as the steps). */
+  headerTags: string[];
+  /** Per-step length lane (Step Slicer only), same order as `stepTags`. */
+  lengthTags?: string[];
+  /** Extra Step Slicer controls shown inside the sequencer and applied to its preview. */
+  previewTags?: {
+    depth: string;
+    compThreshold: string;
+    compGain: string;
+  };
+  target: StepTarget;
+  /** Sequence on/off switch (`seq` source). */
+  switchTag?: string;
+  /** TARGET tag and the preview target for each of its values (`seq` source). */
+  targetTag?: string;
+  targetPreviews?: StepTarget[];
+}
+
+const FILTER_TARGET = new Set([1, 2, 3, 4, 5, 6, 27]);
+const PITCH_TARGET = new Set([9, 14, 15, 22, 28]);
+const PAN_TARGET = new Set([30]);
+
+function stepTarget(type: number, targetName?: string): StepTarget {
+  if (targetName && /Level$/.test(targetName)) return "volume";
+  if (type === VIBRATO_TYPE) return "vibrato";
+  if (FILTER_TARGET.has(type)) return "filter";
+  if (PITCH_TARGET.has(type)) return "pitch";
+  if (PAN_TARGET.has(type)) return "pan";
+  return "volume";
+}
+
+export function inputFxStepLayout(type: number): InputFxStepLayout | null {
+  if (type === STEP_SLICER_TYPE) {
+    return {
+      source: "block",
+      stepTags: STEP_SLICER_LEVEL_TAGS,
+      lengthTags: STEP_SLICER_LENGTH_TAGS,
+      stepMaxTag: "B",
+      rateTag: "A",
+      headerTags: [],
+      previewTags: { depth: "8", compThreshold: "9", compGain: "#" },
+      target: "volume",
+    };
+  }
+  if (!INPUT_FX_SEQ_TYPES.has(type)) return null;
+  return {
+    source: "seq",
+    stepTags: "GHIJKLMNOPQRSTUV".split("").slice(0, STEP_COUNT),
+    stepMaxTag: "F",
+    rateTag: "E",
+    headerTags: ["A", "B", "C", "D"],
+    target: stepTarget(type),
+    switchTag: "A",
+    targetTag: "D",
+    targetPreviews: inputFxSeqTargets(type).map((d) => stepTarget(type, d.name)),
+  };
+}
+
+/** Beats per step for a sync-rate note value; `null` for the free 0–100 rate values. */
+const SYNC_RATE_BEATS = [
+  16, 8, 4, 3, 4 / 3, 2, 1.5, 2 / 3, 1, 0.75, 1 / 3, 0.5, 0.375, 1 / 6, 0.25, 0.1875, 1 / 12, 0.125,
+];
+
+export function syncRateBeats(rateIndex: number): number | null {
+  return SYNC_RATE_BEATS[rateIndex] ?? null;
+}
+
+export function syncRateLabel(rateIndex: number): string {
+  return SYNC_RATE.find((o) => o.value === rateIndex)?.label ?? String(rateIndex);
 }

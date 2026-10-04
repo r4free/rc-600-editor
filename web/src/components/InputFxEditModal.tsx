@@ -1,18 +1,37 @@
 import {
-  INPUT_FX_SEQ_PARAMS,
   inputFxCategory,
+  inputFxSeqParams,
   inputFxSeqSection,
+  inputFxSeqTargets,
   inputFxSection,
+  inputFxStepLayout,
   inputFxTypeLabel,
   inputFxTypeParams,
 } from "@rc600/catalog/input-fx";
 import { FX_BANKS } from "@rc600/catalog/params";
-import type { MemoryModel } from "@rc600/rc0/memory";
+import { memoryTempo, type MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon } from "./Icon";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
-import type { PatchHandler } from "./LoopTab";
+import { ScrubCard, type PatchHandler } from "./LoopTab";
+import { rateCardValue, StepSequencer } from "./StepSequencer";
+
+const DEFAULT_BPM = 120;
+
+const VIBRATO_TYPE = 33;
+const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
+
+const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
+  [VIBRATO_TYPE]: {
+    main: "Rate is how fast the pitch wobbles, Depth is how far it swings, and Color makes the wobble less regular.",
+    mix: "D.Level is the original sound, E.Level the sound with vibrato. Raise both for a chorus-like blend.",
+  },
+};
+
+function isSyncRate(def: { kind: string; name: string; options?: { label: string }[] }) {
+  return def.kind === "enum" && def.name === "Rate" && def.options?.[0]?.label === "4MEAS";
+}
 
 function num(tags: Record<string, string | undefined>, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -53,16 +72,18 @@ export function InputFxEditModal({
       <span className="ifx-library-target-slot">
         Bank {FX_BANKS[bank]} · FX {FX_BANKS[slot]} · {inputFxCategory(type)}
       </span>
-      <button type="button" className="btn" title="Open effect library" onClick={onOpenLibrary}>
-        <Icon name="library" size={14} />
-        Library
-      </button>
     </div>
+  );
+  const actions = (
+    <button type="button" className="btn" title="Open effect library" onClick={onOpenLibrary}>
+      <Icon name="library" size={14} />
+      Library
+    </button>
   );
 
   if (!section || params.length === 0) {
     return (
-      <Modal title={title} onClose={onClose} wide className="ifx-edit-modal">
+      <Modal title={title} onClose={onClose} wide className="ifx-edit-modal" actions={actions}>
         {target}
         <p className="hint">This effect type has no editable parameters.</p>
       </Modal>
@@ -70,37 +91,186 @@ export function InputFxEditModal({
   }
 
   const tags = model.ifxBlocks[section] ?? {};
+  const layout = inputFxStepLayout(type);
+  const stepSection = layout?.source === "seq" ? seqSection : section;
+  const sequencerTags = new Set(
+    layout?.source === "block"
+      ? [
+          ...layout.stepTags,
+          ...(layout.lengthTags ?? []),
+          layout.stepMaxTag,
+          layout.rateTag,
+          ...layout.headerTags,
+        ]
+      : [],
+  );
+  const blockParams = params.filter((def) => !sequencerTags.has(def.tag));
+  const previewTags = layout?.previewTags;
   const seqTags = seqSection ? (model.ifxBlocks[seqSection] ?? {}) : {};
+  const sequencedTag =
+    layout?.source === "seq" && num(seqTags, "A") === 1
+      ? inputFxSeqTargets(type)[num(seqTags, "D")]?.tag
+      : undefined;
+  const mainParams = layout ? blockParams.filter((def) => !MIX_PARAM.test(def.name)) : blockParams;
+  const mixParams = layout ? blockParams.filter((def) => MIX_PARAM.test(def.name)) : [];
+  const captions = GROUP_CAPTIONS[type];
+  const tagValue = (tag: string) => num(tags, tag, params.find((d) => d.tag === tag)?.default ?? 0);
+  const vibrato =
+    type === VIBRATO_TYPE
+      ? {
+          rateIndex: tagValue("A"),
+          depth: tagValue("B"),
+          color: tagValue("C"),
+          dryLevel: tagValue("D"),
+          wetLevel: tagValue("E"),
+        }
+      : undefined;
+
+  function blockControl(def: (typeof params)[number]) {
+    const value = num(tags, def.tag, def.default ?? 0);
+    const id = `ifx-edit-${section}-${def.tag === "#" ? "hash" : def.tag}`;
+    if (def.tag === previewTags?.depth) {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={100}
+          format={(v) => ({ value: String(v), unit: "% Pattern" })}
+          alert
+          color="var(--slot-color)"
+          valueIcon="mfx"
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (def.tag === previewTags?.compThreshold) {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={30}
+          format={(v) => ({ value: String(v - 30), unit: "dB Threshold" })}
+          alert
+          color="#f59e0b"
+          valueIcon="compressor"
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (def.tag === previewTags?.compGain) {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={20}
+          format={(v) => ({ value: v === 0 ? "0" : `+${v}`, unit: "dB Gain" })}
+          alert
+          color="#fb7185"
+          valueIcon="compressor"
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (isSyncRate(def)) {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={def.options?.[0]?.value ?? 0}
+          max={def.options?.at(-1)?.value ?? 118}
+          format={rateCardValue}
+          alert
+          color="var(--slot-color)"
+          valueIcon="note"
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    return (
+      <ParamControl
+        key={def.tag}
+        id={id}
+        def={def}
+        value={value}
+        meter={
+          layout && def.kind === "int" && !MIX_PARAM.test(def.name)
+            ? { caption: def.name, color: () => "var(--slot-color)" }
+            : undefined
+        }
+        onChange={(v) => setBlockTag(section!, def.tag, v)}
+      />
+    );
+  }
+
+  function control(def: (typeof params)[number]) {
+    const sequenced = def.tag === sequencedTag;
+    return (
+      <div
+        key={def.tag}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}`}
+        title={sequenced ? "The step sequence is changing this parameter." : undefined}
+      >
+        {blockControl(def)}
+        {sequenced ? <span className="ifx-control-badge">Steps</span> : null}
+      </div>
+    );
+  }
 
   return (
-    <Modal title={`Edit ${title}`} onClose={onClose} wide className="ifx-edit-modal">
+    <Modal title={`Edit ${title}`} onClose={onClose} wide className="ifx-edit-modal" actions={actions}>
       {target}
-      <div className="param-columns">
-        {params.map((def) => (
-          <ParamControl
-            key={def.tag}
-            id={`ifx-edit-${section}-${def.tag === "#" ? "hash" : def.tag}`}
-            def={def}
-            value={num(tags, def.tag, def.default ?? 0)}
-            onChange={(v) => setBlockTag(section, def.tag, v)}
-          />
-        ))}
-      </div>
-      {seqSection ? (
-        <>
-          <h3 className="section-title">Step Sequence</h3>
-          <div className="param-columns">
-            {INPUT_FX_SEQ_PARAMS.map((def) => (
-              <ParamControl
-                key={def.tag}
-                id={`ifx-edit-${seqSection}-${def.tag}`}
-                def={def}
-                value={num(seqTags, def.tag, def.default ?? 0)}
-                onChange={(v) => setBlockTag(seqSection, def.tag, v)}
-              />
-            ))}
-          </div>
-        </>
+      {layout && stepSection ? (
+        <StepSequencer
+          idPrefix={`ifx-edit-${stepSection}`}
+          layout={layout}
+          defs={layout.source === "seq" ? inputFxSeqParams(type) : params}
+          tags={model.ifxBlocks[stepSection] ?? {}}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          vibrato={vibrato}
+          onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
+        />
+      ) : null}
+      {blockParams.length > 0 && !layout ? (
+        <section className="ifx-effect-controls" data-fx-slot={FX_BANKS[slot]!}>
+          <div className="param-columns">{blockParams.map(blockControl)}</div>
+        </section>
+      ) : null}
+      {blockParams.length > 0 && layout ? (
+        <section
+          className={`ifx-effect-controls ifx-groups${mainParams.length > 0 && mixParams.length > 0 ? " has-mix" : ""}`}
+          data-fx-slot={FX_BANKS[slot]!}
+        >
+          {mainParams.length > 0 ? (
+            <div className="ifx-group">
+              <div className="ifx-group-head">
+                <h4>{title}</h4>
+                {captions?.main ? <p>{captions.main}</p> : null}
+              </div>
+              <div className="ifx-group-grid">{mainParams.map(control)}</div>
+            </div>
+          ) : null}
+          {mixParams.length > 0 ? (
+            <div className="ifx-group">
+              <div className="ifx-group-head">
+                <h4>Mix</h4>
+                <p>{captions?.mix ?? "Volume of the original and the effect sound."}</p>
+              </div>
+              <div className="ifx-group-grid is-mix">{mixParams.map(control)}</div>
+            </div>
+          ) : null}
+        </section>
       ) : null}
     </Modal>
   );

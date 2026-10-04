@@ -58,14 +58,17 @@ export function InputFxLibraryModal({
   slot,
   onPatch,
   onClose,
+  onOpenEdit,
 }: {
   model: MemoryModel;
   bank: number;
   slot: number;
   onPatch: PatchHandler;
   onClose: () => void;
+  onOpenEdit: () => void;
 }) {
   const [user, setUser] = useState<InputFxPreset[]>(() => loadUserInputFxPresets());
+  const [loadedId, setLoadedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [category, setCategory] = useState<"all" | InputFxCategory>("all");
   const [source, setSource] = useState<Source>("all");
@@ -112,7 +115,7 @@ export function InputFxLibraryModal({
       ops.push({ type: "ifx", section: seqSec, tags: { ...preset.seqTags } });
     }
     onPatch(ops);
-    onClose();
+    setLoadedId(preset.id);
   }
 
   function saveCurrent() {
@@ -169,7 +172,19 @@ export function InputFxLibraryModal({
   );
 
   return (
-    <Modal title="Effect library" onClose={onClose} wide className="ifx-library-modal" foot={foot}>
+    <Modal
+      title="Effect library"
+      onClose={onClose}
+      wide
+      className="ifx-library-modal"
+      foot={foot}
+      actions={
+        <button type="button" className="btn" title="Edit the current effect" onClick={onOpenEdit}>
+          <Icon name="tune" size={14} />
+          Edit
+        </button>
+      }
+    >
       <div className="ifx-library-head">
         <div className="ifx-library-target">
           <span className="ifx-library-target-slot">
@@ -239,6 +254,7 @@ export function InputFxLibraryModal({
               title="My effects"
               presets={visibleUser}
               currentType={currentType}
+              loadedId={loadedId}
               onSelect={applyPreset}
               onDelete={deletePreset}
             />
@@ -248,6 +264,7 @@ export function InputFxLibraryModal({
               title="Factory"
               presets={visibleFactory}
               currentType={currentType}
+              loadedId={loadedId}
               onSelect={applyPreset}
             />
           ) : null}
@@ -290,12 +307,14 @@ function PresetGroup({
   title,
   presets,
   currentType,
+  loadedId,
   onSelect,
   onDelete,
 }: {
   title: string;
   presets: InputFxPreset[];
   currentType: number;
+  loadedId: string | null;
   onSelect: (p: InputFxPreset) => void;
   onDelete?: (id: string) => void;
 }) {
@@ -308,12 +327,13 @@ function PresetGroup({
         {presets.map((preset) => (
           <div
             key={preset.id}
-            className={`ifx-library-tile${preset.type === currentType ? " is-current-type" : ""}`}
+            className={`ifx-library-tile${preset.type === currentType ? " is-current-type" : ""}${preset.id === loadedId ? " is-loaded" : ""}`}
             style={{ "--cat-color": CATEGORY_COLORS[preset.category] } as CSSProperties}
           >
             <button
               type="button"
               className="ifx-library-tile-main"
+              aria-pressed={preset.id === loadedId}
               title={`Load ${preset.name}`}
               onClick={() => onSelect(preset)}
             >
