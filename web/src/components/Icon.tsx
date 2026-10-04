@@ -71,6 +71,7 @@ const ICONS = {
   restore: "mdi:restore",
   note: "mdi:music-note",
   mic: "mdi:microphone-outline",
+  radio: "mdi:radio",
   equalizer: "mdi:equalizer",
   chevronDown: "mdi:chevron-down",
   chevronRight: "mdi:chevron-right",

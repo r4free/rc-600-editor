@@ -1,13 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { demoSetlist, isDemoPage } from "./demoMode.ts";
+import { demoSetlist, isDemoPage, isDemoPath } from "./demoMode.ts";
 
 describe("demo page", () => {
-  it("matches only the public demo path", () => {
-    assert.equal(isDemoPage("/demo"), true);
-    assert.equal(isDemoPage("/demo/"), true);
+  it("recognizes the demo path but keeps the page closed", () => {
+    assert.equal(isDemoPath("/demo"), true);
+    assert.equal(isDemoPath("/demo/"), true);
+    assert.equal(isDemoPath("/"), false);
+    assert.equal(isDemoPath("/demo/extra"), false);
+    assert.equal(isDemoPage("/demo"), false);
     assert.equal(isDemoPage("/"), false);
-    assert.equal(isDemoPage("/demo/extra"), false);
   });
 
   it("builds a sample setlist that is not empty", () => {

@@ -13,10 +13,17 @@ export function DelayPreviewBar(props: {
       createEngine={(cfg) => new DelayPreviewEngine(cfg)}
       label="Guitar phrase"
       icon="strings"
-      info={{
-        label: "Delay preview",
-        text: "Two plucked guitar notes per bar, with space to hear the repeats, played through this delay with the settings below. Note-based Times follow the BPM. Changes are heard while it plays. This is a browser approximation, not the RC-600's exact delay.",
-      }}
+      info={
+        props.settings.kind === "tape"
+          ? {
+              label: "Tape echo preview",
+              text: "Two plucked guitar notes per bar, played through a simulated tape echo with the settings below: the repeats wobble slightly, get darker and saturate as they build up. Note-based Repeat Rates follow the BPM. Changes are heard while it plays. This is a browser approximation, not the RC-600's exact tape echo.",
+            }
+          : {
+              label: "Delay preview",
+              text: "Two plucked guitar notes per bar, with space to hear the repeats, played through this delay with the settings below. Note-based Times follow the BPM. Changes are heard while it plays. This is a browser approximation, not the RC-600's exact delay.",
+            }
+      }
     />
   );
 }

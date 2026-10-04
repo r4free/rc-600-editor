@@ -17,7 +17,7 @@ function isVolumeParam(def: ParamDef): boolean {
 }
 
 function isPanParam(def: ParamDef): boolean {
-  return def.kind === "int" && def.name.trim().toLowerCase() === "pan";
+  return def.kind === "int" && (def.format === "pan" || def.name.trim().toLowerCase() === "pan");
 }
 
 function scaleLabel(def: ParamDef, raw: number): string | number {
@@ -130,7 +130,14 @@ export type MeterStyle = {
 };
 
 /** Forces the centered pan layout on an int param that blends two sides (e.g. Direct ↔ Effect). */
-export type BalanceStyle = { left: string; right: string };
+export type BalanceStyle = {
+  left: string;
+  right: string;
+  /** Center label on the scale (default "Even"). */
+  center?: string;
+  /** Value readout instead of the "70% Effect" share. */
+  value?: (v: number) => string;
+};
 
 /** "Even" at the center, otherwise the side it leans to and its share (e.g. "70% Effect"). */
 export function balanceLabel(value: number, min: number, max: number, style: BalanceStyle): string {
@@ -203,7 +210,8 @@ export function ParamControl({
     const activeStart = Math.min(centerIndex, selectedIndex);
     const activeEnd = Math.max(centerIndex, selectedIndex);
     const reset = resetTarget(def, "pan");
-    const valueText = (v: number) => (balance ? balanceLabel(v, min, max, balance) : displayParam(def, v));
+    const valueText = (v: number) =>
+      balance ? (balance.value?.(v) ?? balanceLabel(v, min, max, balance)) : displayParam(def, v);
     return (
       <div className={`param-row pan-param${balance ? " balance-param" : ""}${disabled ? " readonly" : ""}`}>
         <div className="volume-param-head">
@@ -247,7 +255,7 @@ export function ParamControl({
         </div>
         <div className="volume-param-scale pan-param-scale" aria-hidden="true">
           <span>{balance ? balance.left : "L"}</span>
-          <span>{balance ? "Even" : "Center"}</span>
+          <span>{balance ? (balance.center ?? "Even") : "Center"}</span>
           <span>{balance ? balance.right : "R"}</span>
         </div>
       </div>

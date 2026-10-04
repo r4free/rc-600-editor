@@ -52,8 +52,8 @@ describe("shell gate", () => {
     assert.match(html, /Your RC-600, easier to organize/);
     assert.match(html, /Shape every memory/);
     assert.match(html, /action="\/api\/license"/);
-    assert.match(html, /href="\/demo"/);
-    assert.match(html, /View a demo/);
+    assert.equal(html.includes('href="/demo"'), false);
+    assert.equal(html.includes("View a demo"), false);
     assert.match(html, /System requirements/);
     assert.match(html, /<dialog id="system-requirements"/);
     assert.match(html, /showModal\(\)/);
@@ -100,9 +100,10 @@ describe("shell gate", () => {
     assert.equal(decidePaidShell("/", false).action, "page");
     assert.equal(isDemoDocument("/demo"), true);
     assert.equal(isDemoDocument("/demo/"), true);
-    assert.equal(decidePaidShell("/demo", false).action, "demo");
+    assert.equal(decidePaidShell("/demo", false).action, "redirect");
+    assert.equal(decidePaidShell("/demo", true).action, "redirect");
     assert.equal(decidePaidShell("/assets/app.js", false).action, "deny");
-    assert.equal(decidePaidShell("/assets/app.js", false, true).action, "next");
+    assert.equal(decidePaidShell("/assets/app.js", false, true).action, "deny");
     assert.equal(demoViewAllowed(undefined), false);
     assert.equal(demoViewAllowed("rc600_demo=1"), true);
     assert.equal(decidePaidShell("/", false, true).action, "page");
@@ -116,6 +117,7 @@ describe("shell gate", () => {
         c.header("Set-Cookie", demoViewCookie());
         return next();
       }
+      if (decision.action === "redirect") return c.redirect(decision.location, 302);
       if (decision.action === "next") return next();
       c.header("Cache-Control", "no-store");
       if (decision.action === "page") return c.html(decision.html, 200);
@@ -149,14 +151,20 @@ describe("shell gate", () => {
     assert.equal(await asset.text(), "");
 
     const demo = await app.request("http://localhost/demo");
-    assert.equal(demo.status, 200);
-    assert.match(await demo.text(), /type="module"/);
-    assert.match(demo.headers.get("set-cookie") ?? "", /rc600_demo=1/);
+    assert.equal(demo.status, 302);
+    assert.equal(demo.headers.get("location"), "/");
+    assert.equal((await demo.text()).includes("SECRET_EDITOR"), false);
+
+    const licensedDemo = await app.request("http://localhost/demo", {
+      headers: { cookie: `rc600_session=${token}` },
+    });
+    assert.equal(licensedDemo.status, 302);
+    assert.equal(licensedDemo.headers.get("location"), "/");
 
     const demoAsset = await app.request("http://localhost/assets/app.js", {
       headers: { cookie: "rc600_demo=1" },
     });
-    assert.equal(demoAsset.status, 200);
+    assert.equal(demoAsset.status, 404);
 
     const stillLocked = await app.request("http://localhost/", {
       headers: { cookie: "rc600_demo=1" },

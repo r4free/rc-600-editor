@@ -435,6 +435,10 @@ function sendShellGate(c: Context) {
     c.header("Cache-Control", "no-store");
     return null;
   }
+  if (decision.action === "redirect") {
+    c.header("Cache-Control", "no-store");
+    return c.redirect(decision.location, 302);
+  }
   if (decision.action === "next") return null;
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");

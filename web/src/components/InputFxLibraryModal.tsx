@@ -34,7 +34,7 @@ const SOURCES: { id: Source; label: string }[] = [
   { id: "user", label: "My effects" },
 ];
 
-const CATEGORY_COLORS: Record<InputFxCategory, string> = {
+export const CATEGORY_COLORS: Record<InputFxCategory, string> = {
   Filter: "#38bdf8",
   Modulation: "#a78bfa",
   Pitch: "#f472b6",

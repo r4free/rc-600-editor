@@ -28,6 +28,13 @@ export function paidShellPlugin(): Plugin {
               next();
               return;
             }
+            if (decision.action === "redirect") {
+              res.statusCode = 302;
+              res.setHeader("Cache-Control", "no-store");
+              res.setHeader("Location", decision.location);
+              res.end();
+              return;
+            }
             if (decision.action === "next") {
               next();
               return;

@@ -24,8 +24,10 @@ export function eqRange(def: ParamDef): { min: number; max: number } {
     : { min: def.min ?? 0, max: def.max ?? 0 };
 }
 
+export type EqBand = { title: string; faders: { tag: string; short: string }[] };
+
 /** Bands low to high, then output level. `short` is the caption under each fader. */
-const EQ_BANDS: { title: string; faders: { tag: string; short: string }[] }[] = [
+const EQ_BANDS: EqBand[] = [
   { title: "Lo Cut", faders: [{ tag: "K", short: "Freq" }] },
   { title: "Low", faders: [{ tag: "B", short: "Gain" }] },
   {
@@ -187,12 +189,15 @@ export function EqFaderBoard({
   switchTag,
   tags,
   onChange,
+  bands = EQ_BANDS,
 }: {
   idPrefix: string;
   params: ParamDef[];
   switchTag: string;
   tags: TagMap;
   onChange: (tag: string, value: number) => void;
+  /** Fader layout; defaults to the INPUT / OUTPUT EQ tags. */
+  bands?: EqBand[];
 }) {
   const switchDef = params.find((p) => p.tag === switchTag);
   const on = switchDef ? num(tags, switchTag, switchDef.default ?? 0) !== 0 : true;
@@ -223,7 +228,7 @@ export function EqFaderBoard({
         </div>
       ) : null}
       <div className="eq-board-bands">
-        {EQ_BANDS.map((band) => (
+        {bands.map((band) => (
           <section key={band.title} className="eq-band">
             <div className="eq-band-faders">
               {band.faders.map(({ tag, short }) => {

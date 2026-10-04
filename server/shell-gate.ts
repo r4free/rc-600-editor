@@ -2,6 +2,7 @@
  * Paid shell: until a license session exists, the server answers with a
  * standalone activation page and does not send editor files.
  */
+import { DEMO_PAGE_ENABLED } from "../src/demo-page.js";
 import { IOS_WEB_MIDI_BROWSER_URL } from "../src/midi/rc600-midi.js";
 import { requireLicenseEnabled } from "./licenses.js";
 import { SESSION_COOKIE, verifyLicenseSessionToken } from "./session.js";
@@ -21,6 +22,7 @@ export type ShellRequestKind = "api" | "document" | "asset" | "guide";
 export type ShellDecision =
   | { action: "next" }
   | { action: "demo" }
+  | { action: "redirect"; location: string }
   | { action: "page"; status: 200; html: string }
   | { action: "deny" };
 
@@ -125,11 +127,14 @@ export function decidePaidShell(
   demoOk = false,
 ): ShellDecision {
   const kind = shellRequestKind(rawPath);
+  if (!DEMO_PAGE_ENABLED && isDemoDocument(rawPath)) {
+    return { action: "redirect", location: "/" };
+  }
   if (kind === "api" || kind === "guide" || sessionOk || isActivationImage(rawPath)) {
     return { action: "next" };
   }
-  if (isDemoDocument(rawPath)) return { action: "demo" };
-  if (kind === "asset" && demoOk) return { action: "next" };
+  if (DEMO_PAGE_ENABLED && isDemoDocument(rawPath)) return { action: "demo" };
+  if (kind === "asset" && demoOk && DEMO_PAGE_ENABLED) return { action: "next" };
   if (kind === "document") {
     return { action: "page", status: 200, html: activationPageHtml() };
   }
@@ -444,7 +449,6 @@ export function activationPageHtml(error?: string): string {
       </div>
       <p class="intro-links">
         <button type="button" class="guide" onclick="document.getElementById('system-requirements').showModal()">System requirements</button>
-        <a class="guide" href="/demo">View a demo <span aria-hidden="true">↗</span></a>
         <a class="guide" href="/guia.html" target="_blank" rel="noopener noreferrer">Explore the user guide <span aria-hidden="true">↗</span></a>
       </p>
     </section>

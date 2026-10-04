@@ -49,6 +49,37 @@ describe("input FX type catalog", () => {
     assert.equal(label("D", 0), "20.0 Hz");
   });
 
+  it("decodes the EQ effect in the guide order with gains, then band Freq / Q at the fixture defaults", () => {
+    const eq = inputFxTypeParams(26);
+    assert.equal(inputFxBlockName(26), "EQ");
+    assert.deepEqual(
+      eq.map((d) => d.name),
+      ["Lo", "Lo-Mid", "Hi-Mid", "High", "Level", "Lo-Mid Freq", "Lo-Mid Q", "Hi-Mid Freq", "Hi-Mid Q"],
+    );
+    assert.deepEqual(inputFxDefaultTags(26), { A: "20", B: "20", C: "20", D: "20", E: "20", F: "16", G: "1", H: "22", I: "1" });
+    const def = (tag: string) => eq.find((d) => d.tag === tag)!;
+    assert.equal(displayParam(def("F"), 16), "800 Hz");
+    assert.equal(displayParam(def("H"), 22), "3.15 kHz");
+    assert.equal(displayParam(def("G"), 1), "1");
+    assert.equal(def("F").options!.at(-1)!.label, "10.0 kHz");
+  });
+
+  it("decodes Tape Echo1 (time + cuts) and Tape Echo2 (tape speed + Bass / Treble) at the fixture defaults", () => {
+    const echo1 = inputFxTypeParams(40);
+    const echo2 = inputFxTypeParams(41);
+    assert.equal(inputFxBlockName(40), "TAPE_ECHO");
+    assert.equal(inputFxBlockName(41), "TAPE_ECHO_V505V2");
+    assert.deepEqual(echo1.map((d) => d.name), ["Repeat Rate", "Intensity", "D.Level", "Low Cut", "High Cut", "E.Level"]);
+    assert.deepEqual(echo2.map((d) => d.name), ["Repeat Rate", "Intensity", "D.Level", "Bass", "Treble", "E.Level"]);
+    assert.deepEqual(inputFxDefaultTags(40), { A: "211", B: "50", C: "100", D: "0", E: "29", F: "50" });
+    assert.deepEqual(inputFxDefaultTags(41), { A: "50", B: "50", C: "100", D: "50", E: "50", F: "50" });
+    const def2 = (tag: string) => echo2.find((d) => d.tag === tag)!;
+    assert.equal(displayParam(echo1.find((d) => d.tag === "A")!, 211), "200 ms");
+    assert.equal(displayParam(def2("D"), 50), "0");
+    assert.equal(displayParam(def2("E"), 0), "-50");
+    assert.equal(def2("F").max, 120);
+  });
+
   it("decodes Lo-Fi Bit Depth (OFF, 31–1) and Sample Rate (OFF, 1/2–1/32) at the guide defaults", () => {
     const lofi = inputFxTypeParams(7);
     const def = (tag: string) => lofi.find((d) => d.tag === tag)!;

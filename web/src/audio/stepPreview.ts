@@ -1,4 +1,5 @@
 import { syncRateBeats, type StepTarget } from "@rc600/catalog/input-fx";
+import { oscWaveTerms, vocoderSensGain, vocoderSmoothingHz } from "./vocoderPreview";
 
 export type PreviewSound = "tone" | "beat" | "synth" | "ring" | "phaser" | "flanger" | "tremolo";
 
@@ -38,6 +39,85 @@ export interface StepPreviewConfig {
   synth?: SynthPreview;
   /** Simulates the Isolator itself; the steps drive Depth (none when Sequence is OFF). */
   isolator?: IsolatorPreview;
+  /** Plays the Transpose amount; the steps pick whole semitones when `stepTrans` is on. */
+  transpose?: TransposePreview;
+  /** Plays the Pitch Bend amount; the steps set Bend when `stepBend` is on. */
+  pitchBend?: PitchBendPreview;
+  /** Simulates OSC Bot: the input opens an oscillator on Note; the steps set Note when `stepNote` is on. */
+  oscBot?: OscBotPreview;
+  /** Simulates Octave: adds the sound one or two octaves lower; the steps set Oct.Level when `stepLevel` is on. */
+  octave?: OctavePreview;
+}
+
+export interface OctavePreview {
+  /** OCTAVE 0–2: −1OCT, −2OCT, −1OCT&−2OCT. */
+  mode: number;
+  /** OCT.LEVEL 0–100. */
+  level: number;
+  stepLevel: boolean;
+}
+
+/** Frequency ratios of the octave voices added for OCTAVE 0–2. */
+export function octaveRatios(mode: number): number[] {
+  if (mode === 1) return [0.25];
+  if (mode === 2) return [0.5, 0.25];
+  return [0.5];
+}
+
+/** OCT.LEVEL 0–100 → gain of the octave sound (1 at 50). */
+export const octaveLevelGain = (level: number) => Math.max(0, Math.min(100, level)) / 50;
+
+export interface OscBotPreview {
+  /** WAVE 0–4: SAW, VINTAGE SAW, DETUNE SAW, SQUARE, RECT. */
+  wave: number;
+  /** Raw TONE 0–100 (−50…+50). */
+  tone: number;
+  attack: number;
+  /** NOTE 0–103: C1 … G9. */
+  note: number;
+  /** Raw MOD SENS 0–100 (−50…+50). */
+  modSens: number;
+  /** 0 = direct only, 100 = effect only. */
+  balance: number;
+  stepNote: boolean;
+}
+
+const midiFreq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
+
+/** OSC Bot NOTE (0 = C1) → MIDI note number. */
+export const oscBotMidi = (note: number) => 24 + Math.max(0, Math.min(103, Math.round(note)));
+
+/** OSC Bot TONE −50…+50 → lowpass cutoff (Hz), 2.5 kHz at 0. */
+export const oscBotToneHz = (tone: number) => 2500 * 2 ** (((Math.max(0, Math.min(100, tone)) - 50) / 50) * 1.5);
+
+export interface PitchBendPreview {
+  /** Raw Pitch 0–7 (−3OCT…+4OCT). */
+  pitch: number;
+  /** Bend 0–100 within the Pitch range. */
+  bend: number;
+  stepBend: boolean;
+}
+
+/** Pitch (raw 0–7 = −3…+4 octaves) bent by 0–100 %, in cents. */
+export function pitchBendCents(pitch: number, bend: number): number {
+  const octaves = Math.max(0, Math.min(7, Math.round(pitch))) - 3;
+  return Math.round(octaves * 1200 * (Math.max(0, Math.min(100, bend)) / 100));
+}
+
+export interface TransposePreview {
+  /** Raw Trans 0–24 (−12…+12 semitones). */
+  trans: number;
+  stepTrans: boolean;
+}
+
+/** Raw Trans 0–24 → cents (−1200…+1200). */
+export function transposeCents(raw: number): number {
+  return (Math.max(0, Math.min(24, Math.round(raw))) - 12) * 100;
+}
+
+/** A 0–100 step value as a whole-semitone Trans (0 → −12, 50 → 0, 100 → +12), in cents. */
+export function stepTransCents(value: number): number {
+  return transposeCents((Math.max(0, Math.min(100, value)) / 100) * 24);
 }
 
 export interface IsolatorPreview {
@@ -280,6 +360,8 @@ export function vibratoDelay(rateHz: number, depth: number, color: number): { ma
 const SCHEDULE_AHEAD_SEC = 0.12;
 const LOOKAHEAD_MS = 25;
 const PARAM_GLIDE_SEC = 0.006;
+/** Bend glides like a pedal sweep rather than jumping. */
+const BEND_GLIDE_SEC = 0.05;
 const FREE_RATE_OFFSET = 18;
 const BASE_FREQ = 220;
 const ARP = [0, 4, 7, 12];
@@ -378,6 +460,17 @@ export class StepPreviewEngine {
   private filterNodes: { lfo: OscillatorNode; sweep: GainNode; makeup: GainNode } | null = null;
   private synthNodes: { filter: BiquadFilterNode; dry: GainNode; wet: GainNode } | null = null;
   private isoNodes: { eq: BiquadFilterNode; lfo: OscillatorNode; swing: GainNode; band: number } | null = null;
+  private octaveBus: GainNode | null = null;
+  private octaveMode = -1;
+  private oscBotNodes: {
+    oscs: OscillatorNode[];
+    wave: number;
+    follower: BiquadFilterNode;
+    sens: GainNode;
+    tone: BiquadFilterNode;
+    dry: GainNode;
+    wet: GainNode;
+  } | null = null;
   private nextHoldTime = 0;
   private holdOrigin = 0;
   private toneOscs: OscillatorNode[] = [];
@@ -414,7 +507,13 @@ export class StepPreviewEngine {
       !cfg.tremolo !== !this.cfg.tremolo ||
       !cfg.filter !== !this.cfg.filter ||
       !cfg.synth !== !this.cfg.synth ||
-      !cfg.isolator !== !this.cfg.isolator;
+      !cfg.isolator !== !this.cfg.isolator ||
+      !cfg.transpose !== !this.cfg.transpose ||
+      !cfg.pitchBend !== !this.cfg.pitchBend ||
+      !cfg.oscBot !== !this.cfg.oscBot ||
+      !cfg.octave !== !this.cfg.octave ||
+      (cfg.octave !== undefined && this.octaveBus !== null && cfg.octave.mode !== this.octaveMode) ||
+      (cfg.oscBot?.wave ?? 0) !== (this.oscBotNodes?.wave ?? cfg.oscBot?.wave ?? 0);
     this.cfg = cfg;
     this.updatePreviewControls();
     if (this.playing && soundChanged) {
@@ -466,6 +565,7 @@ export class StepPreviewEngine {
           ...(this.tremNodes ? [this.tremNodes.lfo] : []),
           ...(this.filterNodes ? [this.filterNodes.lfo] : []),
           ...(this.isoNodes ? [this.isoNodes.lfo] : []),
+          ...(this.oscBotNodes?.oscs ?? []),
           ...(this.noiseSrc ? [this.noiseSrc] : []),
         ],
       };
@@ -484,6 +584,8 @@ export class StepPreviewEngine {
     this.filterNodes = null;
     this.synthNodes = null;
     this.isoNodes = null;
+    this.oscBotNodes = null;
+    this.octaveBus = null;
     this.noiseSrc = null;
     this.onStep(-1);
   }
@@ -522,9 +624,55 @@ export class StepPreviewEngine {
       this.cfg.tremolo ||
       this.cfg.filter ||
       this.cfg.synth ||
-      this.cfg.isolator;
+      this.cfg.isolator ||
+      this.cfg.transpose ||
+      this.cfg.pitchBend ||
+      this.cfg.oscBot ||
+      this.cfg.octave;
     stepGain.gain.value = this.cfg.target === "volume" && !simulated ? 0 : 1;
-    if (this.cfg.tremolo) {
+    if (this.cfg.octave) {
+      const bus = ctx.createGain();
+      bus.gain.value = octaveLevelGain(this.cfg.octave.level);
+      bus.connect(panner);
+      this.octaveBus = bus;
+      this.octaveMode = this.cfg.octave.mode;
+    }
+    if (this.cfg.oscBot) {
+      const bot = this.cfg.oscBot;
+      const dry = ctx.createGain();
+      const wet = ctx.createGain();
+      stepGain.connect(dry).connect(panner);
+      const rect = ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) curve[i] = Math.abs((i / (curve.length - 1)) * 2 - 1);
+      rect.curve = curve;
+      const follower = ctx.createBiquadFilter();
+      follower.type = "lowpass";
+      follower.Q.value = 0.5;
+      const sens = ctx.createGain();
+      const vca = ctx.createGain();
+      vca.gain.value = 0;
+      stepGain.connect(rect).connect(follower).connect(sens).connect(vca.gain);
+      const tone = ctx.createBiquadFilter();
+      tone.type = "lowpass";
+      tone.Q.value = 0.7;
+      tone.connect(vca).connect(wet).connect(panner);
+      const custom = bot.wave === 1 || bot.wave === 4 ? oscWaveTerms(bot.wave) : null;
+      const periodic = custom ? ctx.createPeriodicWave(custom.real, custom.imag) : null;
+      const oscs = (bot.wave === 2 ? [-12, 12] : [0]).map((detune) => {
+        const osc = ctx.createOscillator();
+        if (periodic) osc.setPeriodicWave(periodic);
+        else osc.type = bot.wave === 3 ? "square" : "sawtooth";
+        osc.frequency.value = midiFreq(oscBotMidi(bot.note));
+        osc.detune.value = detune;
+        const g = ctx.createGain();
+        g.gain.value = bot.wave === 2 ? 0.35 : 0.5;
+        osc.connect(g).connect(tone);
+        osc.start();
+        return osc;
+      });
+      this.oscBotNodes = { oscs, wave: bot.wave, follower, sens, tone, dry, wet };
+    } else if (this.cfg.tremolo) {
       const lfo = ctx.createOscillator();
       const shaper = ctx.createWaveShaper();
       const swing = ctx.createGain();
@@ -715,7 +863,36 @@ export class StepPreviewEngine {
         osc.start();
         return osc;
       });
+      const bus = this.octaveBus;
+      if (bus && this.cfg.octave) {
+        for (const ratio of octaveRatios(this.cfg.octave.mode)) {
+          for (const [type, freq, level] of shapes) {
+            const osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq * ratio;
+            const g = ctx.createGain();
+            g.gain.value = level;
+            osc.connect(g).connect(bus);
+            osc.start();
+            this.toneOscs.push(osc);
+          }
+        }
+      }
     }
+    const transpose = this.cfg.transpose;
+    if (transpose && !transpose.stepTrans) this.setPitch(transposeCents(transpose.trans), ctx.currentTime);
+    const bend = this.cfg.pitchBend;
+    if (bend && !bend.stepBend) this.setPitch(pitchBendCents(bend.pitch, bend.bend), ctx.currentTime);
+  }
+
+  private setOscBotNote(note: number, t: number): void {
+    const hz = midiFreq(oscBotMidi(note));
+    for (const o of this.oscBotNodes?.oscs ?? []) o.frequency.setTargetAtTime(hz, t, 0.005);
+  }
+
+  private setPitch(cents: number, t: number, glide = PARAM_GLIDE_SEC): void {
+    this.pitchCents = cents;
+    for (const o of this.toneOscs) o.detune.setTargetAtTime(cents, t, glide);
   }
 
   private schedule(): void {
@@ -775,7 +952,19 @@ export class StepPreviewEngine {
     const filterCfg = this.cfg.filter;
     const synth = this.cfg.synth;
     const isolator = this.cfg.isolator;
-    if (isolator) {
+    const transpose = this.cfg.transpose;
+    const pitchBend = this.cfg.pitchBend;
+    const oscBot = this.cfg.oscBot;
+    const octave = this.cfg.octave;
+    if (octave) {
+      if (octave.stepLevel) this.octaveBus?.gain.setTargetAtTime(octaveLevelGain(raw), t, PARAM_GLIDE_SEC);
+    } else if (oscBot) {
+      if (oscBot.stepNote) this.setOscBotNote(raw, t);
+    } else if (pitchBend) {
+      if (pitchBend.stepBend) this.setPitch(pitchBendCents(pitchBend.pitch, raw), t, BEND_GLIDE_SEC);
+    } else if (transpose) {
+      if (transpose.stepTrans) this.setPitch(stepTransCents(raw), t);
+    } else if (isolator) {
       if (isolator.stepParam) this.applyIsolator({ ...isolator, depth: raw }, t);
     } else if (synth) {
       this.triggerSynth(synth.stepParam ? { ...synth, [synth.stepParam]: raw } : synth, t);
@@ -837,6 +1026,36 @@ export class StepPreviewEngine {
     }
     const gainDb = Math.max(0, Math.min(20, this.cfg.compressorGainDb ?? 0));
     this.compressorGain?.gain.setTargetAtTime(10 ** (gainDb / 20), now, 0.01);
+    const transpose = this.cfg.transpose;
+    if (transpose && this.master) {
+      const cents =
+        transpose.stepTrans && this.lastStep >= 0
+          ? stepTransCents(this.cfg.steps[this.lastStep] ?? 0)
+          : transposeCents(transpose.trans);
+      this.setPitch(cents, now);
+    }
+    const pitchBend = this.cfg.pitchBend;
+    if (pitchBend && this.master) {
+      const bend = pitchBend.stepBend && this.lastStep >= 0 ? (this.cfg.steps[this.lastStep] ?? 0) : pitchBend.bend;
+      this.setPitch(pitchBendCents(pitchBend.pitch, bend), now, BEND_GLIDE_SEC);
+    }
+    const octave = this.cfg.octave;
+    if (octave && this.octaveBus) {
+      const level = octave.stepLevel && this.lastStep >= 0 ? (this.cfg.steps[this.lastStep] ?? 0) : octave.level;
+      this.octaveBus.gain.setTargetAtTime(octaveLevelGain(level), now, PARAM_GLIDE_SEC);
+    }
+    const oscBot = this.cfg.oscBot;
+    const bot = this.oscBotNodes;
+    if (oscBot && bot) {
+      const b = Math.max(0, Math.min(100, oscBot.balance)) / 100;
+      bot.dry.gain.setTargetAtTime(1 - b, now, PARAM_GLIDE_SEC);
+      bot.wet.gain.setTargetAtTime(b, now, PARAM_GLIDE_SEC);
+      bot.follower.frequency.setTargetAtTime(vocoderSmoothingHz(oscBot.attack), now, PARAM_GLIDE_SEC);
+      bot.sens.gain.setTargetAtTime(2.5 * vocoderSensGain(oscBot.modSens), now, PARAM_GLIDE_SEC);
+      bot.tone.frequency.setTargetAtTime(oscBotToneHz(oscBot.tone), now, PARAM_GLIDE_SEC);
+      const note = oscBot.stepNote && this.lastStep >= 0 ? (this.cfg.steps[this.lastStep] ?? 0) : oscBot.note;
+      this.setOscBotNote(note, now);
+    }
     const isolator = this.cfg.isolator;
     if (isolator && this.isoNodes) {
       const live = isolator.stepParam && this.lastStep >= 0 ? { depth: this.cfg.steps[this.lastStep] ?? 0 } : {};
@@ -1048,6 +1267,24 @@ export class StepPreviewEngine {
     osc.connect(this.envGain(t, peak, len, this.filter!));
     osc.start(t);
     osc.stop(t + len + 0.02);
+    this.octaveVoices(t, (sub) => {
+      sub.type = type;
+      sub.frequency.value = freq;
+    }, peak, len);
+  }
+
+  /** Extra voices one or two octaves down (Octave preview), set up by `shape` at the original pitch. */
+  private octaveVoices(t: number, shape: (osc: OscillatorNode) => void, peak: number, len: number): void {
+    const bus = this.octaveBus;
+    if (!bus || !this.cfg.octave) return;
+    for (const ratio of octaveRatios(this.cfg.octave.mode)) {
+      const osc = this.ctx!.createOscillator();
+      shape(osc);
+      osc.detune.value = this.pitchCents + Math.round(1200 * Math.log2(ratio));
+      osc.connect(this.envGain(t, peak, len, bus));
+      osc.start(t);
+      osc.stop(t + len + 0.02);
+    }
   }
 
   private kick(t: number): void {
@@ -1058,6 +1295,10 @@ export class StepPreviewEngine {
     osc.connect(this.envGain(t, 0.9, 0.28, this.filter!));
     osc.start(t);
     osc.stop(t + 0.3);
+    this.octaveVoices(t, (sub) => {
+      sub.frequency.setValueAtTime(150, t);
+      sub.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    }, 0.6, 0.28);
   }
 
   private noiseHit(t: number, peak: number, len: number, type: BiquadFilterType, freq: number): void {

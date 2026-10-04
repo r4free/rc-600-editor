@@ -1,11 +1,17 @@
+import { DEMO_PAGE_ENABLED } from "@rc600/demo-page";
 import type { Setlist } from "./presets/playlist";
 
-/** Public view-only page. Sample RC0 files, no pedal connection. */
-export function isDemoPage(pathname?: string): boolean {
+/** True for the `/demo` path, whether or not the page is open. */
+export function isDemoPath(pathname?: string): boolean {
   const raw =
     pathname ?? (typeof location !== "undefined" ? location.pathname : "/");
   const path = raw.length > 1 && raw.endsWith("/") ? raw.slice(0, -1) : raw;
   return path === "/demo";
+}
+
+/** Public view-only page. Sample RC0 files, no pedal connection. Off until released. */
+export function isDemoPage(pathname?: string): boolean {
+  return DEMO_PAGE_ENABLED && isDemoPath(pathname);
 }
 
 /** Sample setlist shown on the demo page. It is not written to this browser. */

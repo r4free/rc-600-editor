@@ -1,12 +1,17 @@
 import { pluckString } from "./chorusPreview";
 
-export type DelayKind = "delay" | "panning" | "reverse" | "mod";
+export type DelayKind = "delay" | "panning" | "reverse" | "mod" | "tape";
 
 export interface DelayPreviewConfig {
   bpm: number;
   kind: DelayKind;
   /** Raw Time value: 0–11 note lengths, then 12 + (ms − 1). */
   timeRaw: number;
+  /** Overrides timeRaw (Tape Echo2 stores a 0–100 tape speed instead of a time). */
+  timeSec?: number;
+  /** Tape Echo2 tone of the repeats, −50…+50. */
+  bass?: number;
+  treble?: number;
   feedback: number;
   modDepth: number;
   /** Low cut corner in Hz, or null for FLAT. */
@@ -25,6 +30,27 @@ const MAX_DELAY_SEC = 20;
 export function delayTimeSec(raw: number, bpm: number): number {
   if (raw < NOTE_COUNT) return Math.min(MAX_DELAY_SEC, (DELAY_NOTE_BEATS[Math.max(0, raw)]! * 60) / Math.max(20, bpm));
   return Math.max(1, Math.min(2000, raw - NOTE_COUNT + 1)) / 1000;
+}
+
+/** Tape Echo2 Repeat Rate 0–100 (tape speed): faster tape, shorter gap. 0 ≈ 600 ms, 50 ≈ 190 ms, 100 = 60 ms. */
+export function tapeRepeatSec(rate: number): number {
+  return 0.6 * 0.1 ** (Math.max(0, Math.min(100, rate)) / 100);
+}
+
+/** Tape Echo2 Bass / Treble −50…+50 → shelf gain in dB (±12 dB at the ends). */
+export function tapeToneDb(v: number): number {
+  return (Math.max(-50, Math.min(50, v)) / 50) * 12;
+}
+
+/** Soft tape saturation curve for the repeats. */
+export function tapeCurve(n = 1024): Float32Array<ArrayBuffer> {
+  const curve = new Float32Array(n);
+  const k = 2.2;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    curve[i] = Math.tanh(k * x) / Math.tanh(k);
+  }
+  return curve;
 }
 
 /** Feedback 0–100 → loop gain, kept just below runaway. */
@@ -85,6 +111,8 @@ const SCHEDULE_AHEAD_SEC = 0.12;
 const PARAM_GLIDE_SEC = 0.03;
 const MOD_RATE_HZ = 0.6;
 const MOD_MAX_SEC = 0.004;
+const TAPE_WOW_SEC = 0.0012;
+const TAPE_HIGH_CAP_HZ = 7000;
 const MAX_REVERSE_REPEATS = 24;
 
 /** Browser-only plucked phrase through a delay built from the editor's settings. */
@@ -100,6 +128,9 @@ export class DelayPreviewEngine {
     wet: GainNode;
     lowCut: BiquadFilterNode;
     highCut: BiquadFilterNode;
+    bass: BiquadFilterNode;
+    treble: BiquadFilterNode;
+    saturate: WaveShaperNode;
     left: DelayNode;
     right: DelayNode;
     loop: GainNode;
@@ -167,6 +198,10 @@ export class DelayPreviewEngine {
     this.ctx = null;
   }
 
+  private timeSec(): number {
+    return this.cfg.timeSec ?? delayTimeSec(this.cfg.timeRaw, this.cfg.bpm);
+  }
+
   private ensureCtx(): AudioContext {
     if (!this.ctx) {
       const AC =
@@ -197,15 +232,22 @@ export class DelayPreviewEngine {
     lowCut.type = "highpass";
     const highCut = ctx.createBiquadFilter();
     highCut.type = "lowpass";
+    const bass = ctx.createBiquadFilter();
+    bass.type = "lowshelf";
+    bass.frequency.value = 250;
+    const treble = ctx.createBiquadFilter();
+    treble.type = "highshelf";
+    treble.frequency.value = 3000;
+    const saturate = ctx.createWaveShaper();
     const loop = ctx.createGain();
     const cross = ctx.createGain();
     const back = ctx.createGain();
     const panL = ctx.createStereoPanner();
     const panR = ctx.createStereoPanner();
-    lowCut.connect(highCut);
-    highCut.connect(panL).connect(wet);
-    highCut.connect(loop).connect(left);
-    highCut.connect(cross).connect(right).connect(panR).connect(wet);
+    lowCut.connect(highCut).connect(bass).connect(treble).connect(saturate);
+    saturate.connect(panL).connect(wet);
+    saturate.connect(loop).connect(left);
+    saturate.connect(cross).connect(right).connect(panR).connect(wet);
     right.connect(back).connect(left);
     const lfo = ctx.createOscillator();
     lfo.frequency.value = MOD_RATE_HZ;
@@ -221,6 +263,9 @@ export class DelayPreviewEngine {
       wet,
       lowCut,
       highCut,
+      bass,
+      treble,
+      saturate,
       left,
       right,
       loop,
@@ -241,8 +286,9 @@ export class DelayPreviewEngine {
     if (!ctx || !n) return;
     const t = ctx.currentTime;
     const { kind } = this.cfg;
-    const time = delayTimeSec(this.cfg.timeRaw, this.cfg.bpm);
+    const time = this.timeSec();
     const fb = feedbackGain(this.cfg.feedback);
+    const tape = kind === "tape";
     const panning = kind === "panning";
     const reverse = kind === "reverse";
     if (this.routedReverse !== reverse) {
@@ -263,10 +309,15 @@ export class DelayPreviewEngine {
     n.back.gain.setTargetAtTime(panning ? fb : 0, t, PARAM_GLIDE_SEC);
     n.panL.pan.setTargetAtTime(panning ? -0.9 : 0, t, PARAM_GLIDE_SEC);
     n.panR.pan.setTargetAtTime(0.9, t, PARAM_GLIDE_SEC);
-    const depth = kind === "mod" ? (Math.max(0, Math.min(100, this.cfg.modDepth)) / 100) * MOD_MAX_SEC : 0;
+    const depth =
+      kind === "mod" ? (Math.max(0, Math.min(100, this.cfg.modDepth)) / 100) * MOD_MAX_SEC : tape ? TAPE_WOW_SEC : 0;
     n.lfoDepth.gain.setTargetAtTime(depth, t, PARAM_GLIDE_SEC);
     n.lowCut.frequency.setTargetAtTime(this.cfg.loCutHz ?? 10, t, PARAM_GLIDE_SEC);
-    n.highCut.frequency.setTargetAtTime(this.cfg.hiCutHz ?? 20000, t, PARAM_GLIDE_SEC);
+    const hiCut = this.cfg.hiCutHz ?? 20000;
+    n.highCut.frequency.setTargetAtTime(tape ? Math.min(hiCut, TAPE_HIGH_CAP_HZ) : hiCut, t, PARAM_GLIDE_SEC);
+    n.bass.gain.setTargetAtTime(tape ? tapeToneDb(this.cfg.bass ?? 0) : 0, t, PARAM_GLIDE_SEC);
+    n.treble.gain.setTargetAtTime(tape ? tapeToneDb(this.cfg.treble ?? 0) : 0, t, PARAM_GLIDE_SEC);
+    if (tape !== (n.saturate.curve !== null)) n.saturate.curve = tape ? tapeCurve() : null;
     const level = (v: number, max: number) => Math.max(0, Math.min(max, v)) / 100;
     n.dry.gain.setTargetAtTime(level(this.cfg.dryLevel, 100), t, PARAM_GLIDE_SEC);
     n.wet.gain.setTargetAtTime(level(this.cfg.wetLevel, 120), t, PARAM_GLIDE_SEC);
@@ -295,7 +346,7 @@ export class DelayPreviewEngine {
     src.connect(n.input);
     src.start(t);
     if (this.cfg.kind !== "reverse") return;
-    const time = delayTimeSec(this.cfg.timeRaw, this.cfg.bpm);
+    const time = this.timeSec();
     const fb = feedbackGain(this.cfg.feedback);
     const clip = Math.min(time, pluck.rev.duration);
     let gain = 1;

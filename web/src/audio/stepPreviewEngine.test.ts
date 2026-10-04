@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { syncRateBeats } from "@rc600/catalog/input-fx";
+import { inputFxTypeParams, syncRateBeats } from "@rc600/catalog/input-fx";
+import { noteFromC1 } from "@rc600/catalog/params";
 import {
   StepPreviewEngine,
   filterMakeupGain,
@@ -12,6 +13,13 @@ import {
   ringFrequencyHz,
   synthSettings,
   isolatorSettings,
+  pitchBendCents,
+  octaveLevelGain,
+  octaveRatios,
+  oscBotMidi,
+  oscBotToneHz,
+  stepTransCents,
+  transposeCents,
   type FilterPreview,
   type SynthPreview,
   type FlangerPreview,
@@ -277,6 +285,31 @@ describe("preview engine: LPF / BPF / HPF controls", () => {
 
 const SYNTH: SynthPreview = { frequency: 50, resonance: 50, decay: 50, balance: 50, stepParam: null };
 
+describe("preview engine: Pitch Bend controls", () => {
+  it("bends within the Pitch range", () => {
+    assert.equal(pitchBendCents(4, 100), 1200);
+    assert.equal(pitchBendCents(4, 50), 600);
+    assert.equal(pitchBendCents(4, 0), 0);
+    assert.equal(pitchBendCents(0, 100), -3600);
+    assert.equal(pitchBendCents(7, 100), 4800);
+    assert.equal(pitchBendCents(3, 100), 0);
+    assert.equal(pitchBendCents(9, 150), 4800);
+  });
+});
+
+describe("preview engine: Transpose controls", () => {
+  it("plays Trans in whole semitones and maps steps to −12…+12", () => {
+    assert.equal(transposeCents(12), 0);
+    assert.equal(transposeCents(19), 700);
+    assert.equal(transposeCents(0), -1200);
+    assert.equal(transposeCents(40), 1200);
+    assert.equal(stepTransCents(50), 0);
+    assert.equal(stepTransCents(0), -1200);
+    assert.equal(stepTransCents(100), 1200);
+    assert.equal(stepTransCents(54) % 100, 0);
+  });
+});
+
 describe("preview engine: Isolator controls", () => {
   it("cuts the band by Band Level and lets Depth open the cut", () => {
     const none = isolatorSettings(0, 100);
@@ -492,5 +525,44 @@ describe("preview engine: Step Sync and Retrigger", () => {
       assert.equal(r.steps[0] === 0, retrigger, `retrigger ${retrigger}: first step ${r.steps[0]}`);
       r.engine.dispose();
     }
+  });
+});
+
+describe("Octave preview", () => {
+  it("adds −1, −2 or both octaves", () => {
+    assert.deepEqual(octaveRatios(0), [0.5]);
+    assert.deepEqual(octaveRatios(1), [0.25]);
+    assert.deepEqual(octaveRatios(2), [0.5, 0.25]);
+  });
+
+  it("plays the octave sound at unity gain for Oct.Level 50", () => {
+    assert.equal(octaveLevelGain(0), 0);
+    assert.equal(octaveLevelGain(50), 1);
+    assert.equal(octaveLevelGain(100), 2);
+  });
+
+  it("names the Octave parameters as the Parameter Guide does", () => {
+    assert.deepEqual(
+      inputFxTypeParams(28).map((d) => d.name),
+      ["Octave", "Oct.Level", "Mode"],
+    );
+  });
+});
+
+describe("OSC Bot preview", () => {
+  it("counts Note from C1 (MIDI 24) up to G9", () => {
+    assert.equal(oscBotMidi(0), 24);
+    assert.equal(oscBotMidi(12), 36);
+    assert.equal(oscBotMidi(103), 127);
+    assert.equal(oscBotMidi(200), 127);
+    assert.equal(noteFromC1(0), "C1");
+    assert.equal(noteFromC1(12), "C2");
+    assert.equal(noteFromC1(103), "G9");
+  });
+
+  it("maps Tone to a darker or brighter cutoff", () => {
+    assert.equal(oscBotToneHz(50), 2500);
+    assert.ok(oscBotToneHz(0) < 1000);
+    assert.ok(oscBotToneHz(100) > 7000);
   });
 });

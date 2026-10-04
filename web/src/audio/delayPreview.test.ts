@@ -1,6 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { delayTimeSec, delayTimeSteps, feedbackGain, nearestStep } from "./delayPreview";
+import {
+  delayTimeSec,
+  delayTimeSteps,
+  feedbackGain,
+  nearestStep,
+  tapeCurve,
+  tapeRepeatSec,
+  tapeToneDb,
+} from "./delayPreview";
 
 describe("delay preview helpers", () => {
   it("reads note lengths from the tempo and the rest as milliseconds", () => {
@@ -26,5 +34,22 @@ describe("delay preview helpers", () => {
     assert.ok(steps.length < 300);
     assert.equal(steps[nearestStep(steps, 211)], 211);
     assert.equal(steps[nearestStep(steps, 213)], 211);
+  });
+
+  it("maps Tape Echo2 tape speed to shorter gaps as the tape runs faster", () => {
+    assert.ok(Math.abs(tapeRepeatSec(0) - 0.6) < 1e-9);
+    assert.ok(Math.abs(tapeRepeatSec(100) - 0.06) < 1e-9);
+    assert.ok(tapeRepeatSec(50) > 0.15 && tapeRepeatSec(50) < 0.25);
+    assert.ok(tapeRepeatSec(30) > tapeRepeatSec(70));
+  });
+
+  it("maps Tape Echo2 Bass / Treble to ±12 dB shelves and saturates softly", () => {
+    assert.equal(tapeToneDb(0), 0);
+    assert.equal(tapeToneDb(50), 12);
+    assert.equal(tapeToneDb(-50), -12);
+    const curve = tapeCurve(101);
+    assert.ok(Math.abs(curve[50]!) < 1e-6);
+    assert.ok(Math.abs(curve[100]! - 1) < 1e-6);
+    assert.ok(curve[75]! > 0.5);
   });
 });

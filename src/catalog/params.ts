@@ -12,7 +12,7 @@ export interface ParamDef {
   options?: EnumOption[];
   /** How int values are shown next to the slider. */
   /** `count`: stored 0-based, shown 1-based (e.g. Step Max 0–15 → 1–16). */
-  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan" | "mixer" | "count" | "sec10" | "ms" | "deg";
+  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "bipolar10" | "pan" | "mixer" | "count" | "sec10" | "ms" | "deg" | "note";
   /** Parameter Guide text shown by the Info icon. */
   info?: string;
 }
@@ -2915,6 +2915,14 @@ export const COLOR_PARAMS: ParamDef[] = [
   },
 ];
 
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/** Note name counting from C1 = 0 (e.g. 12 → "C2", 103 → "G9"). */
+export function noteFromC1(raw: number): string {
+  const n = Math.max(0, Math.round(raw));
+  return `${NOTE_NAMES[n % 12]}${1 + Math.floor(n / 12)}`;
+}
+
 export function panLabel(v: number): string {
   if (v === 50) return "CENTER";
   if (v < 50) return `L${50 - v}`;
@@ -2956,12 +2964,14 @@ export function displayParam(def: ParamDef, raw: number): string {
   if (def.format === "comp") return compLabel(raw);
   if (def.format === "bipolar50") return bipolarLabel(raw, 50);
   if (def.format === "bipolar20") return bipolarLabel(raw, 20);
+  if (def.format === "bipolar10") return bipolarLabel(raw, 10);
   if (def.format === "bipolar12") return bipolarLabel(raw, 12);
   if (def.format === "mixer") return mixerLabel(raw);
   if (def.format === "count") return String(raw + 1);
   if (def.format === "sec10") return `${(raw / 10).toFixed(1)} s`;
   if (def.format === "ms") return `${raw} ms`;
   if (def.format === "deg") return `${raw}°`;
+  if (def.format === "note") return noteFromC1(raw);
   if (def.format === "pan" || (def.tag === "C" && def.name === "Pan")) return panLabel(raw);
   if (def.tag === "F" && def.name === "Loop Length") return loopLengthLabel(raw);
   if (def.kind === "enum") return enumLabel(def, raw);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { syncRateLabel, type InputFxStepLayout } from "@rc600/catalog/input-fx";
 import type { ParamDef } from "@rc600/catalog/params";
 import type { TagMap } from "@rc600/rc0/memory";
@@ -11,6 +11,10 @@ import {
   type PhaserPreview,
   type PreviewSound,
   type RingPreview,
+  type PitchBendPreview,
+  type OscBotPreview,
+  type OctavePreview,
+  type TransposePreview,
   type TremoloPreview,
   type VibratoPreview,
 } from "../audio/stepPreview";
@@ -23,6 +27,7 @@ import {
   type RandomStyle,
 } from "../audio/stepRandom";
 import { addTap, tapTempoBpm } from "../audio/tapTempo";
+import { FxSequenceGuideModal } from "./FxSequenceGuideModal";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ScrubCard, TrackStateCard, type TrackStateView } from "./LoopTab";
@@ -201,6 +206,10 @@ export function StepSequencer({
   filter,
   synth,
   isolator,
+  transpose,
+  pitchBend,
+  oscBot,
+  octave,
   onSet,
 }: {
   idPrefix: string;
@@ -229,6 +238,14 @@ export function StepSequencer({
   synth?: Omit<SynthPreview, "stepParam">;
   /** Isolator settings, so the preview plays the effect itself. */
   isolator?: Omit<IsolatorPreview, "stepParam">;
+  /** Transpose amount, so the preview plays the effect itself. */
+  transpose?: Omit<TransposePreview, "stepTrans">;
+  /** Pitch Bend settings, so the preview plays the effect itself. */
+  pitchBend?: Omit<PitchBendPreview, "stepBend">;
+  /** OSC Bot settings, so the preview plays the effect itself. */
+  oscBot?: Omit<OscBotPreview, "stepNote">;
+  /** Octave settings, so the preview plays the effect itself. */
+  octave?: Omit<OctavePreview, "stepLevel">;
   /** Reference sound selected when the editor opens. */
   defaultSound?: PreviewSound;
   onSet: (tags: Record<string, string>) => void;
@@ -274,6 +291,8 @@ export function StepSequencer({
   const [playhead, setPlayhead] = useState(-1);
   const [randomStyle, setRandomStyle] = useState<RandomStyle>("any");
   const [randomAlso, setRandomAlso] = useState<Record<RandomExtra, boolean>>({ rate: true, bpm: true, steps: true });
+  const [guideOpen, setGuideOpen] = useState(false);
+  const closeGuide = useCallback(() => setGuideOpen(false), []);
 
   const restoreDefault = (lane: Lane) =>
     lane === "length" && lengthTags ? (defFor(lengthTags[0]!)?.default ?? 50) : TAP_VALUE;
@@ -311,6 +330,10 @@ export function StepSequencer({
       isolator: isolator
         ? { ...isolator, stepParam: !sequenceOff && targetName === "Depth" ? ("depth" as const) : null }
         : undefined,
+      transpose: transpose ? { ...transpose, stepTrans: !sequenceOff && targetName === "Trans" } : undefined,
+      pitchBend: pitchBend ? { ...pitchBend, stepBend: !sequenceOff && targetName === "Bend" } : undefined,
+      oscBot: oscBot ? { ...oscBot, stepNote: !sequenceOff && targetName === "Note" } : undefined,
+      octave: octave ? { ...octave, stepLevel: !sequenceOff && targetName === "Oct.Level" } : undefined,
     }),
     [
       levelSteps,
@@ -333,6 +356,10 @@ export function StepSequencer({
       filter,
       synth,
       isolator,
+      transpose,
+      pitchBend,
+      oscBot,
+      octave,
       sequenceOff,
       targetName,
     ],
@@ -655,6 +682,16 @@ export function StepSequencer({
             Random
           </button>
         </div>
+        <button
+          type="button"
+          className="info-tip-btn step-seq-guide-btn"
+          aria-label="About FX sequences"
+          title="About FX sequences (Parameter Guide)"
+          onClick={() => setGuideOpen(true)}
+        >
+          <Icon name="help" size={14} />
+        </button>
+        {guideOpen ? <FxSequenceGuideModal onClose={closeGuide} /> : null}
         <InfoTip
           label="Step sequencer"
           text={`Drag the bars to set each step (0–100); the square under a bar sets it to 0 or brings back its value. Random writes a new pattern over the active steps in the chosen style: Euclidean spreads hits evenly, Gate chops on and off while keeping the beats, Stutter repeats short bursts, Accent plays every step with louder beats, and Chaos is fully random. The Rate, BPM and Steps toggles next to Random let it also pick a Sequence Rate, a preview tempo and how many steps play (Step Max); turn one off to keep its current value. Play runs a browser-only reference sound whose ${TARGET_CAPTION[target]} follows the steps; BPM is for the preview only. While playing, Tap On (or T) turns the current step on, and Tap Off (or Shift+T) sets it to 0.`}
