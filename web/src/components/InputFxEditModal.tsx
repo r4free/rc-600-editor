@@ -12,7 +12,9 @@ import { FX_BANKS, fxSlotSection } from "@rc600/catalog/params";
 import { memoryTempo, type MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { cutLabelHz } from "../audio/chorusPreview";
+import { delayTimeSteps, nearestStep, type DelayKind } from "../audio/delayPreview";
 import type { ReverbKind } from "../audio/reverbPreview";
+import { DelayPreviewBar } from "./DelayPreviewBar";
 import { ChorusPreviewBar } from "./ChorusPreviewBar";
 import { ReverbPreviewBar } from "./ReverbPreviewBar";
 import { FilterCutControl } from "./FilterCutControl";
@@ -51,6 +53,25 @@ const REVERB_TYPES = [
     title: "Gate reverb whose reverberation fades in instead of fading out.",
   },
 ];
+const DELAY_TYPE = 36;
+const PANNING_DELAY_TYPE = 37;
+const REVERSE_DELAY_TYPE = 38;
+const MOD_DELAY_TYPE = 39;
+const DELAY_TYPES = [
+  { type: DELAY_TYPE, label: "Delay", title: "Plain repeats of the sound." },
+  { type: PANNING_DELAY_TYPE, label: "Panning", title: "Repeats that bounce between left and right (stereo)." },
+  { type: REVERSE_DELAY_TYPE, label: "Reverse", title: "Repeats played backwards." },
+  { type: MOD_DELAY_TYPE, label: "Mod", title: "Repeats with a gentle chorus-like wobble." },
+];
+const TYPE_FAMILIES = [
+  { label: "Reverb type", types: REVERB_TYPES },
+  { label: "Delay type", types: DELAY_TYPES },
+];
+const DELAY_STEPS = delayTimeSteps();
+const DELAY_NOTE_COUNT = 12;
+const DELAY_CAPTION = (extra: string) =>
+  `Time is the gap between repeats (a note length follows the tempo), Feedback how many repeats you hear${extra}. Lo Cut and High Cut trim the lows and highs of the repeats only (FLAT = no filtering).`;
+const DELAY_MIX = "D.Level is the original sound, E.Level the repeats (up to 120 for louder repeats).";
 const REVERB_MIX = "D.Level is the original sound, E.Level the reverb sound.";
 const REVERB_FILTERS =
   "Lo Cut and High Cut trim the lows and highs of the reverb sound only (FLAT = no filtering).";
@@ -81,6 +102,13 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
     main: "Rate is how fast the pitch wobbles, Depth is how far it swings, and Color makes the wobble less regular.",
     mix: "D.Level is the original sound, E.Level the sound with vibrato. Raise both for a chorus-like blend.",
   },
+  [DELAY_TYPE]: { main: DELAY_CAPTION(""), mix: DELAY_MIX },
+  [PANNING_DELAY_TYPE]: { main: DELAY_CAPTION(", bouncing between left and right"), mix: DELAY_MIX },
+  [REVERSE_DELAY_TYPE]: { main: DELAY_CAPTION(", each one played backwards"), mix: DELAY_MIX },
+  [MOD_DELAY_TYPE]: {
+    main: DELAY_CAPTION(", and Mod Depth how much the repeats wobble"),
+    mix: DELAY_MIX,
+  },
   [REVERB_TYPE]: {
     main: `Time is how long the reverb rings, Pre Delay the gap before it starts, and Density how smooth it sounds. ${REVERB_FILTERS}`,
     mix: REVERB_MIX,
@@ -99,6 +127,17 @@ const CUT_PARAM = /^(Lo Cut|High Cut)$/;
 
 function isSyncRate(def: { kind: string; name: string; options?: { label: string }[] }) {
   return def.kind === "enum" && def.name === "Rate" && def.options?.[0]?.label === "4MEAS";
+}
+
+function delayTimeCardValue(def: { options?: { value: number; label: string }[] }, raw: number) {
+  const label = def.options?.find((o) => o.value === raw)?.label ?? String(raw);
+  if (label.endsWith(" ms")) return { value: label.slice(0, -3), unit: "ms" };
+  if (label.endsWith("MEAS")) {
+    const count = label.replace("MEAS", "");
+    return { value: count, unit: count === "1" ? "Measure" : "Measures" };
+  }
+  if (label.endsWith("T")) return { value: label.slice(0, -1), unit: "Triplet" };
+  return { value: label, unit: "Note" };
 }
 
 function num(tags: Record<string, string | undefined>, tag: string, fallback = 0): number {
@@ -181,6 +220,8 @@ export function InputFxEditModal({
       : undefined;
   const captions = GROUP_CAPTIONS[type];
   const reverbFamily = REVERB_TYPES.some((r) => r.type === type);
+  const typeFamily = TYPE_FAMILIES.find((f) => f.types.some((r) => r.type === type));
+  const delayFamily = DELAY_TYPES.some((r) => r.type === type);
   const grouped = Boolean(layout || captions);
   const mainParams = grouped ? blockParams.filter((def) => !MIX_PARAM.test(def.name)) : blockParams;
   const mixParams = grouped ? blockParams.filter((def) => MIX_PARAM.test(def.name)) : [];
@@ -236,6 +277,25 @@ export function InputFxEditModal({
           wetLevel: tagValue("F"),
         }
       : undefined;
+  const modDelay = type === MOD_DELAY_TYPE;
+  const delay = delayFamily
+    ? {
+        kind: (type === PANNING_DELAY_TYPE
+          ? "panning"
+          : type === REVERSE_DELAY_TYPE
+            ? "reverse"
+            : modDelay
+              ? "mod"
+              : "delay") as DelayKind,
+        timeRaw: tagValue("A"),
+        feedback: tagValue("B"),
+        modDepth: modDelay ? tagValue("C") : 0,
+        dryLevel: tagValue(modDelay ? "D" : "C"),
+        loCutHz: cutHz(modDelay ? "E" : "D"),
+        hiCutHz: cutHz(modDelay ? "F" : "E"),
+        wetLevel: tagValue(modDelay ? "G" : "F"),
+      }
+    : undefined;
   const reverb = reverbFamily
     ? {
         kind: (type === GATE_REVERB_TYPE ? "gate" : type === REVERSE_REVERB_TYPE ? "reverse" : "reverb") as ReverbKind,
@@ -311,6 +371,23 @@ export function InputFxEditModal({
           color="#fb7185"
           valueIcon="compressor"
           onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (delayFamily && def.tag === "A") {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={nearestStep(DELAY_STEPS, value)}
+          min={0}
+          max={DELAY_STEPS.length - 1}
+          format={(i) => delayTimeCardValue(def, DELAY_STEPS[i]!)}
+          alert
+          color="var(--slot-color)"
+          valueIcon={value < DELAY_NOTE_COUNT ? "note" : "tempo"}
+          onChange={(i) => setBlockTag(section!, def.tag, DELAY_STEPS[i]!)}
         />
       );
     }
@@ -426,6 +503,15 @@ export function InputFxEditModal({
           settings={reverb}
         />
       ) : null}
+      {delay ? (
+        <DelayPreviewBar
+          key={`delay-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={delay}
+        />
+      ) : null}
       {blockParams.length > 0 && !grouped ? (
         <section className="ifx-effect-controls" data-fx-slot={FX_BANKS[slot]!}>
           <div className="param-columns">{blockParams.map(blockControl)}</div>
@@ -441,9 +527,9 @@ export function InputFxEditModal({
               <div className="ifx-group-head">
                 <h4>{title}</h4>
                 {captions?.main ? <InfoTip label={title} text={captions.main} /> : null}
-                {reverbFamily ? (
-                  <div className="view-toggle ifx-type-toggle" role="radiogroup" aria-label="Reverb type">
-                    {REVERB_TYPES.map((r) => (
+                {typeFamily ? (
+                  <div className="view-toggle ifx-type-toggle" role="radiogroup" aria-label={typeFamily.label}>
+                    {typeFamily.types.map((r) => (
                       <button
                         key={r.type}
                         type="button"

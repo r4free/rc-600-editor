@@ -756,19 +756,39 @@ const STEP_SLICER_PARAMS: ParamDef[] = [
 
 function delayFamilyParams(modDepth = false): ParamDef[] {
   const base: ParamDef[] = [
-    enumP("A", "Time", DELAY_TIME, 211, "Sets the delay time."),
-    intP("B", "Feedback", 0, 100, 20, "Number / amount of delay repeats."),
+    enumP(
+      "A",
+      "Time",
+      DELAY_TIME,
+      211,
+      "Sets the delay time: 1–2000 ms, or a note length that follows the tempo.",
+    ),
+    intP("B", "Feedback", 0, 100, 20, "Sets the number of delay repeats: higher values repeat longer."),
   ];
+  const loCut = (tag: string) =>
+    enumP(
+      tag,
+      "Lo Cut",
+      LO_CUT,
+      0,
+      "Frequency at which the low cut filter begins to take effect on the repeats. FLAT leaves the lows untouched.",
+    );
+  const hiCut = (tag: string) =>
+    enumP(
+      tag,
+      "High Cut",
+      HI_CUT,
+      29,
+      "Frequency at which the high cut filter begins to take effect on the repeats. FLAT leaves the highs untouched.",
+    );
   if (modDepth) {
-    base.push(intP("C", "Mod Depth", 0, 100, 50, "Modulation depth of the delay sound."));
+    base.push(intP("C", "Mod Depth", 0, 100, 50, "Sets the modulation depth of the delay sound."));
     base.push(intP("D", "D.Level", 0, 100, 100, "Sets the volume of the direct sound."));
-    base.push(enumP("E", "Lo Cut", LO_CUT, 0, "Frequency at which the low cut filter begins to take effect."));
-    base.push(enumP("F", "High Cut", HI_CUT, 29, "Frequency at which the high cut filter begins to take effect."));
+    base.push(loCut("E"), hiCut("F"));
     base.push(intP("G", "E.Level", 0, 120, 50, "Sets the volume of the delay sound."));
   } else {
     base.push(intP("C", "D.Level", 0, 100, 100, "Sets the volume of the direct sound."));
-    base.push(enumP("D", "Lo Cut", LO_CUT, 0, "Frequency at which the low cut filter begins to take effect."));
-    base.push(enumP("E", "High Cut", HI_CUT, 29, "Frequency at which the high cut filter begins to take effect."));
+    base.push(loCut("D"), hiCut("E"));
     base.push(intP("F", "E.Level", 0, 120, 50, "Sets the volume of the delay sound."));
   }
   return base;
