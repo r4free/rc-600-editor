@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 export function InfoTip({ label, text }: { label: string; text: string }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLSpanElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -44,7 +44,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
   if (!text) return null;
 
   return (
-    <div className="info-tip" ref={rootRef}>
+    <span className="info-tip" ref={rootRef}>
       <button
         type="button"
         className={`info-tip-btn${open ? " open" : ""}`}
@@ -69,6 +69,6 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
             document.body,
           )
         : null}
-    </div>
+    </span>
   );
 }

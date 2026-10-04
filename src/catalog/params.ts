@@ -11,7 +11,7 @@ export interface ParamDef {
   default?: number;
   options?: EnumOption[];
   /** How int values are shown next to the slider. */
-  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan";
+  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan" | "mixer";
   /** Parameter Guide text shown by the Info icon. */
   info?: string;
 }
@@ -1446,7 +1446,7 @@ function mixerMute(tag: string, jack: string): ParamDef {
   };
 }
 
-function mixerLevel(tag: string, info: string): ParamDef {
+function mixerLevel(tag: string, info: string, format?: ParamDef["format"]): ParamDef {
   return {
     tag,
     name: "Level",
@@ -1454,8 +1454,17 @@ function mixerLevel(tag: string, info: string): ParamDef {
     min: 0,
     max: 200,
     default: 100,
+    format,
     info,
   };
+}
+
+function mixerInLevel(tag: string, jack: string): ParamDef {
+  return mixerLevel(
+    tag,
+    `Input level from ${jack}. Far left is Mute, 0 (center) is the default level, and +100 is the maximum boost.`,
+    "mixer",
+  );
 }
 
 export type MixerGroup = {
@@ -1467,7 +1476,6 @@ export type MixerGroup = {
   params: ParamDef[];
 };
 
-const IN_LEVEL = (jack: string) => `Input level from ${jack} (0–200). Default 100.`;
 const OUT_LEVEL = (jack: string) => `Output level for ${jack} (0–200). Default 100.`;
 
 export const MIXER_INPUT_GROUPS: MixerGroup[] = [
@@ -1477,7 +1485,7 @@ export const MIXER_INPUT_GROUPS: MixerGroup[] = [
     linkFrom: "input",
     linkTag: "E",
     role: "primary",
-    params: [mixerMute("B", "MIC 1"), mixerLevel("A", IN_LEVEL("MIC 1"))],
+    params: [mixerMute("B", "MIC 1"), mixerInLevel("A", "MIC 1")],
   },
   {
     title: "MIC 2",
@@ -1485,7 +1493,7 @@ export const MIXER_INPUT_GROUPS: MixerGroup[] = [
     linkFrom: "input",
     linkTag: "E",
     role: "secondary",
-    params: [mixerMute("D", "MIC 2"), mixerLevel("C", IN_LEVEL("MIC 2"))],
+    params: [mixerMute("D", "MIC 2"), mixerInLevel("C", "MIC 2")],
   },
   {
     title: "INST 1 L",
@@ -1493,7 +1501,7 @@ export const MIXER_INPUT_GROUPS: MixerGroup[] = [
     linkFrom: "input",
     linkTag: "F",
     role: "primary",
-    params: [mixerMute("F", "INST 1 L"), mixerLevel("E", IN_LEVEL("INST 1 L/MONO"))],
+    params: [mixerMute("F", "INST 1 L"), mixerInLevel("E", "INST 1 L/MONO")],
   },
   {
     title: "INST 1 R",
@@ -1501,7 +1509,7 @@ export const MIXER_INPUT_GROUPS: MixerGroup[] = [
     linkFrom: "input",
     linkTag: "F",
     role: "secondary",
-    params: [mixerMute("H", "INST 1 R"), mixerLevel("G", IN_LEVEL("INST 1 R"))],
+    params: [mixerMute("H", "INST 1 R"), mixerInLevel("G", "INST 1 R")],
   },
   {
     title: "INST 2 L",
@@ -1509,7 +1517,7 @@ export const MIXER_INPUT_GROUPS: MixerGroup[] = [
     linkFrom: "input",
     linkTag: "G",
     role: "primary",
-    params: [mixerMute("J", "INST 2 L"), mixerLevel("I", IN_LEVEL("INST 2 L/MONO"))],
+    params: [mixerMute("J", "INST 2 L"), mixerInLevel("I", "INST 2 L/MONO")],
   },
   {
     title: "INST 2 R",
@@ -1517,7 +1525,7 @@ export const MIXER_INPUT_GROUPS: MixerGroup[] = [
     linkFrom: "input",
     linkTag: "G",
     role: "secondary",
-    params: [mixerMute("L", "INST 2 R"), mixerLevel("K", IN_LEVEL("INST 2 R"))],
+    params: [mixerMute("L", "INST 2 R"), mixerInLevel("K", "INST 2 R")],
   },
 ];
 
@@ -2978,6 +2986,10 @@ function bipolarLabel(raw: number, center: number): string {
   return String(n);
 }
 
+function mixerLabel(raw: number): string {
+  return raw <= 0 ? "Mute" : bipolarLabel(raw, 100);
+}
+
 export function displayParam(def: ParamDef, raw: number): string {
   if (def.kind === "bool") return boolLabel(raw);
   if (def.format === "db") return dbLabel(raw);
@@ -2985,6 +2997,7 @@ export function displayParam(def: ParamDef, raw: number): string {
   if (def.format === "bipolar50") return bipolarLabel(raw, 50);
   if (def.format === "bipolar20") return bipolarLabel(raw, 20);
   if (def.format === "bipolar12") return bipolarLabel(raw, 12);
+  if (def.format === "mixer") return mixerLabel(raw);
   if (def.format === "pan" || (def.tag === "C" && def.name === "Pan")) return panLabel(raw);
   if (def.tag === "F" && def.name === "Loop Length") return loopLengthLabel(raw);
   if (def.kind === "enum") return enumLabel(def, raw);

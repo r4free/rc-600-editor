@@ -12,6 +12,7 @@ import {
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
+import { InfoTip } from "./InfoTip";
 import { TrackFxEditModal } from "./TrackFxEditModal";
 import { TrackFxLibraryModal } from "./TrackFxLibraryModal";
 import type { PatchHandler } from "./LoopTab";
@@ -120,11 +121,13 @@ export function TrackFxTab({
     <div className="ifx-tab tfx-tab">
       {showCopy ? (
       <div className="copy-panel ifx-memory-copy">
-        <h3 className="section-title">Copy Track FX from memory {sourceSlot}</h3>
-        <p className="hint">
-          Copies Setup, all banks, and all FX slots into the selected memories. Writes immediately
-          (same as the Copy tab).
-        </p>
+        <h3 className="section-title">
+          Copy Track FX from memory {sourceSlot}
+          <InfoTip
+            label="Copy Track FX"
+            text="Copies Setup, all banks, and all FX slots into the selected memories. Writes immediately (same as the Copy tab)."
+          />
+        </h3>
         <div className="targets">
           {memorySlots.map((s) => (
             <label key={s}>
@@ -169,14 +172,23 @@ export function TrackFxTab({
             {t.label}
           </button>
         ))}
+        <span className="tabs-help">
+          {page === "setup" ? (
+            <InfoTip
+              label="Track FX Setup"
+              text="Selected Bank is the bank the RC-600 plays and edits. SINGLE mode allows only one of FX A–D on."
+            />
+          ) : (
+            <InfoTip
+              label="Track FX"
+              text="Each FX slot shows the selected effect. Use Edit to change its parameters, or Library to load a preconfigured effect. Beat Scatter, Beat Repeat, Beat Shift, and Vinyl Flick are Track FX only; in MULTI mode they work on FX A."
+            />
+          )}
+        </span>
       </div>
 
       {page === "setup" ? (
         <>
-          <p className="hint">
-            Selected Bank is the bank the RC-600 plays and edits. SINGLE mode allows only one of FX
-            A–D on.
-          </p>
           <section>
             <h3 className="section-title">Setup</h3>
             <div className="param-columns">
@@ -207,11 +219,6 @@ export function TrackFxTab({
         </>
       ) : (
         <>
-          <p className="hint">
-            Each FX slot shows the selected effect. Use Edit to change its parameters, or Library to
-            load a preconfigured effect. Beat Scatter, Beat Repeat, Beat Shift, and Vinyl Flick are
-            Track FX only; in MULTI mode they work on FX A.
-          </p>
           {TFX_SLOTS.map((slotNo) => {
             const tags = model.tfxSlots[bank]?.[slotNo] ?? {};
             const type = num(tags, "C");

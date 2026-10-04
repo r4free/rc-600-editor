@@ -15,9 +15,10 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
-import { EqFaderBoard, eqDisplay, eqRange } from "./EqFaders";
+import { EqPanel } from "./EqPanel";
 import { Icon, type IconName } from "./Icon";
-import { ScrubCard, TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
+import { InfoTip } from "./InfoTip";
+import { TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
 import { ParamControl, type MeterStyle } from "./ParamControl";
 import { usePersistedTab } from "../uiTabs";
 
@@ -101,28 +102,8 @@ export function preferenceView(label: string): TrackStateView {
   };
 }
 
-const EQ_SWITCH_TAG = "A";
-/** Low to high, then output level. */
-const EQ_CARD_ORDER = ["A", "K", "B", "D", "E", "F", "G", "H", "I", "C", "L", "J"];
-
-const EQ_SWITCH_VIEW: TrackStateView = {
-  label: "Switch",
-  variant: "eq-switch",
-  states: [
-    { icon: "equalizer", text: "Off", title: "EQ is bypassed.", color: "var(--muted)", dim: true },
-    { icon: "equalizer", text: "On", title: "EQ is applied.", alert: true },
-  ],
-};
-
-const EQ_VIEWS = ["eq", "cards"] as const;
-type EqView = (typeof EQ_VIEWS)[number];
-const EQ_VIEW_OPTIONS: { id: EqView; label: string; icon: IconName; title: string }[] = [
-  { id: "eq", label: "EQ", icon: "equalizer", title: "Vertical faders, like a graphic EQ." },
-  { id: "cards", label: "Cards", icon: "blocks", title: "One card per parameter." },
-];
-
 /** Green at light settings, warming to orange as the effect gets heavier (0–100). */
-function depthColor(v: number): string {
+export function depthColor(v: number): string {
   const p = Math.max(0, Math.min(1, v / 100));
   return `hsl(${150 - p * 125} 68% ${40 + p * 12}%)`;
 }
@@ -154,7 +135,6 @@ export function InputTab({
     "EQ_MIC1",
     INPUT_EQ_SECTIONS,
   );
-  const [eqView, setEqView] = usePersistedTab<EqView>(`inputEq.view.${scope}`, "eq", EQ_VIEWS);
   const eqChannels = visibleInputEqChannels(model.input);
   const eqSection = eqChannels.some((c) => c.section === eqCh) ? eqCh : eqChannels[0]?.section ?? "EQ_MIC1";
   const eqTags = model.eq[eqSection] ?? {};
@@ -228,49 +208,58 @@ export function InputTab({
             {t.label}
           </button>
         ))}
+        {sub === "setup" ? (
+          <span className="tabs-help">
+            <InfoTip
+              label="Input Setup"
+              text={
+                preference
+                  ? "System input defaults. Preference chooses whether each jack uses MEMORY or SYSTEM settings on the pedal."
+                  : "Phantom power, INST gain, stereo link, EQ, and dynamics are stored in this memory. MEMORY vs SYSTEM preference lives in System → Input → Setup."
+              }
+            />
+          </span>
+        ) : null}
       </div>
 
       {sub === "setup" ? (
         <>
-          <p className="hint">
-            {preference
-              ? "System input defaults. Preference chooses whether each jack uses MEMORY or SYSTEM settings on the pedal."
-              : "Phantom power, INST gain, stereo link, EQ, and dynamics are stored in this memory. MEMORY vs SYSTEM preference lives in System → Input → Setup."}
-          </p>
-          {INPUT_SETUP_GROUPS.map((group) => (
-            <section key={group.title}>
-              <h3 className="section-title">{group.title}</h3>
-              <div className="track-state-cards">
-                {group.params.map((def) => (
-                  <TrackStateCard
-                    key={def.tag}
-                    id={`in-setup-${def.tag}`}
-                    def={def}
-                    view={INPUT_SETUP_VIEWS[def.tag]}
-                    value={num(model.input, def.tag, def.default ?? 0)}
-                    onChange={(v) => setSetup(def.tag, v)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {preference ? (
-            <section>
-              <h3 className="section-title">{PREF_INPUT_GROUP.title}</h3>
-              <div className="track-state-cards">
-                {PREF_INPUT_GROUP.params.map((def) => (
-                  <TrackStateCard
-                    key={def.tag}
-                    id={`in-pref-${def.tag}`}
-                    def={def}
-                    view={preferenceView(def.name)}
-                    value={num(preference.tags, def.tag, def.default ?? 0)}
-                    onChange={(v) => preference.onChange(def.tag, v)}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
+          <div className="setup-columns">
+            {INPUT_SETUP_GROUPS.map((group) => (
+              <section key={group.title}>
+                <h3 className="section-title">{group.title}</h3>
+                <div className="track-state-cards">
+                  {group.params.map((def) => (
+                    <TrackStateCard
+                      key={def.tag}
+                      id={`in-setup-${def.tag}`}
+                      def={def}
+                      view={INPUT_SETUP_VIEWS[def.tag]}
+                      value={num(model.input, def.tag, def.default ?? 0)}
+                      onChange={(v) => setSetup(def.tag, v)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+            {preference ? (
+              <section>
+                <h3 className="section-title">{PREF_INPUT_GROUP.title}</h3>
+                <div className="track-state-cards">
+                  {PREF_INPUT_GROUP.params.map((def) => (
+                    <TrackStateCard
+                      key={def.tag}
+                      id={`in-pref-${def.tag}`}
+                      def={def}
+                      view={preferenceView(def.name)}
+                      value={num(preference.tags, def.tag, def.default ?? 0)}
+                      onChange={(v) => preference.onChange(def.tag, v)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
         </>
       ) : null}
 
@@ -291,73 +280,17 @@ export function InputTab({
               </button>
             ))}
           </div>
-          <div className="eq-toolbar">
-            <h3 className="section-title">
-              {inputEqChannelLabel(
-                INPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? INPUT_EQ_CHANNELS[0],
-                model.input,
-              )}
-            </h3>
-            <div className="view-toggle" role="radiogroup" aria-label="EQ view">
-              {EQ_VIEW_OPTIONS.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={eqView === o.id}
-                  className={`view-toggle-btn${eqView === o.id ? " active" : ""}`}
-                  title={o.title}
-                  onClick={() => setEqView(o.id)}
-                >
-                  <Icon name={o.icon} size={14} />
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {eqView === "eq" ? (
-            <EqFaderBoard
-              idPrefix={`in-eq-${eqSection}`}
-              params={INPUT_EQ_PARAMS}
-              switchTag={EQ_SWITCH_TAG}
-              tags={eqTags}
-              onChange={setEq}
-            />
-          ) : (
-            <div className="track-state-cards">
-              {EQ_CARD_ORDER.map((tag) => {
-                const def = INPUT_EQ_PARAMS.find((p) => p.tag === tag);
-                if (!def) return null;
-                const id = `in-eq-${eqSection}-${def.tag}`;
-                const value = num(eqTags, def.tag, def.default ?? 0);
-                const onChange = (v: number) => setEq(def.tag, v);
-                if (def.tag === EQ_SWITCH_TAG) {
-                  return (
-                    <TrackStateCard
-                      key={def.tag}
-                      id={id}
-                      def={def}
-                      view={EQ_SWITCH_VIEW}
-                      value={value}
-                      onChange={onChange}
-                    />
-                  );
-                }
-                return (
-                  <ScrubCard
-                    key={def.tag}
-                    id={id}
-                    def={def}
-                    value={value}
-                    {...eqRange(def)}
-                    format={(v) => eqDisplay(def, v)}
-                    alert={value !== (def.default ?? 0)}
-                    onChange={onChange}
-                  />
-                );
-              })}
-            </div>
-          )}
+          <EqPanel
+            idPrefix={`in-eq-${eqSection}`}
+            title={inputEqChannelLabel(
+              INPUT_EQ_CHANNELS.find((c) => c.section === eqSection) ?? INPUT_EQ_CHANNELS[0],
+              model.input,
+            )}
+            viewKey={`inputEq.view.${scope}`}
+            params={INPUT_EQ_PARAMS}
+            tags={eqTags}
+            onChange={setEq}
+          />
         </>
       ) : null}
 

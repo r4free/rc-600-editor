@@ -7,6 +7,7 @@ import {
   type DetectedNote,
 } from "../tuner/pitch";
 import { Icon } from "./Icon";
+import { InfoTip } from "./InfoTip";
 
 const TUNER_PREFS_KEY = "rc600.tuner.prefs";
 const ANALYSIS_INTERVAL_MS = 50;
@@ -159,8 +160,13 @@ export function TunerTab({
 
       <header className="tuner-header">
         <div>
-          <h2>USB Audio Tuner</h2>
-          <p>Chromatic tuner using the audio sent from the RC-600 to this computer.</p>
+          <h2>
+            USB Audio Tuner
+            <InfoTip
+              label="USB Audio Tuner"
+              text="Chromatic tuner using the audio sent from the RC-600 to this computer. Choose the RC-600 audio input. If the meter stays empty, check the pedal’s USB routing and make sure System → USB → Output Level is above 0."
+            />
+          </h2>
         </div>
         <div className="tuner-header-actions">
           <button
@@ -276,11 +282,6 @@ export function TunerTab({
           <span style={{ width: `${level * 100}%` }} />
         </div>
       </div>
-
-      <p className="tuner-hint">
-        Choose the RC-600 audio input. If the meter stays empty, check the pedal’s USB routing and
-        make sure System → USB → Output Level is above 0.
-      </p>
     </div>
   );
 }

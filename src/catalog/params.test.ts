@@ -253,7 +253,9 @@ describe("mixer catalog", () => {
     assert.equal(mem.mixer.A, "100");
     assert.equal(mem.mixer.B, "0");
     assert.equal(mem.mixer.V, "100");
-    assert.equal(displayParam(mic1Level, Number(mem.mixer.A)), "100");
+    assert.equal(displayParam(mic1Level, Number(mem.mixer.A)), "0");
+    assert.equal(displayParam(mic1Level, 0), "Mute");
+    assert.equal(displayParam(mic1Level, 200), "+100");
     assert.equal(displayParam(mic1Mute, Number(mem.mixer.B)), "OFF");
     assert.equal(displayParam(master, Number(mem.mixer.V)), "100");
     assert.equal(mic1Level.max, 200);

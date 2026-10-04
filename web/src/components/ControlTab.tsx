@@ -7,6 +7,7 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import { Icon, type IconName } from "./Icon";
+import { InfoTip } from "./InfoTip";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
@@ -55,6 +56,15 @@ export function ControlTab({
   const [sub, setSub] = usePersistedTab<CtlSub>(`ctl.${scope}`, "mode1", CTL_SUBS_WITH_PREF);
   const visibleSub = !preference && sub === "pref" ? "mode1" : sub;
   const modeNo = visibleSub === "mode1" ? 1 : visibleSub === "mode2" ? 2 : visibleSub === "mode3" ? 3 : 0;
+  const prefNote = preference ? "" : " MEMORY vs SYSTEM preference lives in System → Ctl Func → Preference.";
+  const helpLabel =
+    visibleSub === "pref" ? "Preference" : visibleSub === "ext" ? "Ext Ctrl" : `Mode ${modeNo}`;
+  const helpText =
+    visibleSub === "pref"
+      ? "MEMORY uses the Ctl Func settings stored in each memory. SYSTEM uses these global defaults."
+      : visibleSub === "ext"
+        ? `Footswitches and expression pedals on CTL 1, 2 / EXP 1 and CTL 3, 4 / EXP 2. Push, hold, and double-click can each take a CTL FUNC.${prefNote}`
+        : `Function of the nine onboard switches in pedal mode ${modeNo}.${prefNote}`;
 
   return (
     <div className="ctl-tab">
@@ -72,14 +82,13 @@ export function ControlTab({
             {t.label}
           </button>
         ))}
+        <span className="tabs-help">
+          <InfoTip label={helpLabel} text={helpText} />
+        </span>
       </div>
 
       {visibleSub === "pref" && preference ? (
         <>
-          <p className="hint">
-            MEMORY uses the Ctl Func settings stored in each memory. SYSTEM uses these global
-            defaults.
-          </p>
           <h3 className="section-title">{PREF_CTL_GROUP.title}</h3>
           <div className="param-columns">
             {PREF_CTL_GROUP.params.map((def) => (
@@ -103,12 +112,6 @@ export function ControlTab({
 
       {modeNo ? (
         <>
-          <p className="hint">
-            Function of the nine onboard switches in pedal mode {modeNo}.
-            {preference
-              ? ""
-              : " MEMORY vs SYSTEM preference lives in System → Ctl Func → Preference."}
-          </p>
           <div className="param-columns">
             {PEDAL_NOS.map((pedal) => {
               const tags = model.ctlPedals[modeNo - 1]?.[pedal - 1] ?? {};
@@ -134,9 +137,7 @@ export function ControlTab({
         </>
       ) : null}
 
-      {visibleSub === "ext" ? (
-        <ExtCtrlEditor model={model} onPatch={onPatch} scope={scope} system={Boolean(preference)} />
-      ) : null}
+      {visibleSub === "ext" ? <ExtCtrlEditor model={model} onPatch={onPatch} scope={scope} /> : null}
     </div>
   );
 }
@@ -145,21 +146,13 @@ function ExtCtrlEditor({
   model,
   onPatch,
   scope,
-  system,
 }: {
   model: MemoryModel;
   onPatch: PatchHandler;
   scope: "mem" | "sys";
-  system?: boolean;
 }) {
   return (
     <>
-      <p className="hint">
-        Footswitches and expression pedals on CTL 1, 2 / EXP 1 and CTL 3, 4 / EXP 2. Push, hold,
-        and double-click can each take a CTL FUNC.
-        {system ? "" : " MEMORY vs SYSTEM preference lives in System → Ctl Func → Preference."}
-      </p>
-
       {CTL_NOS.map((n) => {
         const tags = model.ectlCtl[n - 1] ?? {};
         const push = num(tags, "A", 0);

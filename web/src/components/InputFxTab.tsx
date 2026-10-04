@@ -13,9 +13,10 @@ import {
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
+import { InfoTip } from "./InfoTip";
 import { InputFxEditModal } from "./InputFxEditModal";
 import { InputFxLibraryModal } from "./InputFxLibraryModal";
-import type { PatchHandler } from "./LoopTab";
+import { TrackStateCard, type PatchHandler, type TrackStateView } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
 const IFX_PAGES = ["setup", ...FX_BANKS] as const;
@@ -31,6 +32,51 @@ const PAGES: { id: IfxPage; label: string; icon: IconName }[] = [
 ];
 
 const SLOT_SHELL_PARAMS = IFX_SLOT_PARAMS.filter((p) => p.tag !== "C");
+
+const LETTER_ICONS: IconName[] = ["variationA", "variationB", "variationC", "variationD"];
+
+function letterView(label: string, title: (letter: string) => string): TrackStateView {
+  return {
+    label,
+    variant: "fx-letter",
+    states: FX_BANKS.map((letter, i) => ({
+      icon: LETTER_ICONS[i],
+      text: letter,
+      title: title(letter),
+    })),
+  };
+}
+
+const SELECTED_BANK_VIEW = letterView(
+  "Selected Bank",
+  (l) => `The RC-600 plays and edits Input FX bank ${l}.`,
+);
+
+const BANK_VIEWS: Record<string, TrackStateView> = {
+  A: {
+    label: "Switch",
+    variant: "fx-switch",
+    states: [
+      { icon: "mfx", text: "Off", title: "This bank is off.", color: "var(--muted)", dim: true, alert: true },
+      { icon: "mfx", text: "On", title: "This bank is on." },
+    ],
+  },
+  B: {
+    label: "Mode",
+    variant: "fx-mode",
+    states: [
+      {
+        icon: "playSingle",
+        text: "Single",
+        title: "Only one of FX A–D can be on.",
+        color: "#c084fc",
+        alert: true,
+      },
+      { icon: "playMulti", text: "Multi", title: "Several FX in this bank can be on together." },
+    ],
+  },
+  C: letterView("FX Target", (l) => `The expression pedal controls FX ${l}.`),
+};
 
 function num(tags: TagMap, tag: string, fallback = 0): number {
   const v = tags[tag];
@@ -121,11 +167,13 @@ export function InputFxTab({
     <div className="ifx-tab">
       {showCopy ? (
       <div className="copy-panel ifx-memory-copy">
-        <h3 className="section-title">Copy Input FX from memory {sourceSlot}</h3>
-        <p className="hint">
-          Copies Setup, all banks, and all FX slots into the selected memories. Writes immediately
-          (same as the Copy tab).
-        </p>
+        <h3 className="section-title">
+          Copy Input FX from memory {sourceSlot}
+          <InfoTip
+            label="Copy Input FX"
+            text="Copies Setup, all banks, and all FX slots into the selected memories. Writes immediately (same as the Copy tab)."
+          />
+        </h3>
         <div className="targets">
           {memorySlots.map((s) => (
             <label key={s}>
@@ -170,20 +218,30 @@ export function InputFxTab({
             {t.label}
           </button>
         ))}
+        <span className="tabs-help">
+          {page === "setup" ? (
+            <InfoTip
+              label="Input FX Setup"
+              text="Selected Bank is the bank the RC-600 plays and edits. SINGLE mode allows only one of FX A–D on."
+            />
+          ) : (
+            <InfoTip
+              label="Input FX"
+              text="Each FX slot shows the selected effect. Use Edit to change its parameters, or Library to load a preconfigured effect."
+            />
+          )}
+        </span>
       </div>
 
       {page === "setup" ? (
-        <>
-          <p className="hint">
-            Selected Bank is the bank the RC-600 plays and edits. SINGLE mode allows only one of FX
-            A–D on.
-          </p>
+        <div className="setup-columns">
           <section>
             <h3 className="section-title">Setup</h3>
-            <div className="param-columns">
-              <ParamControl
+            <div className="track-state-cards">
+              <TrackStateCard
                 id="ifx-selected-bank"
                 def={IFX_SELECTED_BANK}
+                view={SELECTED_BANK_VIEW}
                 value={num(model.ifxSetup, "A", IFX_SELECTED_BANK.default ?? 0)}
                 onChange={(v) => setSetup("A", v)}
               />
@@ -192,12 +250,13 @@ export function InputFxTab({
           {FX_BANKS.map((letter, i) => (
             <section key={letter}>
               <h3 className="section-title">Bank {letter}</h3>
-              <div className="param-columns">
+              <div className="track-state-cards">
                 {IFX_BANK_PARAMS.map((def) => (
-                  <ParamControl
+                  <TrackStateCard
                     key={def.tag}
                     id={`ifx-bank-${letter}-${def.tag}`}
                     def={def}
+                    view={BANK_VIEWS[def.tag]}
                     value={num(model.ifxBanks[i] ?? {}, def.tag, def.default ?? 0)}
                     onChange={(v) => setBank(i, def.tag, v)}
                   />
@@ -205,13 +264,9 @@ export function InputFxTab({
               </div>
             </section>
           ))}
-        </>
+        </div>
       ) : (
         <>
-          <p className="hint">
-            Each FX slot shows the selected effect. Use Edit to change its parameters, or Library to
-            load a preconfigured effect.
-          </p>
           {IFX_SLOTS.map((slotNo) => {
             const tags = model.ifxSlots[bank]?.[slotNo] ?? {};
             const insertValue = num(tags, "D");

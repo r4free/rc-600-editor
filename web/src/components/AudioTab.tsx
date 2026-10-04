@@ -525,13 +525,6 @@ export function AudioTab({
         onChange={(e) => void onImportFile(e.target.files?.[0] ?? null)}
       />
 
-      <p className="hint">
-        Manage phrase audio under WAVE/ for this memory. Play several tracks at once and drag each
-        Position slider to scrub. Large imported songs may take a few seconds to load the first
-        time. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save memory
-        after import or clear so the pedal sees the new phrase length.
-      </p>
-
       {!folderReady ? (
         <p className="hint audio-folder-hint" role="status">
           <Icon name="folderOpen" size={14} /> Open the ROLAND folder (Chrome/Edge) to play, import,
@@ -563,26 +556,34 @@ export function AudioTab({
         <p className="error">{localError}</p>
       ) : null}
 
-      {folderReady ? (
-        <div className="audio-transport">
-          <button
-            type="button"
-            className="btn primary"
-            disabled={!anyPlayable}
-            onClick={() => void playAllRecorded()}
-          >
-            <Icon name="play" size={14} /> Play all
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            disabled={!anyPlaying}
-            onClick={stopAllTracks}
-          >
-            <Icon name="stop" size={14} /> Stop all
-          </button>
-        </div>
-      ) : null}
+      <div className="audio-transport">
+        {folderReady ? (
+          <>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!anyPlayable}
+              onClick={() => void playAllRecorded()}
+            >
+              <Icon name="play" size={14} /> Play all
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={!anyPlaying}
+              onClick={stopAllTracks}
+            >
+              <Icon name="stop" size={14} /> Stop all
+            </button>
+          </>
+        ) : null}
+        <span className="tabs-help">
+          <InfoTip
+            label="Audio"
+            text="Manage phrase audio under WAVE/ for this memory. Play several tracks at once and drag each Position slider to scrub. Large imported songs may take a few seconds to load the first time. Import converts audio to RC-600 format (44.1 kHz, 32-bit float, stereo). Save memory after import or clear so the pedal sees the new phrase length."
+          />
+        </span>
+      </div>
 
       <div className="channel-grid channel-grid-wide">
         {TRACK_NOS.map((n) => {

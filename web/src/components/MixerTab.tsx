@@ -9,6 +9,7 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import { Icon, type IconName } from "./Icon";
+import { InfoTip } from "./InfoTip";
 import type { PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
@@ -63,13 +64,17 @@ export function MixerTab({
             {t.label}
           </button>
         ))}
+        <span className="tabs-help">
+          <InfoTip
+            label={sub === "input" ? "Input Mixer" : "Output Mixer"}
+            text={
+              sub === "input"
+                ? "Input levels and mutes. Stereo link on Input → Setup hides the paired jack and keeps both in sync."
+                : "Output levels. Stereo link on Output → Setup hides the paired jack and keeps both in sync."
+            }
+          />
+        </span>
       </div>
-
-      <p className="hint">
-        {sub === "input"
-          ? "Input levels and mutes. Stereo link on Input → Setup hides the paired jack and keeps both in sync."
-          : "Output levels. Stereo link on Output → Setup hides the paired jack and keeps both in sync."}
-      </p>
 
       <div className="channel-grid">
         {visible.map((group: MixerGroup) => (

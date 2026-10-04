@@ -44,6 +44,7 @@ import { browserKitRepository } from "../presets/kitRepository";
 import { DrumKitGallery } from "./DrumKitGallery";
 import { DrumPresetGallery } from "./DrumPresetGallery";
 import { Icon } from "./Icon";
+import { InfoTip } from "./InfoTip";
 
 const PAD_COUNT_OPTIONS = Array.from(
   { length: MAX_PAD_COUNT - MIN_PAD_COUNT + 1 },
@@ -476,12 +477,14 @@ export function PlayDrumTab({
         </p>
       ) : (
         <p className="drum-pad-hint">
-          Notes go to every RC-600 USB port on {channelLabel}
-          {midiOutHint ? ` (linked ${midiOutHint})` : ""}. Set Rx CH to the pedal
-          (Rx CTL / Rx Rhythm — you are on {channelLabel}). Memory follows that
-          channel. Play Drum kits are pad layouts (count and instruments); the pedal
-          still uses the kit in the current memory.
-          {lastMidi ? ` Last send: ${lastMidi}.` : ""}
+          MIDI on {channelLabel}
+          {lastMidi ? ` · Last send: ${lastMidi}` : ""}{" "}
+          <InfoTip
+            label="Play Drum MIDI"
+            text={`Notes go to every RC-600 USB port on ${channelLabel}${
+              midiOutHint ? ` (linked ${midiOutHint})` : ""
+            }. Set Rx CH to the pedal (Rx CTL / Rx Rhythm — you are on ${channelLabel}). Memory follows that channel. Play Drum kits are pad layouts (count and instruments); the pedal still uses the kit in the current memory.`}
+          />
         </p>
       )}
 

@@ -15,6 +15,7 @@ import {
 } from "@rc600/rc0/memory";
 import { applyOpsToModel, type PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
+import { InfoTip } from "./InfoTip";
 import { ParamControl } from "./ParamControl";
 import { InputTab } from "./InputTab";
 import { OutputTab } from "./OutputTab";
@@ -100,12 +101,13 @@ export function SystemTab({
             {t.label}
           </button>
         ))}
+        <span className="tabs-help">
+          <InfoTip
+            label="System"
+            text={`Editing SYSTEM${side}.RC0 (active side by count ${baseSystem.count}). Same Input / Output / Mixer / Ctl layout as Memory; Preference chooses MEMORY vs SYSTEM on the pedal.`}
+          />
+        </span>
       </div>
-
-      <p className="hint" style={{ marginTop: 0 }}>
-        Editing SYSTEM{side}.RC0 (active side by count {baseSystem.count}). Same Input / Output /
-        Mixer / Ctl layout as Memory; Preference chooses MEMORY vs SYSTEM on the pedal.
-      </p>
 
       {primary === "input" ? (
         <InputTab model={model} onPatch={onPatch} scope="sys" preference={preference} />
@@ -123,11 +125,13 @@ export function SystemTab({
 
       {primary === "usb" ? (
         <>
-          <h3 className="section-title">USB</h3>
-          <p className="hint">
-            Storage stays Connect and locked here — the editor only reaches the ROLAND folder while
-            USB Storage is connected.
-          </p>
+          <h3 className="section-title">
+            USB
+            <InfoTip
+              label="USB"
+              text="Storage stays Connect and locked here — the editor only reaches the ROLAND folder while USB Storage is connected."
+            />
+          </h3>
           <div className="param-columns">
             {USB_PARAMS.map((def) => {
               const storageLocked = def.tag === "A";
@@ -160,12 +164,13 @@ export function SystemTab({
 
       {primary === "midi" ? (
         <>
-          <h3 className="section-title">MIDI</h3>
-          <p className="hint">
-            PC Out is factory OFF. Turn it ON so the editor follows memory changes you make on the
-            pedal. Save system, then Eject USB. To apply it immediately while USB MIDI is connected,
-            use MENU → MIDI → PC Out on the pedal.
-          </p>
+          <h3 className="section-title">
+            MIDI
+            <InfoTip
+              label="MIDI"
+              text="PC Out is factory OFF. Turn it ON so the editor follows memory changes you make on the pedal. Save system, then Eject USB. To apply it immediately while USB MIDI is connected, use MENU → MIDI → PC Out on the pedal."
+            />
+          </h3>
           <div className="param-columns">
             {MIDI_PARAMS.map((def) => (
               <ParamControl
@@ -189,7 +194,6 @@ export function SystemTab({
 
       {primary === "setup" ? (
         <>
-          <p className="hint">System SETUP and LOOP STATUS COLOR (Parameter Guide).</p>
           <div className="channel-grid">
             {SETUP_GROUPS.filter((g) => g.title !== "Knob Func").map((group) => (
               <section key={group.title} className="channel-card">
@@ -236,8 +240,10 @@ export function SystemTab({
               </div>
             </section>
           </div>
-          <h3 className="section-title">Knob Func</h3>
-          <p className="hint">Functions of the [1]–[4] knobs on the play screen.</p>
+          <h3 className="section-title">
+            Knob Func
+            <InfoTip label="Knob Func" text="Functions of the [1]–[4] knobs on the play screen." />
+          </h3>
           <div className="param-columns">
             {(SETUP_GROUPS.find((g) => g.title === "Knob Func")?.params ?? []).map((def) => {
               const raw = num(setupTags, def.tag, def.default ?? 0);

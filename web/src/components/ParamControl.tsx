@@ -230,9 +230,9 @@ export function ParamControl({
           />
         </div>
         <div className="volume-param-scale" aria-hidden="true">
-          <span>{min}</span>
-          <span>{meter?.caption ?? "Volume"}</span>
-          <span>{max}</span>
+          <span>{def.format === "mixer" ? displayParam(def, min) : min}</span>
+          <span>{def.format === "mixer" ? "0" : (meter?.caption ?? "Volume")}</span>
+          <span>{def.format === "mixer" ? displayParam(def, max) : max}</span>
         </div>
       </div>
     );
