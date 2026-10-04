@@ -11,6 +11,7 @@ import {
   phaserSettings,
   ringFrequencyHz,
   synthSettings,
+  isolatorSettings,
   type FilterPreview,
   type SynthPreview,
   type FlangerPreview,
@@ -275,6 +276,16 @@ describe("preview engine: LPF / BPF / HPF controls", () => {
 });
 
 const SYNTH: SynthPreview = { frequency: 50, resonance: 50, decay: 50, balance: 50, stepParam: null };
+
+describe("preview engine: Isolator controls", () => {
+  it("cuts the band by Band Level and lets Depth open the cut", () => {
+    const none = isolatorSettings(0, 100);
+    assert.ok(none.fullCutDb === 0 && none.swingDb === 0);
+    assert.deepEqual(isolatorSettings(100, 0), { fullCutDb: -40, swingDb: 0 });
+    assert.deepEqual(isolatorSettings(100, 100), { fullCutDb: -40, swingDb: 40 });
+    assert.deepEqual(isolatorSettings(50, 50), { fullCutDb: -20, swingDb: 10 });
+  });
+});
 
 describe("preview engine: Synth controls", () => {
   type Node = ReturnType<typeof fakeNode>;

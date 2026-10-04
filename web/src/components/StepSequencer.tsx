@@ -7,6 +7,7 @@ import {
   type FilterPreview,
   type SynthPreview,
   type FlangerPreview,
+  type IsolatorPreview,
   type PhaserPreview,
   type PreviewSound,
   type RingPreview,
@@ -199,6 +200,7 @@ export function StepSequencer({
   tremolo,
   filter,
   synth,
+  isolator,
   onSet,
 }: {
   idPrefix: string;
@@ -225,6 +227,8 @@ export function StepSequencer({
   filter?: Omit<FilterPreview, "stepParam">;
   /** Synth effect settings, so the preview plays the effect itself. */
   synth?: Omit<SynthPreview, "stepParam">;
+  /** Isolator settings, so the preview plays the effect itself. */
+  isolator?: Omit<IsolatorPreview, "stepParam">;
   /** Reference sound selected when the editor opens. */
   defaultSound?: PreviewSound;
   onSet: (tags: Record<string, string>) => void;
@@ -304,6 +308,9 @@ export function StepSequencer({
       tremolo: tremolo ? { ...tremolo, stepParam: sequenceOff ? null : tremoloStepParam(targetName) } : undefined,
       filter: filter ? { ...filter, stepParam: sequenceOff ? null : filterStepParam(targetName) } : undefined,
       synth: synth ? { ...synth, stepParam: sequenceOff ? null : synthStepParam(targetName) } : undefined,
+      isolator: isolator
+        ? { ...isolator, stepParam: !sequenceOff && targetName === "Depth" ? ("depth" as const) : null }
+        : undefined,
     }),
     [
       levelSteps,
@@ -325,6 +332,7 @@ export function StepSequencer({
       tremolo,
       filter,
       synth,
+      isolator,
       sequenceOff,
       targetName,
     ],

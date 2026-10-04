@@ -3380,6 +3380,23 @@ button.unlock-guide {
   padding-right: 0.25rem;
 }
 
+.isolator-band-scale {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.isolator-band-scale span:nth-child(2) {
+  text-align: center;
+}
+
+.isolator-band-scale span:last-child {
+  text-align: right;
+}
+
+.isolator-band-scale span.is-selected {
+  color: var(--text);
+  font-weight: 700;
+}
+
 .riff-phrase {
   display: grid;
   grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);

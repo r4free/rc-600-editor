@@ -24,6 +24,9 @@ import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
 import { PreampEditor } from "./PreampEditor";
 import { AutoRiffPreviewBar } from "./AutoRiffPreviewBar";
+import { G2bPreviewBar } from "./G2bPreviewBar";
+import { SlowGearPreviewBar } from "./SlowGearPreviewBar";
+import { IsolatorBandControl } from "./IsolatorBandControl";
 import { LofiPreviewBar } from "./LofiPreviewBar";
 import { PhraseRoll } from "./PhraseRoll";
 import { PatternSlicerPreviewBar } from "./PatternSlicerPreviewBar";
@@ -57,7 +60,21 @@ const SYNTH_METERS: Record<string, string> = {
   Resonance: "Peak",
   Decay: "Sweep time",
 };
+const G2B_TYPE = 10;
+const ALGORITHM_MODE_VIEW: TrackStateView = {
+  label: "Mode",
+  variant: "input",
+  states: [
+    { icon: "restore", text: "1 · Classic", title: "Mode 1: the algorithm from the previous RC series.", color: "#f59e0b", alert: true },
+    { icon: "mfx", text: "2 · New", title: "Mode 2: the new algorithm." },
+  ],
+};
 const AUTO_RIFF_TYPE = 12;
+const SLOW_GEAR_TYPE = 13;
+const SLOW_GEAR_METERS: Record<string, string> = {
+  Sens: "Picking sensitivity",
+  "Rise Time": "Fast → Slow swell",
+};
 const AUTO_RIFF_METERS: Record<string, string> = {
   Attack: "Soft → Punchy",
 };
@@ -78,6 +95,11 @@ const AUTO_RIFF_LOOP_VIEW: TrackStateView = {
   ],
 };
 
+/** MODE 1 / 2 (previous RC series vs new algorithm). */
+function isAlgorithmMode(def: { kind: string; name: string; options?: { label: string }[] }) {
+  return def.kind === "enum" && def.name === "Mode" && def.options?.map((o) => o.label).join() === "1,2";
+}
+
 function keyCardValue(label: string): { value: string; unit: string } {
   const m = /^(\S+) \((\S+)\)$/.exec(label);
   return m ? { value: m[1]!, unit: `Major · ${m[2]}` } : { value: label, unit: "Key" };
@@ -93,6 +115,11 @@ const PATTERN_SLICER_TYPE = 34;
 const PATTERN_SLICER_METERS: Record<string, string> = {
   Duty: "Sound length",
   Attack: "Soft → Punchy",
+};
+const ISOLATOR_TYPE = 27;
+const ISOLATOR_METERS: Record<string, string> = {
+  "Band Level": "Cut amount",
+  Depth: "Steady → Pulsing",
 };
 const STEREO_ENHANCE_TYPE = 31;
 const STEREO_ENHANCE_METERS: Record<string, string> = {
@@ -158,9 +185,20 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: st
     mixMatch: /^(Low Gain|Hi Gain|Level)$/,
     mix: "Low Gain and Hi Gain boost or cut the lows and highs (−20 to +20 dB, 0 = flat). Level is the volume of the effect sound.",
   },
+  [G2B_TYPE]: {
+    main: "Guitar to Bass turns your guitar into a bass sound, one octave lower. Mode picks the algorithm: 1 is the one from the previous RC series, 2 the new one.",
+    mix: "Balance goes from the guitar only (Direct) to the bass only (Bass); the middle plays both.",
+  },
+  [SLOW_GEAR_TYPE]: {
+    main: "A volume swell, like a violin or a guitar with the volume knob rolled up after each pick. Sens sets how hard you must pick to start a swell (higher = softer picks also swell), and Rise Time how long the sound takes to reach full volume. Mode picks the algorithm: 1 is the one from the previous RC series, 2 the new one.",
+    mix: "Level is the volume of the effect sound.",
+  },
   [AUTO_RIFF_TYPE]: {
     main: "Automatically plays a phrase built from each note you play. Play single notes: chords cannot be analyzed. Phrase picks one of the 30 built-in phrases, Tempo its speed (a note length follows the tempo), and Key the scale the phrase follows. Hold keeps the riff going after you stop playing, Loop repeats the phrase continuously instead of once, and Attack sets how loud the attack added to each phrase is.",
     mix: "Balance goes from the direct sound only (Direct) to the riff only (Riff); the middle blends both.",
+  },
+  [ISOLATOR_TYPE]: {
+    main: "Divides the sound into three ranges (Low, Mid, High) and cuts one of them, in time with the tempo. Band picks the range that is cut, Band Level how much it is cut, Rate how fast the cut opens and closes, and Depth how far it opens (0 = a steady cut, 100 = the band comes fully back between cuts). With Sequence ON, the steps above change Depth step by step. Mode and Filter are stored with the effect but are not described in the Parameter Guide.",
   },
   [STEREO_ENHANCE_TYPE]: {
     main: "Gives a stereo feeling to a mono signal, spreading it between left and right. Enhance sets how wide it spreads (0 = no widening). Low Cut keeps the lows out of the widening so the bass stays solid in the center (FLAT = the whole sound is widened).",
@@ -453,6 +491,15 @@ export function InputFxEditModal({
           sustain: tagValue("F"),
         }
       : undefined;
+  const isolator =
+    type === ISOLATOR_TYPE
+      ? { band: tagValue("A"), rateIndex: tagValue("B"), bandLevel: tagValue("C"), depth: tagValue("D") }
+      : undefined;
+  const g2b = type === G2B_TYPE ? { balance: tagValue("A"), mode: tagValue("B") } : undefined;
+  const slowGear =
+    type === SLOW_GEAR_TYPE
+      ? { sens: tagValue("A"), riseTime: tagValue("B"), level: tagValue("C"), mode: tagValue("D") }
+      : undefined;
   const autoRiff =
     type === AUTO_RIFF_TYPE
       ? {
@@ -506,7 +553,9 @@ export function InputFxEditModal({
         ? "flanger"
         : tremolo
           ? "tremolo"
-          : undefined;
+          : isolator
+            ? "beat"
+            : undefined;
 
   function blockControl(def: (typeof params)[number]) {
     const value = num(tags, def.tag, def.default ?? 0);
@@ -540,6 +589,30 @@ export function InputFxEditModal({
           alert={value !== 0}
           color="var(--slot-color)"
           valueIcon={value === 0 ? "power" : bits ? "equalizer" : "mfx"}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (type === ISOLATOR_TYPE && def.name === "Band") {
+      return (
+        <IsolatorBandControl
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          bandLevel={tagValue("C")}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (isAlgorithmMode(def)) {
+      return (
+        <TrackStateCard
+          key={def.tag}
+          id={id}
+          def={def}
+          view={ALGORITHM_MODE_VIEW}
+          value={value}
           onChange={(v) => setBlockTag(section!, def.tag, v)}
         />
       );
@@ -752,7 +825,11 @@ export function InputFxEditModal({
                             ? STEREO_ENHANCE_METERS[def.name]
                             : type === AUTO_RIFF_TYPE
                               ? AUTO_RIFF_METERS[def.name]
-                              : undefined) ?? def.name,
+                              : type === SLOW_GEAR_TYPE
+                                ? SLOW_GEAR_METERS[def.name]
+                                : type === ISOLATOR_TYPE
+                                  ? ISOLATOR_METERS[def.name]
+                                  : undefined) ?? def.name,
                 color: () => "var(--slot-color)",
               }
             : undefined
@@ -768,7 +845,9 @@ export function InputFxEditModal({
                       ? "Synth"
                       : type === AUTO_RIFF_TYPE
                         ? "Riff"
-                        : "Effect",
+                        : type === G2B_TYPE
+                          ? "Bass"
+                          : "Effect",
               }
             : undefined
         }
@@ -786,7 +865,7 @@ export function InputFxEditModal({
     return (
       <div
         key={def.tag}
-        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) || (type === AUTO_RIFF_TYPE && def.name === "Phrase") ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) || (type === AUTO_RIFF_TYPE && def.name === "Phrase") || (type === ISOLATOR_TYPE && def.name === "Band") ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
         title={sequenced ? "The step sequence is changing this parameter." : undefined}
       >
         {blockControl(def)}
@@ -815,6 +894,7 @@ export function InputFxEditModal({
           tremolo={tremolo}
           filter={filter}
           synth={synth}
+          isolator={isolator}
           defaultSound={defaultSound}
           onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
         />
@@ -853,6 +933,24 @@ export function InputFxEditModal({
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
           memoryBpm={memoryTempo(model)}
           settings={sustainer}
+        />
+      ) : null}
+      {g2b ? (
+        <G2bPreviewBar
+          key={`g2b-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={g2b}
+        />
+      ) : null}
+      {slowGear ? (
+        <SlowGearPreviewBar
+          key={`slowgear-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={slowGear}
         />
       ) : null}
       {autoRiff ? (

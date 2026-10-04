@@ -453,9 +453,21 @@ const RING_MOD_PARAMS: ParamDef[] = [
   boolP("C", "Mode", 1, "Additional ring modulator setting stored with this effect (not described in the Parameter Guide)."),
 ];
 
+/** MODE 1 / 2 stored as 0 / 1. */
+const ALGORITHM_MODE = [
+  { value: 0, label: "1" },
+  { value: 1, label: "2" },
+];
+
 const G2B_PARAMS: ParamDef[] = [
-  intP("A", "Balance", 0, 100, 50, "Volume balance between the direct sound and the effect sound."),
-  boolP("B", "Mode", 1, "Additional G2B setting."),
+  intP("A", "Balance", 0, 100, 50, "Adjusts the volume balance between the direct sound and the effect sound."),
+  enumP(
+    "B",
+    "Mode",
+    ALGORITHM_MODE,
+    1,
+    "Specifies the operating mode for the effect. 1 operates using the algorithm from the previous RC series; 2 operates using a new algorithm.",
+  ),
 ];
 
 const SUSTAINER_PARAMS: ParamDef[] = [
@@ -510,10 +522,30 @@ const AUTO_RIFF_PARAMS: ParamDef[] = [
 ];
 
 const SLOW_GEAR_PARAMS: ParamDef[] = [
-  intP("A", "Sens", 0, 100, 50, "Sets the effect’s sensitivity when you’re picking."),
-  intP("B", "Rise Time", 0, 100, 50, "Time for the volume to reach maximum from the moment you begin picking."),
+  intP(
+    "A",
+    "Sens",
+    0,
+    100,
+    50,
+    "Sets the effect’s sensitivity when you’re picking. Higher values let softer picking start a swell.",
+  ),
+  intP(
+    "B",
+    "Rise Time",
+    0,
+    100,
+    50,
+    "Sets the time needed for the volume to reach its maximum from the moment you begin picking.",
+  ),
   intP("C", "Level", 0, 100, 50, "Sets the volume of the effect sound."),
-  boolP("D", "Mode", 1, "Additional Slow Gear setting."),
+  enumP(
+    "D",
+    "Mode",
+    ALGORITHM_MODE,
+    1,
+    "Specifies the operating mode for the effect. 1 operates using the algorithm from the previous RC series; 2 operates using a new algorithm.",
+  ),
 ];
 
 const TRANSPOSE_PARAMS: ParamDef[] = [
@@ -720,12 +752,12 @@ const FX_EQ_PARAMS: ParamDef[] = [
 ];
 
 const ISOLATOR_PARAMS: ParamDef[] = [
-  enumP("A", "Band", opts("LOW", "MIDDLE", "HIGH"), 0, "Range (LOW, MID, HIGH) that will be cut."),
+  enumP("A", "Band", opts("LOW", "MIDDLE", "HIGH"), 0, "Selects the range (LOW, MID, HIGH) that will be cut."),
   enumP("B", "Rate", SYNC_RATE, 6, "Sets the rate of modulation."),
   intP("C", "Band Level", 0, 100, 50, "Sets the amount of cut."),
   intP("D", "Depth", 0, 100, 100, "Sets the depth of modulation."),
-  intP("E", "Mode", 0, 100, 0, "Additional Isolator setting."),
-  intP("F", "Filter", 0, 100, 0, "Additional Isolator setting."),
+  intP("E", "Mode", 0, 100, 0, "Additional Isolator setting stored with this effect (not described in the Parameter Guide)."),
+  intP("F", "Filter", 0, 100, 0, "Additional Isolator setting stored with this effect (not described in the Parameter Guide)."),
 ];
 
 const OCTAVE_PARAMS: ParamDef[] = [

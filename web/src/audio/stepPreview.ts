@@ -36,6 +36,35 @@ export interface StepPreviewConfig {
   filter?: FilterPreview;
   /** Simulates the Synth effect itself; the steps drive `stepParam` (none when Sequence is OFF). */
   synth?: SynthPreview;
+  /** Simulates the Isolator itself; the steps drive Depth (none when Sequence is OFF). */
+  isolator?: IsolatorPreview;
+}
+
+export interface IsolatorPreview {
+  /** 0 = LOW, 1 = MIDDLE, 2 = HIGH. */
+  band: number;
+  rateIndex: number;
+  bandLevel: number;
+  depth: number;
+  stepParam: "depth" | null;
+}
+
+const ISOLATOR_MAX_CUT_DB = 40;
+const ISOLATOR_BANDS: { type: BiquadFilterType; hz: number; q: number }[] = [
+  { type: "lowshelf", hz: 250, q: 0.7 },
+  { type: "peaking", hz: 1000, q: 0.8 },
+  { type: "highshelf", hz: 3500, q: 0.7 },
+];
+
+/**
+ * Cut of the selected band: Band Level is how deep it is cut (100 = −40 dB), Depth how much
+ * the cut opens and closes with the Rate (0 = steady cut, 100 = fully back between cuts).
+ * The cut swings between `fullCutDb` and `fullCutDb + swingDb`.
+ */
+export function isolatorSettings(bandLevel: number, depth: number): { fullCutDb: number; swingDb: number } {
+  const clamp = (v: number) => Math.max(0, Math.min(100, v)) / 100;
+  const fullCutDb = -clamp(bandLevel) * ISOLATOR_MAX_CUT_DB;
+  return { fullCutDb, swingDb: -fullCutDb * clamp(depth) };
 }
 
 export interface SynthPreview {
@@ -348,6 +377,7 @@ export class StepPreviewEngine {
   } | null = null;
   private filterNodes: { lfo: OscillatorNode; sweep: GainNode; makeup: GainNode } | null = null;
   private synthNodes: { filter: BiquadFilterNode; dry: GainNode; wet: GainNode } | null = null;
+  private isoNodes: { eq: BiquadFilterNode; lfo: OscillatorNode; swing: GainNode; band: number } | null = null;
   private nextHoldTime = 0;
   private holdOrigin = 0;
   private toneOscs: OscillatorNode[] = [];
@@ -383,7 +413,8 @@ export class StepPreviewEngine {
       !cfg.flanger !== !this.cfg.flanger ||
       !cfg.tremolo !== !this.cfg.tremolo ||
       !cfg.filter !== !this.cfg.filter ||
-      !cfg.synth !== !this.cfg.synth;
+      !cfg.synth !== !this.cfg.synth ||
+      !cfg.isolator !== !this.cfg.isolator;
     this.cfg = cfg;
     this.updatePreviewControls();
     if (this.playing && soundChanged) {
@@ -434,6 +465,7 @@ export class StepPreviewEngine {
           ...(this.flangerNodes ? [this.flangerNodes.lfo] : []),
           ...(this.tremNodes ? [this.tremNodes.lfo] : []),
           ...(this.filterNodes ? [this.filterNodes.lfo] : []),
+          ...(this.isoNodes ? [this.isoNodes.lfo] : []),
           ...(this.noiseSrc ? [this.noiseSrc] : []),
         ],
       };
@@ -451,6 +483,7 @@ export class StepPreviewEngine {
     this.tremNodes = null;
     this.filterNodes = null;
     this.synthNodes = null;
+    this.isoNodes = null;
     this.noiseSrc = null;
     this.onStep(-1);
   }
@@ -488,7 +521,8 @@ export class StepPreviewEngine {
       this.cfg.flanger ||
       this.cfg.tremolo ||
       this.cfg.filter ||
-      this.cfg.synth;
+      this.cfg.synth ||
+      this.cfg.isolator;
     stepGain.gain.value = this.cfg.target === "volume" && !simulated ? 0 : 1;
     if (this.cfg.tremolo) {
       const lfo = ctx.createOscillator();
@@ -582,11 +616,21 @@ export class StepPreviewEngine {
       stepGain.connect(dry).connect(panner);
       stepGain.connect(synthFilter).connect(wet).connect(panner);
       this.synthNodes = { filter: synthFilter, dry, wet };
+    } else if (this.cfg.isolator) {
+      const eq = ctx.createBiquadFilter();
+      const lfo = ctx.createOscillator();
+      const shaper = ctx.createWaveShaper();
+      shaper.curve = tremoloCurve(4);
+      const swing = ctx.createGain();
+      lfo.connect(shaper).connect(swing).connect(eq.gain);
+      lfo.start();
+      stepGain.connect(eq).connect(panner);
+      this.isoNodes = { eq, lfo, swing, band: -1 };
     } else {
       stepGain.connect(panner);
     }
     const filter = ctx.createBiquadFilter();
-    const fixedFilter = this.cfg.target === "filter" && !this.cfg.synth;
+    const fixedFilter = this.cfg.target === "filter" && !this.cfg.synth && !this.cfg.isolator;
     filter.type = "lowpass";
     filter.Q.value = fixedFilter ? 6 : 0.7;
     filter.frequency.value = fixedFilter ? 600 : 18000;
@@ -730,7 +774,10 @@ export class StepPreviewEngine {
     const tremolo = this.cfg.tremolo;
     const filterCfg = this.cfg.filter;
     const synth = this.cfg.synth;
-    if (synth) {
+    const isolator = this.cfg.isolator;
+    if (isolator) {
+      if (isolator.stepParam) this.applyIsolator({ ...isolator, depth: raw }, t);
+    } else if (synth) {
       this.triggerSynth(synth.stepParam ? { ...synth, [synth.stepParam]: raw } : synth, t);
     } else if (filterCfg) {
       if (filterCfg.stepParam) this.applyFilter({ ...filterCfg, [filterCfg.stepParam]: raw }, t);
@@ -790,6 +837,11 @@ export class StepPreviewEngine {
     }
     const gainDb = Math.max(0, Math.min(20, this.cfg.compressorGainDb ?? 0));
     this.compressorGain?.gain.setTargetAtTime(10 ** (gainDb / 20), now, 0.01);
+    const isolator = this.cfg.isolator;
+    if (isolator && this.isoNodes) {
+      const live = isolator.stepParam && this.lastStep >= 0 ? { depth: this.cfg.steps[this.lastStep] ?? 0 } : {};
+      this.applyIsolator({ ...isolator, ...live }, now);
+    }
     const synth = this.cfg.synth;
     if (synth && this.synthNodes) {
       const live = synth.stepParam && this.lastStep >= 0 ? { [synth.stepParam]: this.cfg.steps[this.lastStep] ?? 0 } : {};
@@ -851,6 +903,23 @@ export class StepPreviewEngine {
     const b = Math.max(0, Math.min(100, s.balance)) / 100;
     nodes.dry.gain.setTargetAtTime(1 - b, t, PARAM_GLIDE_SEC);
     nodes.wet.gain.setTargetAtTime(b, t, PARAM_GLIDE_SEC);
+  }
+
+  /** Band, cut depth (Band Level) and how far the cut opens with the Rate (Depth). */
+  private applyIsolator(iso: IsolatorPreview, t: number): void {
+    const nodes = this.isoNodes;
+    if (!nodes) return;
+    const band = ISOLATOR_BANDS[Math.max(0, Math.min(2, iso.band))]!;
+    if (nodes.band !== iso.band) {
+      nodes.eq.type = band.type;
+      nodes.eq.frequency.setValueAtTime(band.hz, t);
+      nodes.eq.Q.setValueAtTime(band.q, t);
+      nodes.band = iso.band;
+    }
+    const { fullCutDb, swingDb } = isolatorSettings(iso.bandLevel, iso.depth);
+    nodes.eq.gain.setTargetAtTime(fullCutDb + swingDb / 2, t, PARAM_GLIDE_SEC);
+    nodes.swing.gain.setTargetAtTime(swingDb / 2, t, PARAM_GLIDE_SEC);
+    nodes.lfo.frequency.setTargetAtTime(lfoRateHz(iso.rateIndex, this.cfg.bpm), t, 0.01);
   }
 
   /** Each note opens the filter and lets it fall back to Frequency over the Decay time. */

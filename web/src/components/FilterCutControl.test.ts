@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { filterBarColor, filterBars, shelfBars } from "./FilterCutControl";
+import { isolatorBandOf, isolatorBars } from "./IsolatorBandControl";
 
 describe("filter cut mini equalizer", () => {
   it("shows every band passed when FLAT", () => {
@@ -25,6 +26,19 @@ describe("filter cut mini equalizer", () => {
     const cutHigh = shelfBars(-20, false);
     assert.ok(cutHigh.at(-1)!.height < 10 && cutHigh.at(-1)!.shaped);
     assert.ok(Math.abs(cutHigh[0]!.height - 50) <= 1);
+  });
+
+  it("draws the Isolator band as a dip in the Low, Mid or High part of the spectrum", () => {
+    assert.deepEqual([0, 4, 5, 10, 11, 15].map(isolatorBandOf), [0, 0, 1, 1, 2, 2]);
+    assert.ok(isolatorBars(1, 0).every((b) => b.height === 100 && !b.cut));
+    const mid = isolatorBars(1, 100);
+    assert.ok(mid.slice(5, 11).every((b) => b.cut && b.height === 12));
+    assert.equal(mid[4]!.height, 56);
+    assert.equal(mid[11]!.height, 56);
+    assert.ok(mid[0]!.height === 100 && mid[15]!.height === 100);
+    const low = isolatorBars(0, 50);
+    assert.ok(low.slice(0, 5).every((b) => b.height === 56));
+    assert.equal(low[15]!.height, 100);
   });
 
   it("colors the bands from yellow to orange", () => {
