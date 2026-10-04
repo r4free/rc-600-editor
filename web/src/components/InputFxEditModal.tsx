@@ -23,15 +23,35 @@ import { InfoTip } from "./InfoTip";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
 import { PreampEditor } from "./PreampEditor";
+import { PatternSlicerPreviewBar } from "./PatternSlicerPreviewBar";
 import { PreampPreviewBar } from "./PreampPreviewBar";
 import { onOffView, ScrubCard, TrackStateCard, type PatchHandler } from "./LoopTab";
 import { rateCardValue, StepSequencer } from "./StepSequencer";
 
 const DEFAULT_BPM = 120;
 
+const FILTER_KINDS: Record<number, "lowpass" | "bandpass" | "highpass"> = { 1: "lowpass", 2: "bandpass", 3: "highpass" };
+const FILTER_CAPTION = (what: string) =>
+  `${what} Rate is how fast the filter sweeps on its own and Depth how far it sweeps around the Cutoff. Step Rate makes that sweep jump from value to value instead of gliding (OFF = smooth). The step sequence above is separate: its Sequence Rate sets how fast the steps advance, and Target picks whether the steps change Depth or Cutoff.`;
+const FILTER_TYPES = [
+  { type: 1, label: "LPF", title: "Low-pass: keeps the lows and cuts the highs above the Cutoff." },
+  { type: 2, label: "BPF", title: "Band-pass: keeps only a band around the Cutoff and cuts lows and highs." },
+  { type: 3, label: "HPF", title: "High-pass: keeps the highs and cuts the lows below the Cutoff." },
+];
 const PHASER_TYPE = 4;
 const FLANGER_TYPE = 5;
 const RING_MOD_TYPE = 9;
+const AUTO_PAN_TYPE = 29;
+const AUTO_PAN_METERS: Record<string, string> = {
+  Waveform: "Smooth → Abrupt",
+  Depth: "Pan width",
+  "Init Phase": "Start point",
+};
+const PATTERN_SLICER_TYPE = 34;
+const PATTERN_SLICER_METERS: Record<string, string> = {
+  Duty: "Sound length",
+  Attack: "Soft → Punchy",
+};
 const PREAMP_TYPE = 23;
 const TREMOLO_TYPE = 32;
 const VIBRATO_TYPE = 33;
@@ -67,6 +87,7 @@ const DELAY_TYPES = [
   { type: MOD_DELAY_TYPE, label: "Mod", title: "Repeats with a gentle chorus-like wobble." },
 ];
 const TYPE_FAMILIES = [
+  { label: "Filter type", types: FILTER_TYPES },
   { label: "Reverb type", types: REVERB_TYPES },
   { label: "Delay type", types: DELAY_TYPES },
 ];
@@ -80,7 +101,13 @@ const REVERB_FILTERS =
   "Lo Cut and High Cut trim the lows and highs of the reverb sound only (FLAT = no filtering).";
 const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
 
-const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
+const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: string; mixMatch?: RegExp }> = {
+  [PATTERN_SLICER_TYPE]: {
+    main: "Cuts the sound in a rhythm so a sustained sound becomes a rhythmic backing. Rate is the length of each slice, Duty how much of each slice sounds (low = short and staccato, high = almost legato), Attack how hard each slice starts, Pattern which of the 20 built-in slice rhythms is used, and Depth how far the gaps drop (100 = silence, lower lets some sound through).",
+    mixTitle: "Comp",
+    mixMatch: /^Comp (Threshold|Gain)$/,
+    mix: "A compressor after the slicer evens out the slices. Lower the Comp Threshold to compress more, and raise Comp Gain to bring the volume back up.",
+  },
   [PHASER_TYPE]: {
     main: "Rate is how fast the swirl sweeps, Depth how wide it sweeps, Resonance how sharp it sounds, and Manual where the sweep is centered.",
     mix: "The swirl comes from mixing D.Level (original) with E.Level (phase-shifted). Keep both up for the classic phaser sound.",
@@ -104,6 +131,24 @@ const GROUP_CAPTIONS: Record<number, { main: string; mix?: string }> = {
   [VIBRATO_TYPE]: {
     main: "Rate is how fast the pitch wobbles, Depth is how far it swings, and Color makes the wobble less regular.",
     mix: "D.Level is the original sound, E.Level the sound with vibrato. Raise both for a chorus-like blend.",
+  },
+  1: {
+    main: FILTER_CAPTION(
+      "LPF (low-pass) keeps the lows and cuts the highs above the Cutoff; Resonance adds a sharp peak right at the Cutoff.",
+    ),
+  },
+  2: {
+    main: FILTER_CAPTION(
+      "BPF (band-pass) keeps only a band of frequencies around the Cutoff and cuts both lows and highs, for a wah or telephone-like sound. Cutoff is the center of the band, and Resonance makes the band narrower and more nasal.",
+    ),
+  },
+  3: {
+    main: FILTER_CAPTION(
+      "HPF (high-pass) keeps the highs and cuts the lows below the Cutoff, thinning the sound; Resonance adds a sharp peak right at the Cutoff.",
+    ),
+  },
+  [AUTO_PAN_TYPE]: {
+    main: "Rate is how fast the sound moves between left and right, Waveform whether it glides smoothly or jumps abruptly, Depth how far it travels, Init Phase where the movement starts when the effect is turned on, and Step Rate makes it jump to new positions in steps instead of gliding (OFF = smooth).",
   },
   [DELAY_TYPE]: { main: DELAY_CAPTION(""), mix: DELAY_MIX },
   [PANNING_DELAY_TYPE]: { main: DELAY_CAPTION(", bouncing between left and right"), mix: DELAY_MIX },
@@ -226,8 +271,9 @@ export function InputFxEditModal({
   const typeFamily = TYPE_FAMILIES.find((f) => f.types.some((r) => r.type === type));
   const delayFamily = DELAY_TYPES.some((r) => r.type === type);
   const grouped = Boolean(layout || captions);
-  const mainParams = grouped ? blockParams.filter((def) => !MIX_PARAM.test(def.name)) : blockParams;
-  const mixParams = grouped ? blockParams.filter((def) => MIX_PARAM.test(def.name)) : [];
+  const mixMatch = captions?.mixMatch ?? MIX_PARAM;
+  const mainParams = grouped ? blockParams.filter((def) => !mixMatch.test(def.name)) : blockParams;
+  const mixParams = grouped ? blockParams.filter((def) => mixMatch.test(def.name)) : [];
   const tagValue = (tag: string) => num(tags, tag, params.find((d) => d.tag === tag)?.default ?? 0);
   const vibrato =
     type === VIBRATO_TYPE
@@ -267,6 +313,17 @@ export function InputFxEditModal({
     type === TREMOLO_TYPE
       ? { rateIndex: tagValue("A"), depth: tagValue("B"), waveform: tagValue("C"), level: tagValue("D") }
       : undefined;
+  const filterKind = FILTER_KINDS[type];
+  const filter = filterKind
+    ? {
+        kind: filterKind,
+        rateIndex: tagValue("A"),
+        depth: tagValue("B"),
+        resonance: tagValue("C"),
+        cutoff: tagValue("D"),
+        stepRate: tagValue("E"),
+      }
+    : undefined;
   const cutHz = (tag: string) =>
     cutLabelHz(params.find((d) => d.tag === tag)?.options?.find((o) => o.value === tagValue(tag))?.label);
   const chorus =
@@ -313,6 +370,18 @@ export function InputFxEditModal({
         wetLevel: tagValue("G"),
       }
     : undefined;
+  const patternSlicerPreview =
+    type === PATTERN_SLICER_TYPE
+      ? {
+          rateIndex: tagValue("A"),
+          duty: tagValue("B"),
+          attack: tagValue("C"),
+          pattern: tagValue("D"),
+          depth: tagValue("E"),
+          compThresholdDb: tagValue("F") - 30,
+          compGainDb: tagValue("G"),
+        }
+      : undefined;
   const preamp =
     type === PREAMP_TYPE
       ? {
@@ -343,7 +412,25 @@ export function InputFxEditModal({
   function blockControl(def: (typeof params)[number]) {
     const value = num(tags, def.tag, def.default ?? 0);
     const id = `ifx-edit-${section}-${def.tag === "#" ? "hash" : def.tag}`;
-    if (def.tag === previewTags?.depth) {
+    const patternSlicer = type === PATTERN_SLICER_TYPE;
+    if (patternSlicer && def.name === "Pattern") {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={def.options?.at(-1)?.value ?? 19}
+          format={(v) => ({ value: String(v + 1).padStart(2, "0"), unit: "Pattern" })}
+          alert
+          color="var(--slot-color)"
+          valueIcon="blocks"
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (def.tag === previewTags?.depth || (patternSlicer && def.name === "Depth")) {
       return (
         <ScrubCard
           key={def.tag}
@@ -360,7 +447,7 @@ export function InputFxEditModal({
         />
       );
     }
-    if (def.tag === previewTags?.compThreshold) {
+    if (def.tag === previewTags?.compThreshold || (patternSlicer && def.name === "Comp Threshold")) {
       return (
         <ScrubCard
           key={def.tag}
@@ -377,7 +464,7 @@ export function InputFxEditModal({
         />
       );
     }
-    if (def.tag === previewTags?.compGain) {
+    if (def.tag === previewTags?.compGain || (patternSlicer && def.name === "Comp Gain")) {
       return (
         <ScrubCard
           key={def.tag}
@@ -390,6 +477,23 @@ export function InputFxEditModal({
           alert
           color="#fb7185"
           valueIcon="compressor"
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (def.kind === "enum" && def.name === "Step Rate" && def.options?.[0]?.label === "OFF") {
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={def.options.at(-1)?.value ?? 0}
+          format={(v) => (v === 0 ? { value: "Off", unit: "Smooth" } : rateCardValue(v - 1))}
+          alert={value !== 0}
+          color="var(--slot-color)"
+          valueIcon={value === 0 ? "power" : "note"}
           onChange={(v) => setBlockTag(section!, def.tag, v)}
         />
       );
@@ -459,7 +563,15 @@ export function InputFxEditModal({
         value={value}
         meter={
           grouped && def.kind === "int" && !MIX_PARAM.test(def.name)
-            ? { caption: def.name, color: () => "var(--slot-color)" }
+            ? {
+                caption:
+                  (type === AUTO_PAN_TYPE
+                    ? AUTO_PAN_METERS[def.name]
+                    : patternSlicer
+                      ? PATTERN_SLICER_METERS[def.name]
+                      : undefined) ?? def.name,
+                color: () => "var(--slot-color)",
+              }
             : grouped && def.name === "Balance"
               ? { caption: "Direct ↔ Effect" }
               : undefined
@@ -501,6 +613,7 @@ export function InputFxEditModal({
           phaser={phaser}
           flanger={flanger}
           tremolo={tremolo}
+          filter={filter}
           defaultSound={defaultSound}
           onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
         />
@@ -530,6 +643,15 @@ export function InputFxEditModal({
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
           memoryBpm={memoryTempo(model)}
           settings={delay}
+        />
+      ) : null}
+      {patternSlicerPreview ? (
+        <PatternSlicerPreviewBar
+          key={`pattern-slicer-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={patternSlicerPreview}
         />
       ) : null}
       {preamp ? (
@@ -591,8 +713,11 @@ export function InputFxEditModal({
           {mixParams.length > 0 ? (
             <div className="ifx-group">
               <div className="ifx-group-head">
-                <h4>Mix</h4>
-                <InfoTip label="Mix" text={captions?.mix ?? "Volume of the original and the effect sound."} />
+                <h4>{captions?.mixTitle ?? "Mix"}</h4>
+                <InfoTip
+                  label={captions?.mixTitle ?? "Mix"}
+                  text={captions?.mix ?? "Volume of the original and the effect sound."}
+                />
               </div>
               <div className="ifx-group-grid is-mix">{mixParams.map(control)}</div>
             </div>

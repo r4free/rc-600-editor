@@ -21,7 +21,9 @@ function isPanParam(def: ParamDef): boolean {
 }
 
 function scaleLabel(def: ParamDef, raw: number): string | number {
-  return def.format === "mixer" || def.format === "sec10" || def.format === "ms" ? displayParam(def, raw) : raw;
+  return def.format === "mixer" || def.format === "sec10" || def.format === "ms" || def.format === "deg"
+    ? displayParam(def, raw)
+    : raw;
 }
 
 /** Catalog default, or center (pan) / 100 (play level) when the catalog omits one. */

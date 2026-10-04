@@ -1,6 +1,7 @@
 import {
-  FX_TYPE_NAMES,
+  INPUT_FX_TYPE_OPTIONS,
   RHYTHM_KITS,
+  TRACK_FX_TYPE_OPTIONS,
   panLabel,
   type EnumOption,
 } from "./params.js";
@@ -66,11 +67,12 @@ const TEMPO: AssignValueRange = {
   format: (v) => (v / 10).toFixed(1),
 };
 
+/** Same order as FX Switch Mode and Assign Source Mode: 0 = Toggle, 1 = Moment. */
 const MOMENT_TOGGLE: AssignValueRange = {
   kind: "enum",
   options: [
-    { value: 0, label: "Moment" },
-    { value: 1, label: "Toggle" },
+    { value: 0, label: "Toggle" },
+    { value: 1, label: "Moment" },
   ],
 };
 
@@ -121,13 +123,9 @@ const PEDAL_MODE: AssignValueRange = {
   ],
 };
 
-const FX_TYPE: AssignValueRange = {
-  kind: "enum",
-  options: FX_TYPE_NAMES.map((name, value) => ({
-    value,
-    label: name.replace(/_/g, " "),
-  })),
-};
+function fxTypeRange(options: EnumOption[]): AssignValueRange {
+  return { kind: "enum", options };
+}
 
 const SLOTS = ["A", "B", "C", "D"] as const;
 const BANKS = ["A", "B", "C", "D"] as const;
@@ -202,6 +200,9 @@ function buildAssignTargets(): AssignTarget[] {
   push("Tempo", "Control the memory tempo (40.0–300.0).", TEMPO);
 
   const pushFxFamily = (kind: "Input FX" | "Track FX") => {
+    const typeRange = fxTypeRange(
+      kind === "Input FX" ? INPUT_FX_TYPE_OPTIONS : TRACK_FX_TYPE_OPTIONS,
+    );
     const typeInc =
       kind === "Input FX"
         ? "Cycle the effect type from LPF toward Reverse Reverb."
@@ -211,100 +212,38 @@ function buildAssignTargets(): AssignTarget[] {
         ? "Cycle the effect type from Reverse Reverb toward LPF."
         : "Cycle the effect type from Vinyl Flick toward LPF.";
 
-    const pushSlotGroup = (slotLabel: (slot: string) => string) => {
-      category = `${kind} Slots`;
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)}`, `Turn ${slotLabel(slot)} on/off.`, ON_OFF);
+    /**
+     * The pedal lists every parameter of one FX slot, then the next slot.
+     * (On/off, Control, Type, Type Inc/Dec, Switch Mode, Param 1–4, Sequence,
+     * Step Sync, Retrigger, Step Rate, Step Max.) Grouping by parameter instead
+     * shifts names: Input FX B lands on Input FX D Type Inc.
+     */
+    const pushFxSlot = (label: string) => {
+      push(label, `Turn ${label} on/off.`, ON_OFF);
+      push(`${label} Control`, `Control intensity of ${label}.`, LEVEL_100);
+      push(`${label} Type`, `Switch the effect type of ${label}.`, typeRange);
+      push(`${label} Type Inc`, `${typeInc} (${label}).`, TRIGGER);
+      push(`${label} Type Dec`, `${typeDec} (${label}).`, TRIGGER);
+      push(`${label} Switch Mode`, `Toggle / Moment for ${label}.`, MOMENT_TOGGLE);
+      for (let prm = 1; prm <= 4; prm++) {
+        push(`${label} Param ${prm}`, `Control parameter ${prm} of ${label}.`, MIDI_7BIT);
       }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Control`, `Control intensity of ${slotLabel(slot)}.`, LEVEL_100);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Type`, `Switch the effect type of ${slotLabel(slot)}.`, FX_TYPE);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Type Inc`, `${typeInc} (${slotLabel(slot)}).`, TRIGGER);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Type Dec`, `${typeDec} (${slotLabel(slot)}).`, TRIGGER);
-      }
-      for (const slot of SLOTS) {
-        push(
-          `${slotLabel(slot)} Switch Mode`,
-          `Moment / Toggle for ${slotLabel(slot)}.`,
-          MOMENT_TOGGLE,
-        );
-      }
-      for (const slot of SLOTS) {
-        for (let prm = 1; prm <= 4; prm++) {
-          push(
-            `${slotLabel(slot)} Param ${prm}`,
-            `Control parameter ${prm} of ${slotLabel(slot)}.`,
-            MIDI_7BIT,
-          );
-        }
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Sequence`, `FX sequence on/off for ${slotLabel(slot)}.`, ON_OFF);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Step Sync`, `Step Sync for ${slotLabel(slot)}.`, ON_OFF);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Retrigger`, `Retrigger for ${slotLabel(slot)}.`, ON_OFF);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Step Rate`, `Step Rate for ${slotLabel(slot)}.`, LEVEL_100);
-      }
-      for (const slot of SLOTS) {
-        push(`${slotLabel(slot)} Step Max`, `Step Max for ${slotLabel(slot)}.`, STEP_MAX);
-      }
+      push(`${label} Sequence`, `FX sequence on/off for ${label}.`, ON_OFF);
+      push(`${label} Step Sync`, `Step Sync for ${label}.`, ON_OFF);
+      push(`${label} Retrigger`, `Retrigger for ${label}.`, ON_OFF);
+      push(`${label} Step Rate`, `Step Rate for ${label}.`, LEVEL_100);
+      push(`${label} Step Max`, `Step Max for ${label}.`, STEP_MAX);
     };
 
-    const bankSlots = BANKS.flatMap((bank) => SLOTS.map((slot) => `${bank}-${slot}`));
+    const pushSlotGroup = () => {
+      category = `${kind} Slots`;
+      for (const slot of SLOTS) pushFxSlot(`${kind} ${slot}`);
+    };
+
     const pushBankGroup = () => {
       category = `${kind} Banks`;
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot}`, `Turn ${kind} ${slot} on/off.`, ON_OFF);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Control`, `Control intensity of ${kind} ${slot}.`, LEVEL_100);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Type`, `Switch the effect type of ${kind} ${slot}.`, FX_TYPE);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Type Inc`, `${typeInc} (${kind} ${slot}).`, TRIGGER);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Type Dec`, `${typeDec} (${kind} ${slot}).`, TRIGGER);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Switch Mode`, `Moment / Toggle for ${kind} ${slot}.`, MOMENT_TOGGLE);
-      }
-      for (const slot of bankSlots) {
-        for (let prm = 1; prm <= 4; prm++) {
-          push(
-            `${kind} ${slot} Param ${prm}`,
-            `Control parameter ${prm} of ${kind} ${slot}.`,
-            MIDI_7BIT,
-          );
-        }
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Sequence`, `FX sequence on/off for ${kind} ${slot}.`, ON_OFF);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Step Sync`, `Step Sync for ${kind} ${slot}.`, ON_OFF);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Retrigger`, `Retrigger for ${kind} ${slot}.`, ON_OFF);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Step Rate`, `Step Rate for ${kind} ${slot}.`, LEVEL_100);
-      }
-      for (const slot of bankSlots) {
-        push(`${kind} ${slot} Step Max`, `Step Max for ${kind} ${slot}.`, STEP_MAX);
+      for (const bank of BANKS) {
+        for (const slot of SLOTS) pushFxSlot(`${kind} ${bank}-${slot}`);
       }
     };
 
@@ -316,20 +255,20 @@ function buildAssignTargets(): AssignTarget[] {
     push(`${kind} Bank Dec`, `Switch the ${kind} bank D → A.`, TRIGGER);
     push(
       `${kind} Switch Mode`,
-      `Moment / Toggle for ${kind} A–D in the current bank.`,
+      `Toggle / Moment for ${kind} A–D in the current bank.`,
       MOMENT_TOGGLE,
     );
-    pushSlotGroup((slot) => `${kind} ${slot}`);
+    pushSlotGroup();
     pushBankGroup();
     category = `${kind} Current`;
     push(`${kind} Current`, `Turn the currently selected ${kind} on/off.`, ON_OFF);
     push(`${kind} Current Control`, `Control intensity of the currently selected ${kind}.`, LEVEL_100);
-    push(`${kind} Current Type`, `Switch the type of the currently selected ${kind}.`, FX_TYPE);
+    push(`${kind} Current Type`, `Switch the type of the currently selected ${kind}.`, typeRange);
     push(`${kind} Current Type Inc`, typeInc, TRIGGER);
     push(`${kind} Current Type Dec`, typeDec, TRIGGER);
     push(
       `${kind} Current Switch Mode`,
-      `Moment / Toggle for the currently selected ${kind}.`,
+      `Toggle / Moment for the currently selected ${kind}.`,
       MOMENT_TOGGLE,
     );
     for (let prm = 1; prm <= 4; prm++) {

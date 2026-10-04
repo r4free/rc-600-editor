@@ -49,6 +49,16 @@ describe("input FX type catalog", () => {
     assert.equal(label("D", 0), "20.0 Hz");
   });
 
+  it("decodes Auto Pan with Init Phase in degrees and Step Rate (OFF + sync rates)", () => {
+    const pan = inputFxTypeParams(29);
+    assert.deepEqual(pan.map((d) => d.name), ["Rate", "Waveform", "Depth", "Init Phase", "Step Rate"]);
+    const def = (tag: string) => pan.find((d) => d.tag === tag)!;
+    assert.equal(displayParam(def("D"), 90), "90°");
+    assert.equal(displayParam(def("E"), 0), "OFF");
+    assert.equal(displayParam(def("E"), 1), "4MEAS");
+    assert.equal(displayParam(def("E"), 19), "0");
+  });
+
   it("decodes the Reverb family in the factory order", () => {
     const names = (type: number) => inputFxTypeParams(type).map((d) => d.name);
     const tail = ["Lo Cut", "High Cut", "D.Level", "E.Level"];
@@ -114,7 +124,7 @@ describe("input FX type catalog", () => {
     assert.deepEqual(target.options?.map((o) => o.label), ["Depth", "D.Level", "E.Level"]);
     assert.deepEqual(
       inputFxSeqParams(33).filter((d) => d.tag < "G").map((d) => d.name),
-      ["Sequence", "Step Sync", "Retrigger", "Target", "Step Rate", "Step Max"],
+      ["Sequence", "Step Sync", "Retrigger", "Target", "Sequence Rate", "Step Max"],
     );
     for (const type of INPUT_FX_SEQ_TYPES) assert.ok(inputFxSeqTargets(type).length > 0, `type ${type}`);
     assert.deepEqual(

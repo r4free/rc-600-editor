@@ -32,6 +32,40 @@ export interface StepPreviewConfig {
   flanger?: FlangerPreview;
   /** Simulates the Tremolo itself; the steps drive `stepParam` (none when Sequence is OFF). */
   tremolo?: TremoloPreview;
+  /** Simulates LPF / BPF / HPF itself; the steps drive `stepParam` (none when Sequence is OFF). */
+  filter?: FilterPreview;
+}
+
+export interface FilterPreview {
+  kind: "lowpass" | "bandpass" | "highpass";
+  rateIndex: number;
+  depth: number;
+  resonance: number;
+  cutoff: number;
+  /** Stepped sweep: 0 = smooth, otherwise a sync-rate index + 1. */
+  stepRate: number;
+  stepParam: "depth" | "cutoff" | null;
+}
+
+const FILTER_MAX_SWEEP_CENTS = 3600;
+
+/** Center frequency (Cutoff, 150 Hz – ~13.6 kHz), LFO sweep in cents (Depth, ±3 octaves) and Q (Resonance). */
+export function filterSettings(
+  cutoff: number,
+  depth: number,
+  resonance: number,
+): { cutoffHz: number; sweepCents: number; q: number } {
+  const clamp = (v: number) => Math.max(0, Math.min(100, v)) / 100;
+  return {
+    cutoffHz: 150 * 2 ** (clamp(cutoff) * 6.5),
+    sweepCents: clamp(depth) * FILTER_MAX_SWEEP_CENTS,
+    q: 0.5 + clamp(resonance) ** 2 * 14,
+  };
+}
+
+/** Band-pass loudness make-up: a narrower band (higher Q) passes less energy. */
+export function filterMakeupGain(kind: FilterPreview["kind"], q: number): number {
+  return kind === "bandpass" ? Math.min(4, Math.max(1, Math.sqrt(q) * 1.3)) : 1;
 }
 
 export interface TremoloPreview {
@@ -284,6 +318,9 @@ export class StepPreviewEngine {
     amp: GainNode;
     output: GainNode;
   } | null = null;
+  private filterNodes: { lfo: OscillatorNode; sweep: GainNode; makeup: GainNode } | null = null;
+  private nextHoldTime = 0;
+  private holdOrigin = 0;
   private toneOscs: OscillatorNode[] = [];
   private noiseSrc: AudioBufferSourceNode | null = null;
   private noise: AudioBuffer | null = null;
@@ -315,7 +352,8 @@ export class StepPreviewEngine {
       !cfg.ring !== !this.cfg.ring ||
       !cfg.phaser !== !this.cfg.phaser ||
       !cfg.flanger !== !this.cfg.flanger ||
-      !cfg.tremolo !== !this.cfg.tremolo;
+      !cfg.tremolo !== !this.cfg.tremolo ||
+      !cfg.filter !== !this.cfg.filter;
     this.cfg = cfg;
     this.updatePreviewControls();
     if (this.playing && soundChanged) {
@@ -365,6 +403,7 @@ export class StepPreviewEngine {
           ...(this.phaserNodes ? [this.phaserNodes.lfo] : []),
           ...(this.flangerNodes ? [this.flangerNodes.lfo] : []),
           ...(this.tremNodes ? [this.tremNodes.lfo] : []),
+          ...(this.filterNodes ? [this.filterNodes.lfo] : []),
           ...(this.noiseSrc ? [this.noiseSrc] : []),
         ],
       };
@@ -380,6 +419,7 @@ export class StepPreviewEngine {
     this.phaserNodes = null;
     this.flangerNodes = null;
     this.tremNodes = null;
+    this.filterNodes = null;
     this.noiseSrc = null;
     this.onStep(-1);
   }
@@ -410,7 +450,8 @@ export class StepPreviewEngine {
     const compressorGain = ctx.createGain();
     panner.connect(compressor).connect(compressorGain).connect(master);
     const stepGain = ctx.createGain();
-    const simulated = this.cfg.vibrato || this.cfg.ring || this.cfg.phaser || this.cfg.flanger || this.cfg.tremolo;
+    const simulated =
+      this.cfg.vibrato || this.cfg.ring || this.cfg.phaser || this.cfg.flanger || this.cfg.tremolo || this.cfg.filter;
     stepGain.gain.value = this.cfg.target === "volume" && !simulated ? 0 : 1;
     if (this.cfg.tremolo) {
       const lfo = ctx.createOscillator();
@@ -503,7 +544,19 @@ export class StepPreviewEngine {
     filter.type = "lowpass";
     filter.Q.value = this.cfg.target === "filter" ? 6 : 0.7;
     filter.frequency.value = this.cfg.target === "filter" ? 600 : 18000;
-    filter.connect(stepGain);
+    if (this.cfg.filter) {
+      const makeup = ctx.createGain();
+      filter.connect(makeup).connect(stepGain);
+      const lfo = ctx.createOscillator();
+      const sweep = ctx.createGain();
+      lfo.connect(sweep).connect(filter.detune);
+      lfo.start();
+      this.filterNodes = { lfo, sweep, makeup };
+      this.holdOrigin = ctx.currentTime;
+      this.nextHoldTime = ctx.currentTime;
+    } else {
+      filter.connect(stepGain);
+    }
     this.master = master;
     this.panner = panner;
     this.compressor = compressor;
@@ -589,6 +642,17 @@ export class StepPreviewEngine {
       this.nextStepTime += stepDurationSec(this.cfg.rateIndex, this.cfg.bpm);
       this.stepIndex = (this.stepIndex + 1) % this.stepCount();
     }
+    const fc = this.cfg.filter;
+    if (fc && fc.stepRate > 0 && this.filterNodes) {
+      const { sweepCents } = filterSettings(fc.cutoff, this.filterDepth(fc), fc.resonance);
+      const rateHz = lfoRateHz(fc.rateIndex, this.cfg.bpm);
+      while (this.nextHoldTime < horizon) {
+        const t = Math.max(this.nextHoldTime, ctx.currentTime);
+        const held = Math.sin(2 * Math.PI * rateHz * (t - this.holdOrigin)) * sweepCents;
+        this.filter!.detune.setValueAtTime(held, t);
+        this.nextHoldTime = t + stepDurationSec(fc.stepRate - 1, this.cfg.bpm);
+      }
+    }
     const sixteenth = 60 / Math.max(20, this.cfg.bpm) / 4;
     while (this.nextGridTime < horizon) {
       this.scheduleGrid(this.nextGridTime, this.gridIndex);
@@ -618,7 +682,10 @@ export class StepPreviewEngine {
     const phaser = this.cfg.phaser;
     const flanger = this.cfg.flanger;
     const tremolo = this.cfg.tremolo;
-    if (tremolo) {
+    const filterCfg = this.cfg.filter;
+    if (filterCfg) {
+      if (filterCfg.stepParam) this.applyFilter({ ...filterCfg, [filterCfg.stepParam]: raw }, t);
+    } else if (tremolo) {
       if (tremolo.stepParam) this.applyTremolo(this.tremoloWithStep(tremolo, raw), t);
     } else if (flanger) {
       if (flanger.stepParam) this.applyFlanger({ ...flanger, [flanger.stepParam]: raw }, t);
@@ -674,6 +741,14 @@ export class StepPreviewEngine {
     }
     const gainDb = Math.max(0, Math.min(20, this.cfg.compressorGainDb ?? 0));
     this.compressorGain?.gain.setTargetAtTime(10 ** (gainDb / 20), now, 0.01);
+    const filterCfg = this.cfg.filter;
+    if (filterCfg && this.filterNodes) {
+      const live =
+        filterCfg.stepParam && this.lastStep >= 0
+          ? { [filterCfg.stepParam]: this.cfg.steps[this.lastStep] ?? 0 }
+          : {};
+      this.applyFilter({ ...filterCfg, ...live }, now);
+    }
     const tremolo = this.cfg.tremolo;
     if (tremolo && this.tremNodes) {
       const live =
@@ -710,6 +785,30 @@ export class StepPreviewEngine {
           ? { [vibrato.stepParam]: this.cfg.steps[this.lastStep] ?? 0 }
           : {};
       this.applyVibrato({ ...vibrato, ...live }, now);
+    }
+  }
+
+  /** Depth in effect right now (the last step's value when the steps drive Depth). */
+  private filterDepth(f: FilterPreview): number {
+    return f.stepParam === "depth" && this.lastStep >= 0 ? (this.cfg.steps[this.lastStep] ?? 0) : f.depth;
+  }
+
+  private applyFilter(f: FilterPreview, t: number): void {
+    const nodes = this.filterNodes;
+    const filter = this.filter;
+    if (!nodes || !filter) return;
+    if (filter.type !== f.kind) filter.type = f.kind;
+    const { cutoffHz, sweepCents, q } = filterSettings(f.cutoff, f.depth, f.resonance);
+    filter.frequency.setTargetAtTime(cutoffHz, t, PARAM_GLIDE_SEC);
+    filter.Q.setTargetAtTime(q, t, PARAM_GLIDE_SEC);
+    nodes.makeup.gain.setTargetAtTime(filterMakeupGain(f.kind, q), t, PARAM_GLIDE_SEC);
+    nodes.lfo.frequency.setTargetAtTime(lfoRateHz(f.rateIndex, this.cfg.bpm), t, 0.01);
+    const stepped = f.stepRate > 0;
+    nodes.sweep.gain.setTargetAtTime(stepped ? 0 : sweepCents, t, PARAM_GLIDE_SEC);
+    if (!stepped) {
+      filter.detune.cancelScheduledValues(t);
+      filter.detune.setTargetAtTime(0, t, PARAM_GLIDE_SEC);
+      this.nextHoldTime = t;
     }
   }
 

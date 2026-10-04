@@ -12,7 +12,7 @@ export interface ParamDef {
   options?: EnumOption[];
   /** How int values are shown next to the slider. */
   /** `count`: stored 0-based, shown 1-based (e.g. Step Max 0–15 → 1–16). */
-  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan" | "mixer" | "count" | "sec10" | "ms";
+  format?: "db" | "comp" | "bipolar50" | "bipolar20" | "bipolar12" | "pan" | "mixer" | "count" | "sec10" | "ms" | "deg";
   /** Parameter Guide text shown by the Info icon. */
   info?: string;
 }
@@ -1938,10 +1938,10 @@ export const ASSIGN_PARAMS: ParamDef[] = [
     kind: "enum",
     default: 0,
     options: [
-      { value: 0, label: "Moment" },
-      { value: 1, label: "Toggle" },
+      { value: 0, label: "Toggle" },
+      { value: 1, label: "Moment" },
     ],
-    info: "How a momentary footswitch changes the target: held (Moment) or each press (Toggle).",
+    info: "Toggle: each press flips between Target Min and Target Max. Moment: the target stays at Max only while the switch is held.",
   },
   {
     tag: "D",
@@ -1988,47 +1988,6 @@ export const ASSIGN_PARAMS: ParamDef[] = [
     default: 127,
     info: "Maximum target value. The range and names depend on the selected Target.",
   },
-];
-
-/** Common IFX/TFX type names seen in RC0 blocks (index → name). */
-export const FX_TYPE_NAMES: string[] = [
-  "THRU",
-  "LPF",
-  "BPF",
-  "HPF",
-  "PHASER",
-  "FLANGER",
-  "SYNTH",
-  "LO_FI",
-  "RING_MOD",
-  "GTR_TO_BASS",
-  "SLOW_GEAR",
-  "TRANSPOSE",
-  "PITCH_SHIFT",
-  "HARMONIST",
-  "VOCODER",
-  "DISTORTION",
-  "COMPRESSOR",
-  "EQUALIZER",
-  "ISOLATOR",
-  "OCTAVE",
-  "PAN",
-  "TREMOLO",
-  "AUTO_PAN",
-  "CHORUS",
-  "REVERB",
-  "DELAY",
-  "TAPE_ECHO",
-  "GRANULAR_DELAY",
-  "ROLL",
-  "FILTER_COMP",
-  "FILTER_DIST",
-  "FILTER_PHASER",
-  "FILTER_FLANGER",
-  "BEAT_SHIFT",
-  "BEAT_SCATTER",
-  "BEAT_REPEAT",
-  "VINYL_FLICK",
 ];
 
 /** Per-track CTL FUNC names (26 each). TRACK EDIT / TRACK FX are CUR.TRK-only in RC0. */
@@ -3002,6 +2961,7 @@ export function displayParam(def: ParamDef, raw: number): string {
   if (def.format === "count") return String(raw + 1);
   if (def.format === "sec10") return `${(raw / 10).toFixed(1)} s`;
   if (def.format === "ms") return `${raw} ms`;
+  if (def.format === "deg") return `${raw}°`;
   if (def.format === "pan" || (def.tag === "C" && def.name === "Pan")) return panLabel(raw);
   if (def.tag === "F" && def.name === "Loop Length") return loopLengthLabel(raw);
   if (def.kind === "enum") return enumLabel(def, raw);

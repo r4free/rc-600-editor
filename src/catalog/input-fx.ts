@@ -318,12 +318,40 @@ function compGainP(tag: string, def: number): ParamDef {
   );
 }
 
+/** STEP RATE of an effect (not the FX sequence): OFF, then the sync rates shifted by one. */
+function stepRateP(tag: string, info: string): ParamDef {
+  return enumP(tag, "Step Rate", [{ value: 0, label: "OFF" }, ...SYNC_RATE.map((o) => ({ value: o.value + 1, label: o.label }))], 0, info);
+}
+
 const FILTER_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 3, "Sets the rate of modulation."),
-  intP("B", "Depth", 0, 100, 50, "Sets the depth of modulation."),
-  intP("C", "Resonance", 0, 100, 50, "Sets the intensity of the effect."),
-  intP("D", "Cutoff", 0, 100, 50, "Sets the cutoff frequency of the filter."),
-  boolP("E", "Filter E", 0, "Additional filter setting stored with this effect."),
+  enumP(
+    "A",
+    "Rate",
+    SYNC_RATE,
+    3,
+    "Sets the rate of modulation: how fast the filter sweeps up and down on its own. This is not the step sequence's Sequence Rate, which sets how fast the sequence moves to the next step.",
+  ),
+  intP("B", "Depth", 0, 100, 50, "Sets the depth of modulation: how far the filter sweeps around the Cutoff."),
+  intP(
+    "C",
+    "Resonance",
+    0,
+    100,
+    50,
+    "Sets the intensity of the effect: higher values give a sharper, more vocal peak at the cutoff. On BPF it also makes the band narrower.",
+  ),
+  intP(
+    "D",
+    "Cutoff",
+    0,
+    100,
+    50,
+    "Sets the cutoff frequency of the filter: the center the sweep moves around. On BPF it is the center of the band that passes.",
+  ),
+  stepRateP(
+    "E",
+    "Sets the rate of the stepped change for the effect: the sweep jumps from value to value at this rate instead of gliding (a sample-and-hold effect). OFF sweeps smoothly. This is part of the filter itself, not the step sequence.",
+  ),
 ];
 
 const PHASER_PARAMS: ParamDef[] = [
@@ -332,7 +360,7 @@ const PHASER_PARAMS: ParamDef[] = [
     "Rate",
     SYNC_RATE,
     3,
-    "Sets the speed of the effect: how fast the swirl sweeps up and down. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+    "Sets the speed of the effect: how fast the swirl sweeps up and down. This is not the step sequence's Sequence Rate, which sets how fast the sequence moves to the next step.",
   ),
   intP("B", "Depth", 0, 100, 50, "Sets the richness of the effect: how wide the sweep is."),
   intP("C", "Resonance", 0, 100, 50, "Sets the intensity of the effect: higher values give a sharper, more whistling swirl."),
@@ -349,7 +377,7 @@ const FLANGER_PARAMS: ParamDef[] = [
     "Rate",
     SYNC_RATE,
     2,
-    "Sets the speed of the effect: how fast the jet-plane whoosh sweeps up and down. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+    "Sets the speed of the effect: how fast the jet-plane whoosh sweeps up and down. This is not the step sequence's Sequence Rate, which sets how fast the sequence moves to the next step.",
   ),
   intP("B", "Depth", 0, 100, 50, "Sets the richness of the effect: how wide the whoosh sweeps."),
   intP("C", "Resonance", 0, 100, 70, "Sets the intensity of the effect: higher values give a more metallic, ringing whoosh."),
@@ -663,11 +691,29 @@ const OCTAVE_PARAMS: ParamDef[] = [
 ];
 
 const AUTO_PAN_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 64, "Sets the rate of change in the pan position."),
-  intP("B", "Waveform", 0, 100, 50, "How the volume level changes. Higher values create more abrupt change."),
-  intP("C", "Depth", 0, 100, 50, "Sets the depth by which pan will change."),
-  intP("D", "Init Phase", 0, 180, 0, "Rotational angle of the phase from center when the effect turns on."),
-  intP("E", "Mode", 0, 100, 0, "Additional Auto Pan setting."),
+  enumP("A", "Rate", SYNC_RATE, 64, "Sets the rate of change in the pan position: how fast the sound moves between left and right."),
+  intP(
+    "B",
+    "Waveform",
+    0,
+    100,
+    50,
+    "Sets the curve of the movement: low values glide smoothly between left and right, high values jump more abruptly from side to side.",
+  ),
+  intP("C", "Depth", 0, 100, 50, "Sets the depth by which pan will change: how far the sound travels to the left and right."),
+  intP(
+    "D",
+    "Init Phase",
+    0,
+    180,
+    0,
+    "Sets where the movement starts when the effect is turned on: 0° starts in the center, 90° starts fully to one side, 180° starts in the center moving the other way.",
+    "deg",
+  ),
+  stepRateP(
+    "E",
+    "Sets the rate of the stepped change: the pan jumps to a new position at this rate instead of gliding. OFF glides smoothly.",
+  ),
 ];
 
 const MANUAL_PAN_PARAMS: ParamDef[] = [
@@ -686,7 +732,7 @@ const TREMOLO_PARAMS: ParamDef[] = [
     "Rate",
     SYNC_RATE,
     99,
-    "Sets the frequency (speed) of the change: how fast the volume pulses. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+    "Sets the frequency (speed) of the change: how fast the volume pulses. This is not the step sequence's Sequence Rate, which sets how fast the sequence moves to the next step.",
   ),
   intP("B", "Depth", 0, 100, 50, "Sets the depth of the effect: how far the volume dips on each pulse."),
   intP(
@@ -706,7 +752,7 @@ const VIBRATO_PARAMS: ParamDef[] = [
     "Rate",
     SYNC_RATE,
     64,
-    "Sets the rate of the vibrato: how fast the pitch moves up and down. This is not Step Rate, which sets how fast the step sequence moves to the next step.",
+    "Sets the rate of the vibrato: how fast the pitch moves up and down. This is not the step sequence's Sequence Rate, which sets how fast the sequence moves to the next step.",
   ),
   intP(
     "B",
@@ -722,17 +768,38 @@ const VIBRATO_PARAMS: ParamDef[] = [
 ];
 
 const PATTERN_SLICER_PARAMS: ParamDef[] = [
-  enumP("A", "Rate", SYNC_RATE, 6, "Sets the rate at which the sound will be cut."),
-  intP("B", "Duty", 1, 99, 49, "Length of the sound for the slice pattern."),
-  intP("C", "Attack", 0, 100, 35, "Attack volume of the slice pattern."),
+  enumP("A", "Rate", SYNC_RATE, 6, "Sets the rate at which the sound will be cut: the length of each slice (a note value follows the tempo)."),
+  intP(
+    "B",
+    "Duty",
+    1,
+    99,
+    49,
+    "Adjusts the length of the sound for the slice pattern: low values give short, staccato slices; high values let each slice ring almost to the next.",
+  ),
+  intP(
+    "C",
+    "Attack",
+    0,
+    100,
+    35,
+    "Sets the attack volume of the slice pattern: low values fade each slice in softly; high values start each slice hard and accented.",
+  ),
   enumP(
     "D",
     "Pattern",
     Array.from({ length: 20 }, (_, i) => ({ value: i, label: `P${String(i + 1).padStart(2, "0")}` })),
     0,
-    "Slice pattern used to cut the sound.",
+    "Selects the slice pattern that will be used to cut the sound: one of 20 rhythms built into the RC-600.",
   ),
-  intP("E", "Depth", 0, 100, 100, "Depth to which the slice pattern is applied."),
+  intP(
+    "E",
+    "Depth",
+    0,
+    100,
+    100,
+    "Adjusts the depth to which the slice pattern is applied: 100 silences the gaps completely; lower values let some sound through between slices.",
+  ),
   compThresholdP("F"),
   compGainP("G", 2),
 ];
@@ -940,7 +1007,13 @@ export const INPUT_FX_SEQ_PARAMS: ParamDef[] = [
     "When ON, turning the effect on with a switch restarts the sequence at step 1, in sync with the start of the loop phrase.",
   ),
   intP("D", "Target", 0, 100, 0, "Sets the parameter that the step sequence changes (depends on the effect)."),
-  enumP("E", "Step Rate", SYNC_RATE, 6, "Sets the step's cycle: how fast the sequence moves to the next step."),
+  enumP(
+    "E",
+    "Sequence Rate",
+    SYNC_RATE,
+    6,
+    "Sets the step's cycle (RATE of the FX sequence): how fast the sequence moves to the next step. This is not the effect's own Rate or Step Rate.",
+  ),
   intP("F", "Step Max", 0, 15, 15, "Sets the maximum number of steps (1–16).", "count"),
   ..."GHIJKLMNOPQRSTUV".split("").map((tag, i) =>
     intP(tag, `Step ${i + 1}`, 0, 100, 0, `Value for sequence step ${i + 1}.`),

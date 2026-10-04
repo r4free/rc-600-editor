@@ -4,6 +4,7 @@ import type { ParamDef } from "@rc600/catalog/params";
 import type { TagMap } from "@rc600/rc0/memory";
 import {
   StepPreviewEngine,
+  type FilterPreview,
   type FlangerPreview,
   type PhaserPreview,
   type PreviewSound,
@@ -99,6 +100,12 @@ function tremoloStepParam(name: string | undefined): TremoloPreview["stepParam"]
   return null;
 }
 
+function filterStepParam(name: string | undefined): FilterPreview["stepParam"] {
+  if (name === "Depth") return "depth";
+  if (name === "Cutoff") return "cutoff";
+  return null;
+}
+
 function phaserStepParam(name: string | undefined): PhaserPreview["stepParam"] {
   const param = sweepStepParam(name);
   return param === "separation" ? null : param;
@@ -167,6 +174,7 @@ export function StepSequencer({
   phaser,
   flanger,
   tremolo,
+  filter,
   onSet,
 }: {
   idPrefix: string;
@@ -189,6 +197,8 @@ export function StepSequencer({
   flanger?: Omit<FlangerPreview, "stepParam">;
   /** Tremolo settings, so the preview plays the effect itself. */
   tremolo?: Omit<TremoloPreview, "stepParam">;
+  /** LPF / BPF / HPF settings, so the preview plays the effect itself. */
+  filter?: Omit<FilterPreview, "stepParam">;
   /** Reference sound selected when the editor opens. */
   defaultSound?: PreviewSound;
   onSet: (tags: Record<string, string>) => void;
@@ -265,6 +275,7 @@ export function StepSequencer({
       phaser: phaser ? { ...phaser, stepParam: sequenceOff ? null : phaserStepParam(targetName) } : undefined,
       flanger: flanger ? { ...flanger, stepParam: sequenceOff ? null : sweepStepParam(targetName) } : undefined,
       tremolo: tremolo ? { ...tremolo, stepParam: sequenceOff ? null : tremoloStepParam(targetName) } : undefined,
+      filter: filter ? { ...filter, stepParam: sequenceOff ? null : filterStepParam(targetName) } : undefined,
     }),
     [
       levelSteps,
@@ -284,6 +295,7 @@ export function StepSequencer({
       phaser,
       flanger,
       tremolo,
+      filter,
       sequenceOff,
       targetName,
     ],

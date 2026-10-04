@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  ASSIGN_PARAMS,
   IFX_BANK_PARAMS,
   IFX_SELECTED_BANK,
   IFX_SLOT_PARAMS,
@@ -353,7 +354,7 @@ describe("assign target catalog", () => {
     const mem = parseMemory(xml, 1);
     assert.equal(assignTargetLabel(Number(mem.assigns[0].G)), "Rhythm Variation");
     assert.equal(assignTargetLabel(Number(mem.assigns[4].G)), "Tap Tempo");
-    assert.equal(assignTargetLabel(Number(mem.assigns[14].G)), "Input FX C Control");
+    assert.equal(assignTargetLabel(Number(mem.assigns[14].G)), "Input FX A Param 1");
     assert.equal(assignTargetLabel(Number(mem.assigns[15].G)), "Input FX Bank Inc");
   });
 
@@ -363,8 +364,32 @@ describe("assign target catalog", () => {
     assert.equal(assignTargetLabel(10), "Track 1 Play Level");
     assert.equal(assignTargetLabel(81), "Tap Tempo");
     assert.equal(assignTargetLabel(86), "Input FX Bank Inc");
-    assert.equal(assignTargetLabel(95), "Input FX C Control");
+    assert.equal(assignTargetLabel(95), "Input FX A Param 1");
+    assert.equal(assignTargetLabel(104), "Input FX B");
     assert.equal(assignTargetLabel(771), "Rhythm Variation");
+  });
+
+  it("lists each FX slot's parameters together, and Toggle before Moment", () => {
+    const b = ASSIGN_TARGETS.find((t) => t.label === "Input FX B")!;
+    assert.equal(b.value, 104);
+    assert.equal(assignTargetLabel(b.value + 1), "Input FX B Control");
+    assert.equal(assignTargetLabel(b.value + 2), "Input FX B Type");
+    assert.equal(assignTargetLabel(b.value + 5), "Input FX B Switch Mode");
+    const mode = assignTargetRange(b.value + 5);
+    assert.equal(mode.kind, "enum");
+    if (mode.kind === "enum") {
+      assert.equal(formatAssignValue(mode, 0), "Toggle");
+      assert.equal(formatAssignValue(mode, 1), "Moment");
+    }
+    const type = assignTargetRange(b.value + 2);
+    assert.equal(type.kind, "enum");
+    if (type.kind === "enum") {
+      assert.equal(formatAssignValue(type, 13), "Slow Gear");
+      assert.equal(formatAssignValue(type, 14), "Transpose");
+    }
+    const sourceMode = ASSIGN_PARAMS.find((p) => p.tag === "C")!;
+    assert.equal(sourceMode.options?.[0]?.label, "Toggle");
+    assert.equal(sourceMode.options?.[1]?.label, "Moment");
   });
 
   it("categorizes and searches every target", () => {

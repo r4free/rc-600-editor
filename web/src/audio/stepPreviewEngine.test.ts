@@ -3,11 +3,14 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import { syncRateBeats } from "@rc600/catalog/input-fx";
 import {
   StepPreviewEngine,
+  filterMakeupGain,
+  filterSettings,
   flangerSettings,
   freeRateIndex,
   lfoRateHz,
   phaserSettings,
   ringFrequencyHz,
+  type FilterPreview,
   type FlangerPreview,
   type TremoloPreview,
   type PhaserPreview,
@@ -26,6 +29,9 @@ class FakeParam {
   }
   exponentialRampToValueAtTime(v: number) {
     this.value = v;
+    return this;
+  }
+  cancelScheduledValues() {
     return this;
   }
 }
@@ -190,6 +196,79 @@ describe("preview engine: Phaser controls", () => {
       off.engine.dispose();
       on.engine.dispose();
     }
+  });
+});
+
+const FILTER: FilterPreview = {
+  kind: "lowpass",
+  rateIndex: SIXTEENTH,
+  depth: 50,
+  resonance: 50,
+  cutoff: 50,
+  stepRate: 0,
+  stepParam: null,
+};
+
+describe("preview engine: LPF / BPF / HPF controls", () => {
+  type Node = ReturnType<typeof fakeNode>;
+  const internalsOf = (r: ReturnType<typeof run>) =>
+    r.engine as unknown as { filter: Node; filterNodes: { lfo: Node; sweep: Node } };
+  const cfg = (f: Partial<FilterPreview>) => config({ target: "filter", filter: { ...FILTER, ...f } });
+
+  it("Rate, Depth, Resonance, Cutoff and the filter type reach the audio graph", () => {
+    const r = run(cfg({}));
+    const n = () => internalsOf(r);
+    const s = filterSettings(50, 50, 50);
+    assert.equal(n().filter.frequency.value, s.cutoffHz);
+    assert.equal(n().filter.Q.value, s.q);
+    assert.equal(n().filterNodes.sweep.gain.value, s.sweepCents);
+    r.engine.update(cfg({ cutoff: 0 }));
+    assert.equal(n().filter.frequency.value, 150);
+    r.engine.update(cfg({ resonance: 100 }));
+    assert.equal(n().filter.Q.value, 14.5);
+    r.engine.update(cfg({ depth: 0 }));
+    assert.equal(n().filterNodes.sweep.gain.value, 0);
+    const before = n().filterNodes.lfo.frequency.value;
+    r.engine.update(cfg({ rateIndex: SIXTEENTH - 2 }));
+    assert.notEqual(n().filterNodes.lfo.frequency.value, before);
+    r.engine.update(cfg({ kind: "highpass" }));
+    assert.equal(n().filter.type, "highpass");
+    r.engine.dispose();
+  });
+
+  it("Step Rate holds the sweep in steps instead of gliding", () => {
+    const r = run(cfg({ stepRate: SIXTEENTH + 1 }));
+    assert.equal(internalsOf(r).filterNodes.sweep.gain.value, 0);
+    r.advance(0.2);
+    assert.notEqual(internalsOf(r).filter.detune.value, 0);
+    r.engine.update(cfg({ stepRate: 0 }));
+    assert.equal(internalsOf(r).filterNodes.sweep.gain.value, filterSettings(50, 50, 50).sweepCents);
+    r.engine.dispose();
+  });
+
+  it("the steps drive Cutoff or Depth, whichever Target is chosen", () => {
+    const steps = Array(16).fill(0);
+    const cutoff = run(config({ steps, target: "filter", filter: { ...FILTER, stepParam: "cutoff" } }));
+    cutoff.internals.scheduleStep(0, 0);
+    assert.equal(internalsOf(cutoff).filter.frequency.value, 150);
+    const depth = run(config({ steps, target: "filter", filter: { ...FILTER, stepParam: "depth" } }));
+    depth.internals.scheduleStep(0, 0);
+    assert.equal(internalsOf(depth).filterNodes.sweep.gain.value, 0);
+    assert.equal(internalsOf(depth).filter.frequency.value, filterSettings(50, 50, 50).cutoffHz);
+    cutoff.engine.dispose();
+    depth.engine.dispose();
+  });
+
+  it("BPF makes up the loudness lost when Resonance narrows the band", () => {
+    assert.equal(filterMakeupGain("lowpass", 14.5), 1);
+    assert.equal(filterMakeupGain("bandpass", 0.5), 1);
+    assert.ok(filterMakeupGain("bandpass", 14.5) > filterMakeupGain("bandpass", 4));
+    const r = run(cfg({ kind: "bandpass", resonance: 100 }));
+    const makeup = (r.engine as unknown as { filterNodes: { makeup: Node } }).filterNodes.makeup;
+    assert.equal(makeup.gain.value, filterMakeupGain("bandpass", 14.5));
+    r.engine.update(cfg({ kind: "lowpass", resonance: 100 }));
+    assert.equal(makeup.gain.value, 1);
+    r.engine.dispose();
   });
 });
 
