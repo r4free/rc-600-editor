@@ -1,6 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { euclid, randomPattern, RANDOM_STYLES } from "./stepRandom";
+import { syncRateBeats } from "@rc600/catalog/input-fx";
+import { euclid, randomBpm, randomPattern, randomRateIndex, randomStepCount, RANDOM_STYLES } from "./stepRandom";
+
+describe("random rate, BPM and step count", () => {
+  it("stays on musical values", () => {
+    const rng = seeded(7);
+    const rates = new Set<number>();
+    for (let i = 0; i < 200; i++) {
+      const beats = syncRateBeats(randomRateIndex(rng));
+      assert.ok(beats !== null && [1, 0.75, 0.5, 1 / 3, 0.25, 1 / 6].some((b) => Math.abs(b - beats) < 1e-9));
+      rates.add(beats);
+      const bpm = randomBpm(rng);
+      assert.ok(bpm >= 80 && bpm <= 140 && bpm % 5 === 0);
+      assert.ok([4, 6, 8, 12, 16].includes(randomStepCount(rng)));
+    }
+    assert.ok(rates.size > 3);
+  });
+});
 
 function seeded(seed: number) {
   let s = seed >>> 0;

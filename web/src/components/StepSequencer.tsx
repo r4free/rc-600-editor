@@ -5,6 +5,7 @@ import type { TagMap } from "@rc600/rc0/memory";
 import {
   StepPreviewEngine,
   type FilterPreview,
+  type SynthPreview,
   type FlangerPreview,
   type PhaserPreview,
   type PreviewSound,
@@ -12,7 +13,14 @@ import {
   type TremoloPreview,
   type VibratoPreview,
 } from "../audio/stepPreview";
-import { RANDOM_STYLES, randomPattern, type RandomStyle } from "../audio/stepRandom";
+import {
+  RANDOM_STYLES,
+  randomBpm,
+  randomPattern,
+  randomRateIndex,
+  randomStepCount,
+  type RandomStyle,
+} from "../audio/stepRandom";
 import { addTap, tapTempoBpm } from "../audio/tapTempo";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
@@ -40,6 +48,14 @@ const TARGET_CAPTION = {
   flanger: "flanger sweep",
   tremolo: "tremolo pulse",
 } as const;
+
+type RandomExtra = "rate" | "bpm" | "steps";
+
+const RANDOM_EXTRAS: { id: RandomExtra; label: string; title: string }[] = [
+  { id: "rate", label: "Rate", title: "Random also picks a Sequence Rate (1/4 to 1/16 triplet)" },
+  { id: "bpm", label: "BPM", title: "Random also picks a preview tempo (80–140 BPM)" },
+  { id: "steps", label: "Steps", title: "Random also picks how many steps play (Step Max: 4, 6, 8, 12 or 16)" },
+];
 
 type Lane = "level" | "length";
 type BarsView = Lane | "both";
@@ -103,6 +119,13 @@ function tremoloStepParam(name: string | undefined): TremoloPreview["stepParam"]
 function filterStepParam(name: string | undefined): FilterPreview["stepParam"] {
   if (name === "Depth") return "depth";
   if (name === "Cutoff") return "cutoff";
+  return null;
+}
+
+function synthStepParam(name: string | undefined): SynthPreview["stepParam"] {
+  if (name === "Frequency") return "frequency";
+  if (name === "Resonance") return "resonance";
+  if (name === "Decay") return "decay";
   return null;
 }
 
@@ -175,6 +198,7 @@ export function StepSequencer({
   flanger,
   tremolo,
   filter,
+  synth,
   onSet,
 }: {
   idPrefix: string;
@@ -199,6 +223,8 @@ export function StepSequencer({
   tremolo?: Omit<TremoloPreview, "stepParam">;
   /** LPF / BPF / HPF settings, so the preview plays the effect itself. */
   filter?: Omit<FilterPreview, "stepParam">;
+  /** Synth effect settings, so the preview plays the effect itself. */
+  synth?: Omit<SynthPreview, "stepParam">;
   /** Reference sound selected when the editor opens. */
   defaultSound?: PreviewSound;
   onSet: (tags: Record<string, string>) => void;
@@ -243,6 +269,7 @@ export function StepSequencer({
   const [playing, setPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(-1);
   const [randomStyle, setRandomStyle] = useState<RandomStyle>("any");
+  const [randomAlso, setRandomAlso] = useState<Record<RandomExtra, boolean>>({ rate: true, bpm: true, steps: true });
 
   const restoreDefault = (lane: Lane) =>
     lane === "length" && lengthTags ? (defFor(lengthTags[0]!)?.default ?? 50) : TAP_VALUE;
@@ -276,6 +303,7 @@ export function StepSequencer({
       flanger: flanger ? { ...flanger, stepParam: sequenceOff ? null : sweepStepParam(targetName) } : undefined,
       tremolo: tremolo ? { ...tremolo, stepParam: sequenceOff ? null : tremoloStepParam(targetName) } : undefined,
       filter: filter ? { ...filter, stepParam: sequenceOff ? null : filterStepParam(targetName) } : undefined,
+      synth: synth ? { ...synth, stepParam: sequenceOff ? null : synthStepParam(targetName) } : undefined,
     }),
     [
       levelSteps,
@@ -296,6 +324,7 @@ export function StepSequencer({
       flanger,
       tremolo,
       filter,
+      synth,
       sequenceOff,
       targetName,
     ],
@@ -351,8 +380,15 @@ export function StepSequencer({
   }
 
   function randomize() {
-    const pattern = randomPattern(activeCount, randomStyle);
     const patch: Record<string, string> = {};
+    let count = activeCount;
+    if (randomAlso.steps) {
+      count = Math.min(layout.stepTags.length, randomStepCount());
+      patch[layout.stepMaxTag] = String(count - 1);
+    }
+    if (randomAlso.rate) patch[layout.rateTag] = String(randomRateIndex());
+    if (randomAlso.bpm) setBpm(randomBpm());
+    const pattern = randomPattern(count, randomStyle);
     const write = (lane: Lane, values: number[]) =>
       values.forEach((v, i) => {
         patch[tagsOf(lane)[i]!] = String(v);
@@ -581,10 +617,30 @@ export function StepSequencer({
               ))}
             </select>
           </label>
+          <div className="view-toggle step-seq-random-also" role="group" aria-label="Also randomize">
+            {RANDOM_EXTRAS.map((x) => (
+              <button
+                key={x.id}
+                type="button"
+                aria-pressed={randomAlso[x.id]}
+                className={`view-toggle-btn${randomAlso[x.id] ? " active" : ""}`}
+                title={x.title}
+                onClick={() => setRandomAlso((prev) => ({ ...prev, [x.id]: !prev[x.id] }))}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             className="btn step-seq-random-btn"
-            title={`Generate a random pattern for the ${activeCount} active steps${lengthTags ? " (Level and Length)" : ""}`}
+            title={`Generate a random pattern${randomAlso.steps ? "" : ` for the ${activeCount} active steps`}${lengthTags ? " (Level and Length)" : ""}${
+              randomAlso.rate || randomAlso.bpm || randomAlso.steps
+                ? `, plus a random ${RANDOM_EXTRAS.filter((x) => randomAlso[x.id])
+                    .map((x) => x.label)
+                    .join(", ")}`
+                : ""
+            }`}
             onClick={randomize}
           >
             <Icon name="dice" size={14} />
@@ -593,7 +649,7 @@ export function StepSequencer({
         </div>
         <InfoTip
           label="Step sequencer"
-          text={`Drag the bars to set each step (0–100); the square under a bar sets it to 0 or brings back its value. Random writes a new pattern over the active steps in the chosen style: Euclidean spreads hits evenly, Gate chops on and off while keeping the beats, Stutter repeats short bursts, Accent plays every step with louder beats, and Chaos is fully random. Play runs a browser-only reference sound whose ${TARGET_CAPTION[target]} follows the steps; BPM is for the preview only. While playing, Tap On (or T) turns the current step on, and Tap Off (or Shift+T) sets it to 0.`}
+          text={`Drag the bars to set each step (0–100); the square under a bar sets it to 0 or brings back its value. Random writes a new pattern over the active steps in the chosen style: Euclidean spreads hits evenly, Gate chops on and off while keeping the beats, Stutter repeats short bursts, Accent plays every step with louder beats, and Chaos is fully random. The Rate, BPM and Steps toggles next to Random let it also pick a Sequence Rate, a preview tempo and how many steps play (Step Max); turn one off to keep its current value. Play runs a browser-only reference sound whose ${TARGET_CAPTION[target]} follows the steps; BPM is for the preview only. While playing, Tap On (or T) turns the current step on, and Tap Off (or Shift+T) sets it to 0.`}
         />
       </div>
 

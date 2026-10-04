@@ -1,3 +1,5 @@
+import { syncRateBeats } from "@rc600/catalog/input-fx";
+
 export type RandomStyle = "any" | "euclidean" | "gate" | "stutter" | "accent" | "chaos";
 
 export const RANDOM_STYLES: { id: RandomStyle; label: string; title: string }[] = [
@@ -85,6 +87,52 @@ function chaos(n: number, rng: Rng) {
   const level = Array.from({ length: n }, () => (chance(rng, 0.25) ? 0 : int(rng, 30, 100)));
   const length = Array.from({ length: n }, () => int(rng, 10, 100));
   return { level, length };
+}
+
+function weighted<T>(rng: Rng, items: [T, number][]): T {
+  const total = items.reduce((sum, [, w]) => sum + w, 0);
+  let r = rng() * total;
+  for (const [item, w] of items) {
+    r -= w;
+    if (r < 0) return item;
+  }
+  return items.at(-1)![0];
+}
+
+/** Musical step lengths in beats (1/4, 1/8., 1/8, 1/8T, 1/16, 1/16T), favoring 1/8 and 1/16. */
+const RATE_CHOICES: [number, number][] = [
+  [1, 1],
+  [0.75, 1],
+  [0.5, 3],
+  [1 / 3, 1],
+  [0.25, 3],
+  [1 / 6, 1],
+];
+
+/** A random Sequence Rate index among the common note values. */
+export function randomRateIndex(rng: Rng = Math.random): number {
+  const beats = weighted(rng, RATE_CHOICES);
+  for (let i = 0; i < 32; i++) {
+    const b = syncRateBeats(i);
+    if (b !== null && Math.abs(b - beats) < 1e-9) return i;
+  }
+  return 0;
+}
+
+/** A random preview tempo, 80–140 BPM in steps of 5. */
+export function randomBpm(rng: Rng = Math.random): number {
+  return int(rng, 16, 28) * 5;
+}
+
+/** A random number of active steps (4, 6, 8, 12 or 16), favoring 8 and 16. */
+export function randomStepCount(rng: Rng = Math.random): number {
+  return weighted(rng, [
+    [4, 1],
+    [6, 1],
+    [8, 3],
+    [12, 1],
+    [16, 3],
+  ]);
 }
 
 const GENERATORS = { euclidean, gate, stutter, accent, chaos };

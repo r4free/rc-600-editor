@@ -2302,8 +2302,20 @@ textarea {
 
 .step-seq-random {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
+}
+
+.step-seq-random .step-seq-random-also {
+  box-sizing: border-box;
+  min-height: 2.15rem;
+  margin-bottom: 0;
+  align-items: stretch;
+}
+
+.step-seq-random .step-seq-random-also .view-toggle-btn {
+  padding-block: 0;
 }
 
 .step-seq-random-btn {

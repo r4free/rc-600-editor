@@ -49,6 +49,12 @@ const AUTO_PAN_METERS: Record<string, string> = {
   Depth: "Pan width",
   "Init Phase": "Start point",
 };
+const SYNTH_TYPE = 6;
+const SYNTH_METERS: Record<string, string> = {
+  Frequency: "Filter frequency",
+  Resonance: "Peak",
+  Decay: "Sweep time",
+};
 const LOFI_TYPE = 7;
 const SUSTAINER_TYPE = 11;
 const SUSTAINER_METERS: Record<string, string> = {
@@ -111,6 +117,10 @@ const REVERB_FILTERS =
 const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
 
 const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: string; mixMatch?: RegExp }> = {
+  [SYNTH_TYPE]: {
+    main: "Turns the input into a synthesizer sound: each note opens a resonant filter that then falls back down. Frequency sets where the filter settles (low = dark, high = bright), Resonance how sharp and vocal the filter peak sounds, and Decay how long each note's filter sweep takes (short = plucky, long = slow wah).",
+    mix: "Balance goes from the direct sound only (Direct) to the synth sound only (Synth); the middle blends both.",
+  },
   [SUSTAINER_TYPE]: {
     main: "Brings down loud input and makes quiet input louder, so notes ring longer at an even volume without distortion. Sustain sets how long notes keep ringing, Release how wide a range of levels is evened out (larger = longer sustain), and Attack how much of each pick's snap comes through.",
     mixTitle: "Tone",
@@ -389,6 +399,10 @@ export function InputFxEditModal({
         wetLevel: tagValue("G"),
       }
     : undefined;
+  const synth =
+    type === SYNTH_TYPE
+      ? { frequency: tagValue("A"), resonance: tagValue("B"), decay: tagValue("C"), balance: tagValue("D") }
+      : undefined;
   const sustainer =
     type === SUSTAINER_TYPE
       ? {
@@ -638,14 +652,16 @@ export function InputFxEditModal({
                       ? PATTERN_SLICER_METERS[def.name]
                       : type === SUSTAINER_TYPE
                         ? SUSTAINER_METERS[def.name]
-                        : undefined) ?? def.name,
+                        : type === SYNTH_TYPE
+                          ? SYNTH_METERS[def.name]
+                          : undefined) ?? def.name,
                 color: () => "var(--slot-color)",
               }
             : undefined
         }
         balance={
           grouped && def.name === "Balance"
-            ? { left: "Direct", right: type === LOFI_TYPE ? "Lo-Fi" : "Effect" }
+            ? { left: "Direct", right: type === LOFI_TYPE ? "Lo-Fi" : type === SYNTH_TYPE ? "Synth" : "Effect" }
             : undefined
         }
         onChange={(v) => setBlockTag(section!, def.tag, v)}
@@ -690,6 +706,7 @@ export function InputFxEditModal({
           flanger={flanger}
           tremolo={tremolo}
           filter={filter}
+          synth={synth}
           defaultSound={defaultSound}
           onSet={(next) => onPatch({ type: "ifx", section: stepSection, tags: next })}
         />

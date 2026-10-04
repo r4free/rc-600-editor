@@ -34,6 +34,34 @@ export interface StepPreviewConfig {
   tremolo?: TremoloPreview;
   /** Simulates LPF / BPF / HPF itself; the steps drive `stepParam` (none when Sequence is OFF). */
   filter?: FilterPreview;
+  /** Simulates the Synth effect itself; the steps drive `stepParam` (none when Sequence is OFF). */
+  synth?: SynthPreview;
+}
+
+export interface SynthPreview {
+  frequency: number;
+  resonance: number;
+  decay: number;
+  balance: number;
+  stepParam: "frequency" | "resonance" | "decay" | null;
+}
+
+const SYNTH_SWEEP_OCTAVES = 4;
+
+/** Filter the sweep settles on (Frequency), its peak Q (Resonance) and how long each note's sweep takes (Decay). */
+export function synthSettings(
+  frequency: number,
+  resonance: number,
+  decay: number,
+): { baseHz: number; peakHz: number; q: number; decaySec: number } {
+  const clamp = (v: number) => Math.max(0, Math.min(100, v)) / 100;
+  const baseHz = 120 * 2 ** (clamp(frequency) * 6);
+  return {
+    baseHz,
+    peakHz: Math.min(16000, baseHz * 2 ** SYNTH_SWEEP_OCTAVES),
+    q: 0.7 + clamp(resonance) ** 2 * 18,
+    decaySec: 0.03 + clamp(decay) ** 1.5 * 1.5,
+  };
 }
 
 export interface FilterPreview {
@@ -319,6 +347,7 @@ export class StepPreviewEngine {
     output: GainNode;
   } | null = null;
   private filterNodes: { lfo: OscillatorNode; sweep: GainNode; makeup: GainNode } | null = null;
+  private synthNodes: { filter: BiquadFilterNode; dry: GainNode; wet: GainNode } | null = null;
   private nextHoldTime = 0;
   private holdOrigin = 0;
   private toneOscs: OscillatorNode[] = [];
@@ -353,7 +382,8 @@ export class StepPreviewEngine {
       !cfg.phaser !== !this.cfg.phaser ||
       !cfg.flanger !== !this.cfg.flanger ||
       !cfg.tremolo !== !this.cfg.tremolo ||
-      !cfg.filter !== !this.cfg.filter;
+      !cfg.filter !== !this.cfg.filter ||
+      !cfg.synth !== !this.cfg.synth;
     this.cfg = cfg;
     this.updatePreviewControls();
     if (this.playing && soundChanged) {
@@ -420,6 +450,7 @@ export class StepPreviewEngine {
     this.flangerNodes = null;
     this.tremNodes = null;
     this.filterNodes = null;
+    this.synthNodes = null;
     this.noiseSrc = null;
     this.onStep(-1);
   }
@@ -451,7 +482,13 @@ export class StepPreviewEngine {
     panner.connect(compressor).connect(compressorGain).connect(master);
     const stepGain = ctx.createGain();
     const simulated =
-      this.cfg.vibrato || this.cfg.ring || this.cfg.phaser || this.cfg.flanger || this.cfg.tremolo || this.cfg.filter;
+      this.cfg.vibrato ||
+      this.cfg.ring ||
+      this.cfg.phaser ||
+      this.cfg.flanger ||
+      this.cfg.tremolo ||
+      this.cfg.filter ||
+      this.cfg.synth;
     stepGain.gain.value = this.cfg.target === "volume" && !simulated ? 0 : 1;
     if (this.cfg.tremolo) {
       const lfo = ctx.createOscillator();
@@ -537,13 +574,22 @@ export class StepPreviewEngine {
       stepGain.connect(dry).connect(panner);
       stepGain.connect(delay).connect(wet).connect(panner);
       this.vib = { lfos, mainMod, colorMod, dry, wet };
+    } else if (this.cfg.synth) {
+      const synthFilter = ctx.createBiquadFilter();
+      synthFilter.type = "lowpass";
+      const dry = ctx.createGain();
+      const wet = ctx.createGain();
+      stepGain.connect(dry).connect(panner);
+      stepGain.connect(synthFilter).connect(wet).connect(panner);
+      this.synthNodes = { filter: synthFilter, dry, wet };
     } else {
       stepGain.connect(panner);
     }
     const filter = ctx.createBiquadFilter();
+    const fixedFilter = this.cfg.target === "filter" && !this.cfg.synth;
     filter.type = "lowpass";
-    filter.Q.value = this.cfg.target === "filter" ? 6 : 0.7;
-    filter.frequency.value = this.cfg.target === "filter" ? 600 : 18000;
+    filter.Q.value = fixedFilter ? 6 : 0.7;
+    filter.frequency.value = fixedFilter ? 600 : 18000;
     if (this.cfg.filter) {
       const makeup = ctx.createGain();
       filter.connect(makeup).connect(stepGain);
@@ -683,7 +729,10 @@ export class StepPreviewEngine {
     const flanger = this.cfg.flanger;
     const tremolo = this.cfg.tremolo;
     const filterCfg = this.cfg.filter;
-    if (filterCfg) {
+    const synth = this.cfg.synth;
+    if (synth) {
+      this.triggerSynth(synth.stepParam ? { ...synth, [synth.stepParam]: raw } : synth, t);
+    } else if (filterCfg) {
       if (filterCfg.stepParam) this.applyFilter({ ...filterCfg, [filterCfg.stepParam]: raw }, t);
     } else if (tremolo) {
       if (tremolo.stepParam) this.applyTremolo(this.tremoloWithStep(tremolo, raw), t);
@@ -741,6 +790,11 @@ export class StepPreviewEngine {
     }
     const gainDb = Math.max(0, Math.min(20, this.cfg.compressorGainDb ?? 0));
     this.compressorGain?.gain.setTargetAtTime(10 ** (gainDb / 20), now, 0.01);
+    const synth = this.cfg.synth;
+    if (synth && this.synthNodes) {
+      const live = synth.stepParam && this.lastStep >= 0 ? { [synth.stepParam]: this.cfg.steps[this.lastStep] ?? 0 } : {};
+      this.applySynthMix({ ...synth, ...live }, now);
+    }
     const filterCfg = this.cfg.filter;
     if (filterCfg && this.filterNodes) {
       const live =
@@ -786,6 +840,29 @@ export class StepPreviewEngine {
           : {};
       this.applyVibrato({ ...vibrato, ...live }, now);
     }
+  }
+
+  /** Resonance and the Balance between the direct and synth sound. */
+  private applySynthMix(s: SynthPreview, t: number): void {
+    const nodes = this.synthNodes;
+    if (!nodes) return;
+    const { q } = synthSettings(s.frequency, s.resonance, s.decay);
+    nodes.filter.Q.setTargetAtTime(q, t, PARAM_GLIDE_SEC);
+    const b = Math.max(0, Math.min(100, s.balance)) / 100;
+    nodes.dry.gain.setTargetAtTime(1 - b, t, PARAM_GLIDE_SEC);
+    nodes.wet.gain.setTargetAtTime(b, t, PARAM_GLIDE_SEC);
+  }
+
+  /** Each note opens the filter and lets it fall back to Frequency over the Decay time. */
+  private triggerSynth(s: SynthPreview, t: number): void {
+    const nodes = this.synthNodes;
+    if (!nodes) return;
+    const { baseHz, peakHz, decaySec } = synthSettings(s.frequency, s.resonance, s.decay);
+    const f = nodes.filter.frequency;
+    f.cancelScheduledValues(t);
+    f.setValueAtTime(peakHz, t);
+    f.setTargetAtTime(baseHz, t, decaySec / 3);
+    this.applySynthMix(s, t);
   }
 
   /** Depth in effect right now (the last step's value when the steps drive Depth). */

@@ -389,10 +389,17 @@ const FLANGER_PARAMS: ParamDef[] = [
 ];
 
 const SYNTH_PARAMS: ParamDef[] = [
-  intP("A", "Frequency", 0, 100, 50, "Sets the frequency of the filter."),
-  intP("B", "Resonance", 0, 100, 50, "Sets the intensity of the effect."),
-  intP("C", "Decay", 0, 100, 50, "Sets the time over which the filter frequency will change."),
-  intP("D", "Balance", 0, 100, 50, "Volume balance between the direct sound and the synth sound."),
+  intP("A", "Frequency", 0, 100, 50, "Sets the frequency of the filter: low values sound darker, high values brighter."),
+  intP("B", "Resonance", 0, 100, 50, "Sets the intensity of the effect: higher values give a sharper, more vocal filter peak."),
+  intP(
+    "C",
+    "Decay",
+    0,
+    100,
+    50,
+    "Sets the time over which the filter frequency will change: short values sound plucky, long values give a slow wah-like sweep.",
+  ),
+  intP("D", "Balance", 0, 100, 50, "Adjusts the volume balance between the direct sound and the synth sound."),
 ];
 
 /** OFF, then 31 bits down to 1 bit (raw 24 = 8 bits). */

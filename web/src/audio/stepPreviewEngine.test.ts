@@ -10,7 +10,9 @@ import {
   lfoRateHz,
   phaserSettings,
   ringFrequencyHz,
+  synthSettings,
   type FilterPreview,
+  type SynthPreview,
   type FlangerPreview,
   type TremoloPreview,
   type PhaserPreview,
@@ -268,6 +270,40 @@ describe("preview engine: LPF / BPF / HPF controls", () => {
     assert.equal(makeup.gain.value, filterMakeupGain("bandpass", 14.5));
     r.engine.update(cfg({ kind: "lowpass", resonance: 100 }));
     assert.equal(makeup.gain.value, 1);
+    r.engine.dispose();
+  });
+});
+
+const SYNTH: SynthPreview = { frequency: 50, resonance: 50, decay: 50, balance: 50, stepParam: null };
+
+describe("preview engine: Synth controls", () => {
+  type Node = ReturnType<typeof fakeNode>;
+  const nodesOf = (r: ReturnType<typeof run>) =>
+    (r.engine as unknown as { synthNodes: { filter: Node; dry: Node; wet: Node } }).synthNodes;
+  const cfg = (s: Partial<SynthPreview>) => config({ sound: "synth", target: "filter", synth: { ...SYNTH, ...s } });
+
+  it("each note sweeps the filter down to Frequency; Resonance and Balance reach the graph", () => {
+    const r = run(cfg({ resonance: 100, balance: 80 }));
+    r.internals.scheduleStep(0, 0);
+    const s = synthSettings(50, 100, 50);
+    assert.equal(nodesOf(r).filter.frequency.value, s.baseHz);
+    assert.equal(nodesOf(r).filter.Q.value, s.q);
+    assert.ok(Math.abs(nodesOf(r).dry.gain.value - 0.2) < 1e-9);
+    assert.equal(nodesOf(r).wet.gain.value, 0.8);
+    r.engine.dispose();
+  });
+
+  it("higher Frequency settles brighter, longer Decay sweeps slower", () => {
+    assert.ok(synthSettings(100, 50, 50).baseHz > synthSettings(0, 50, 50).baseHz);
+    assert.ok(synthSettings(50, 50, 100).decaySec > synthSettings(50, 50, 0).decaySec);
+    assert.ok(synthSettings(50, 100, 50).q > synthSettings(50, 0, 50).q);
+  });
+
+  it("with Sequence ON the steps drive Frequency", () => {
+    const steps = Array(16).fill(0);
+    const r = run(config({ steps, sound: "synth", target: "filter", synth: { ...SYNTH, stepParam: "frequency" } }));
+    r.internals.scheduleStep(0, 0);
+    assert.equal(nodesOf(r).filter.frequency.value, synthSettings(0, 50, 50).baseHz);
     r.engine.dispose();
   });
 });
