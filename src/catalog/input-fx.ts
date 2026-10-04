@@ -395,19 +395,30 @@ const SYNTH_PARAMS: ParamDef[] = [
   intP("D", "Balance", 0, 100, 50, "Volume balance between the direct sound and the synth sound."),
 ];
 
+/** OFF, then 31 bits down to 1 bit (raw 24 = 8 bits). */
 const LOFI_BIT: EnumOption[] = [{ value: 0, label: "OFF" }];
-for (let b = 1; b <= 31; b++) LOFI_BIT.push({ value: b, label: String(b) });
+for (let v = 1; v <= 31; v++) LOFI_BIT.push({ value: v, label: String(32 - v) });
+
+/** OFF, then 1/2 down to 1/32 of the sampling rate (raw 3 = 1/4). */
+const LOFI_SAMPLE_RATE: EnumOption[] = [{ value: 0, label: "OFF" }];
+for (let v = 1; v <= 31; v++) LOFI_SAMPLE_RATE.push({ value: v, label: `1/${v + 1}` });
 
 const LOFI_PARAMS: ParamDef[] = [
-  enumP("A", "Bit Depth", LOFI_BIT, 24, "Sets the bit depth. When OFF, sound quality is not degraded."),
+  enumP(
+    "A",
+    "Bit Depth",
+    LOFI_BIT,
+    24,
+    "Sets the bit depth. When this is OFF, the sound quality is not degraded. Fewer bits give a grainier, noisier, more crushed sound.",
+  ),
   enumP(
     "B",
     "Sample Rate",
-    opts("OFF", "1/2", "1/3", "1/4", "1/5", "1/6", "1/8", "1/12", "1/16", "1/24", "1/32"),
+    LOFI_SAMPLE_RATE,
     3,
-    "Sets the sampling rate.",
+    "Sets the sampling rate. When this is OFF, the sound quality is not degraded. Lower fractions (toward 1/32) lose more highs and add a metallic, aliased edge.",
   ),
-  intP("D", "Balance", 0, 100, 50, "Volume balance between the direct sound and the effect sound."),
+  intP("D", "Balance", 0, 100, 50, "Adjusts the volume balance between the direct sound and the effect sound."),
 ];
 
 const RADIO_PARAMS: ParamDef[] = [
@@ -441,12 +452,33 @@ const G2B_PARAMS: ParamDef[] = [
 ];
 
 const SUSTAINER_PARAMS: ParamDef[] = [
-  intP("A", "Attack", 0, 100, 50, "Sets the strength of the attack when picking."),
-  intP("B", "Release", 0, 100, 50, "Range over which signals are adjusted. Larger values give longer sustain."),
+  intP(
+    "A",
+    "Attack",
+    0,
+    100,
+    50,
+    "Sets the strength of the attack when picking: higher values let more of each pick's initial snap through.",
+  ),
+  intP(
+    "B",
+    "Release",
+    0,
+    100,
+    50,
+    "Sets the range (time) over which signals are adjusted to a certain volume. Larger values result in longer sustain.",
+  ),
   intP("C", "Level", 0, 100, 50, "Sets the volume of the effect sound."),
-  intP("D", "Lo Gain", 0, 40, 20, "Gain for the low frequency range (−20–0–+20 dB).", "db"),
-  intP("E", "Hi Gain", 0, 40, 20, "Gain for the high frequency range (−20–0–+20 dB).", "db"),
-  intP("F", "Sustain", 0, 100, 50, "Sets the sustain time."),
+  intP("D", "Low Gain", 0, 40, 20, "Sets the gain for the low frequency range (−20–0–+20 dB).", "db"),
+  intP("E", "Hi Gain", 0, 40, 20, "Sets the gain for the high frequency range (−20–0–+20 dB).", "db"),
+  intP(
+    "F",
+    "Sustain",
+    0,
+    100,
+    50,
+    "Sets the sustain time: how long a note keeps ringing at an even volume before it fades.",
+  ),
 ];
 
 const AUTO_RIFF_PARAMS: ParamDef[] = [

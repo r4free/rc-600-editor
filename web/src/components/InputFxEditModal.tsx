@@ -17,14 +17,16 @@ import type { ReverbKind } from "../audio/reverbPreview";
 import { DelayPreviewBar } from "./DelayPreviewBar";
 import { ChorusPreviewBar } from "./ChorusPreviewBar";
 import { ReverbPreviewBar } from "./ReverbPreviewBar";
-import { FilterCutControl } from "./FilterCutControl";
+import { FilterCutControl, ShelfGainControl } from "./FilterCutControl";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
 import { PreampEditor } from "./PreampEditor";
+import { LofiPreviewBar } from "./LofiPreviewBar";
 import { PatternSlicerPreviewBar } from "./PatternSlicerPreviewBar";
 import { PreampPreviewBar } from "./PreampPreviewBar";
+import { SustainerPreviewBar } from "./SustainerPreviewBar";
 import { onOffView, ScrubCard, TrackStateCard, type PatchHandler } from "./LoopTab";
 import { rateCardValue, StepSequencer } from "./StepSequencer";
 
@@ -46,6 +48,13 @@ const AUTO_PAN_METERS: Record<string, string> = {
   Waveform: "Smooth → Abrupt",
   Depth: "Pan width",
   "Init Phase": "Start point",
+};
+const LOFI_TYPE = 7;
+const SUSTAINER_TYPE = 11;
+const SUSTAINER_METERS: Record<string, string> = {
+  Attack: "Pick attack",
+  Release: "Leveling range",
+  Sustain: "Sustain time",
 };
 const PATTERN_SLICER_TYPE = 34;
 const PATTERN_SLICER_METERS: Record<string, string> = {
@@ -102,6 +111,16 @@ const REVERB_FILTERS =
 const MIX_PARAM = /^(D\.Level|E\.Level|Level|Oct\.Level|Balance)$/;
 
 const GROUP_CAPTIONS: Record<number, { main: string; mix?: string; mixTitle?: string; mixMatch?: RegExp }> = {
+  [SUSTAINER_TYPE]: {
+    main: "Brings down loud input and makes quiet input louder, so notes ring longer at an even volume without distortion. Sustain sets how long notes keep ringing, Release how wide a range of levels is evened out (larger = longer sustain), and Attack how much of each pick's snap comes through.",
+    mixTitle: "Tone",
+    mixMatch: /^(Low Gain|Hi Gain|Level)$/,
+    mix: "Low Gain and Hi Gain boost or cut the lows and highs (−20 to +20 dB, 0 = flat). Level is the volume of the effect sound.",
+  },
+  [LOFI_TYPE]: {
+    main: "Degrades the sound on purpose for a vintage, crunchy character. Bit Depth sets how many bits are kept: fewer bits sound grainier and noisier (8 is the classic sampler crunch, 1 is extreme). Sample Rate divides the sampling rate: lower fractions lose more highs and add a metallic edge. OFF leaves that part of the sound untouched.",
+    mix: "Balance goes from the direct sound only (0) to the lo-fi sound only (100). 50 blends both equally.",
+  },
   [PATTERN_SLICER_TYPE]: {
     main: "Cuts the sound in a rhythm so a sustained sound becomes a rhythmic backing. Rate is the length of each slice, Duty how much of each slice sounds (low = short and staccato, high = almost legato), Attack how hard each slice starts, Pattern which of the 20 built-in slice rhythms is used, and Depth how far the gaps drop (100 = silence, lower lets some sound through).",
     mixTitle: "Comp",
@@ -370,6 +389,21 @@ export function InputFxEditModal({
         wetLevel: tagValue("G"),
       }
     : undefined;
+  const sustainer =
+    type === SUSTAINER_TYPE
+      ? {
+          attack: tagValue("A"),
+          release: tagValue("B"),
+          level: tagValue("C"),
+          lowGain: tagValue("D"),
+          hiGain: tagValue("E"),
+          sustain: tagValue("F"),
+        }
+      : undefined;
+  const lofi =
+    type === LOFI_TYPE
+      ? { bitDepthRaw: tagValue("A"), sampleRateRaw: tagValue("B"), balance: tagValue("D") }
+      : undefined;
   const patternSlicerPreview =
     type === PATTERN_SLICER_TYPE
       ? {
@@ -412,6 +446,39 @@ export function InputFxEditModal({
   function blockControl(def: (typeof params)[number]) {
     const value = num(tags, def.tag, def.default ?? 0);
     const id = `ifx-edit-${section}-${def.tag === "#" ? "hash" : def.tag}`;
+    if (isShelfGain(def)) {
+      return (
+        <ShelfGainControl
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
+    if (type === LOFI_TYPE && (def.name === "Bit Depth" || def.name === "Sample Rate")) {
+      const bits = def.name === "Bit Depth";
+      return (
+        <ScrubCard
+          key={def.tag}
+          id={id}
+          def={def}
+          value={value}
+          min={0}
+          max={def.options?.at(-1)?.value ?? 31}
+          format={(v) => {
+            const label = def.options?.find((o) => o.value === v)?.label ?? String(v);
+            if (v === 0) return { value: "Off", unit: "Clean" };
+            return bits ? { value: label, unit: label === "1" ? "Bit" : "Bits" } : { value: label, unit: "Sample rate" };
+          }}
+          alert={value !== 0}
+          color="var(--slot-color)"
+          valueIcon={value === 0 ? "power" : bits ? "equalizer" : "mfx"}
+          onChange={(v) => setBlockTag(section!, def.tag, v)}
+        />
+      );
+    }
     const patternSlicer = type === PATTERN_SLICER_TYPE;
     if (patternSlicer && def.name === "Pattern") {
       return (
@@ -569,16 +636,25 @@ export function InputFxEditModal({
                     ? AUTO_PAN_METERS[def.name]
                     : patternSlicer
                       ? PATTERN_SLICER_METERS[def.name]
-                      : undefined) ?? def.name,
+                      : type === SUSTAINER_TYPE
+                        ? SUSTAINER_METERS[def.name]
+                        : undefined) ?? def.name,
                 color: () => "var(--slot-color)",
               }
-            : grouped && def.name === "Balance"
-              ? { caption: "Direct ↔ Effect" }
-              : undefined
+            : undefined
+        }
+        balance={
+          grouped && def.name === "Balance"
+            ? { left: "Direct", right: type === LOFI_TYPE ? "Lo-Fi" : "Effect" }
+            : undefined
         }
         onChange={(v) => setBlockTag(section!, def.tag, v)}
       />
     );
+  }
+
+  function isShelfGain(def: (typeof params)[number]) {
+    return type === SUSTAINER_TYPE && (def.name === "Low Gain" || def.name === "Hi Gain");
   }
 
   function control(def: (typeof params)[number]) {
@@ -586,7 +662,7 @@ export function InputFxEditModal({
     return (
       <div
         key={def.tag}
-        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
+        className={`ifx-control${sequenced ? " is-sequenced" : ""}${CUT_PARAM.test(def.name) || isShelfGain(def) ? " is-wide" : ""}${def.format === "sec10" || def.format === "ms" ? " has-unit" : ""}`}
         title={sequenced ? "The step sequence is changing this parameter." : undefined}
       >
         {blockControl(def)}
@@ -643,6 +719,24 @@ export function InputFxEditModal({
           initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
           memoryBpm={memoryTempo(model)}
           settings={delay}
+        />
+      ) : null}
+      {sustainer ? (
+        <SustainerPreviewBar
+          key={`sustainer-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={sustainer}
+        />
+      ) : null}
+      {lofi ? (
+        <LofiPreviewBar
+          key={`lofi-${bank}-${slot}`}
+          slot={FX_BANKS[slot]!}
+          initialBpm={memoryTempo(model) ?? DEFAULT_BPM}
+          memoryBpm={memoryTempo(model)}
+          settings={lofi}
         />
       ) : null}
       {patternSlicerPreview ? (

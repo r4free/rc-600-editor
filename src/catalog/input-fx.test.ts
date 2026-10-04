@@ -49,6 +49,17 @@ describe("input FX type catalog", () => {
     assert.equal(label("D", 0), "20.0 Hz");
   });
 
+  it("decodes Lo-Fi Bit Depth (OFF, 31–1) and Sample Rate (OFF, 1/2–1/32) at the guide defaults", () => {
+    const lofi = inputFxTypeParams(7);
+    const def = (tag: string) => lofi.find((d) => d.tag === tag)!;
+    assert.equal(displayParam(def("A"), 0), "OFF");
+    assert.equal(displayParam(def("A"), 1), "31");
+    assert.equal(displayParam(def("A"), def("A").default!), "8");
+    assert.equal(displayParam(def("A"), 31), "1");
+    assert.equal(displayParam(def("B"), def("B").default!), "1/4");
+    assert.equal(displayParam(def("B"), 31), "1/32");
+  });
+
   it("decodes Auto Pan with Init Phase in degrees and Step Rate (OFF + sync rates)", () => {
     const pan = inputFxTypeParams(29);
     assert.deepEqual(pan.map((d) => d.name), ["Rate", "Waveform", "Depth", "Init Phase", "Step Rate"]);

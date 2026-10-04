@@ -129,6 +129,16 @@ export type MeterStyle = {
   valueIcon?: IconName;
 };
 
+/** Forces the centered pan layout on an int param that blends two sides (e.g. Direct ↔ Effect). */
+export type BalanceStyle = { left: string; right: string };
+
+/** "Even" at the center, otherwise the side it leans to and its share (e.g. "70% Effect"). */
+export function balanceLabel(value: number, min: number, max: number, style: BalanceStyle): string {
+  const right = max === min ? 50 : Math.round(((value - min) / (max - min)) * 100);
+  if (right === 50) return "Even";
+  return right > 50 ? `${right}% ${style.right}` : `${100 - right}% ${style.left}`;
+}
+
 export function ParamControl({
   def,
   value,
@@ -136,6 +146,7 @@ export function ParamControl({
   id,
   disabled = false,
   meter,
+  balance,
 }: {
   def: ParamDef;
   value: number;
@@ -143,6 +154,7 @@ export function ParamControl({
   id: string;
   disabled?: boolean;
   meter?: MeterStyle;
+  balance?: BalanceStyle;
 }) {
   if (def.kind === "bool") {
     return (
@@ -184,27 +196,28 @@ export function ParamControl({
 
   const min = def.min ?? 0;
   const max = def.max ?? 127;
-  if (isPanParam(def)) {
+  if (isPanParam(def) || balance) {
     const progress = max === min ? 0.5 : Math.max(0, Math.min(1, (value - min) / (max - min)));
     const selectedIndex = Math.round(progress * (PAN_SEGMENTS - 1));
     const centerIndex = Math.floor(PAN_SEGMENTS / 2);
     const activeStart = Math.min(centerIndex, selectedIndex);
     const activeEnd = Math.max(centerIndex, selectedIndex);
     const reset = resetTarget(def, "pan");
+    const valueText = (v: number) => (balance ? balanceLabel(v, min, max, balance) : displayParam(def, v));
     return (
-      <div className={`param-row pan-param${disabled ? " readonly" : ""}`}>
+      <div className={`param-row pan-param${balance ? " balance-param" : ""}${disabled ? " readonly" : ""}`}>
         <div className="volume-param-head">
           <ParamLabel def={def} id={id} />
           <strong className="volume-param-value">
             {reset != null ? (
               <ResetValueButton
                 name={def.name}
-                targetLabel={displayParam(def, reset)}
+                targetLabel={valueText(reset)}
                 disabled={disabled || value === reset}
                 onClick={() => onChange(reset)}
               />
             ) : null}
-            {displayParam(def, value)}
+            {valueText(value)}
           </strong>
         </div>
         <div className="volume-param-slider pan-param-slider">
@@ -228,13 +241,14 @@ export function ParamControl({
             max={max}
             value={value}
             disabled={disabled}
+            aria-valuetext={valueText(value)}
             onChange={(e) => onChange(Number(e.target.value))}
           />
         </div>
         <div className="volume-param-scale pan-param-scale" aria-hidden="true">
-          <span>L</span>
-          <span>Center</span>
-          <span>R</span>
+          <span>{balance ? balance.left : "L"}</span>
+          <span>{balance ? "Even" : "Center"}</span>
+          <span>{balance ? balance.right : "R"}</span>
         </div>
       </div>
     );
