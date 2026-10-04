@@ -1,12 +1,15 @@
 import {
   INPUT_FX_SEQ_PARAMS,
+  inputFxCategory,
   inputFxSeqSection,
   inputFxSection,
   inputFxTypeLabel,
   inputFxTypeParams,
 } from "@rc600/catalog/input-fx";
+import { FX_BANKS } from "@rc600/catalog/params";
 import type { MemoryModel } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
+import { Icon } from "./Icon";
 import { Modal } from "./Modal";
 import { ParamControl } from "./ParamControl";
 import type { PatchHandler } from "./LoopTab";
@@ -25,6 +28,7 @@ export function InputFxEditModal({
   type,
   onPatch,
   onClose,
+  onOpenLibrary,
 }: {
   model: MemoryModel;
   bank: number;
@@ -32,6 +36,7 @@ export function InputFxEditModal({
   type: number;
   onPatch: PatchHandler;
   onClose: () => void;
+  onOpenLibrary: () => void;
 }) {
   const section = inputFxSection(bank, slot, type);
   const seqSection = inputFxSeqSection(bank, slot, type);
@@ -43,9 +48,22 @@ export function InputFxEditModal({
     onPatch(op);
   }
 
+  const target = (
+    <div className="ifx-edit-head">
+      <span className="ifx-library-target-slot">
+        Bank {FX_BANKS[bank]} · FX {FX_BANKS[slot]} · {inputFxCategory(type)}
+      </span>
+      <button type="button" className="btn" title="Open effect library" onClick={onOpenLibrary}>
+        <Icon name="library" size={14} />
+        Library
+      </button>
+    </div>
+  );
+
   if (!section || params.length === 0) {
     return (
-      <Modal title={title} onClose={onClose} wide>
+      <Modal title={title} onClose={onClose} wide className="ifx-edit-modal">
+        {target}
         <p className="hint">This effect type has no editable parameters.</p>
       </Modal>
     );
@@ -55,7 +73,8 @@ export function InputFxEditModal({
   const seqTags = seqSection ? (model.ifxBlocks[seqSection] ?? {}) : {};
 
   return (
-    <Modal title={`Edit ${title}`} onClose={onClose} wide>
+    <Modal title={`Edit ${title}`} onClose={onClose} wide className="ifx-edit-modal">
+      {target}
       <div className="param-columns">
         {params.map((def) => (
           <ParamControl

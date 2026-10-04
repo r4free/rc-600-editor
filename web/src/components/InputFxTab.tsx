@@ -375,6 +375,10 @@ export function InputFxTab({
           type={num(model.ifxSlots[bank]?.[editSlot] ?? {}, "C")}
           onPatch={onPatch}
           onClose={() => setEditSlot(null)}
+          onOpenLibrary={() => {
+            setLibrarySlot(editSlot);
+            setEditSlot(null);
+          }}
         />
       ) : null}
       {librarySlot !== null && page !== "setup" ? (

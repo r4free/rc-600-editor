@@ -82,6 +82,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### 2026-10-03
 
+- **EN:** The Input FX **Edit** window now fills 80% of the screen on desktop and the whole screen on phones, and shows which bank, FX and category you are editing. A **Library** button there switches straight to the effect library for the same FX.
+- **PT:** A janela **Edit** do Input FX agora ocupa 80% da tela no desktop e a tela inteira no celular, e mostra qual banco, FX e categoria você está editando. Um botão **Library** ali leva direto para a biblioteca de efeitos do mesmo FX.
 - **EN:** Input FX bank tabs now use each bank's Setup color (A cyan, B indigo, C amber, D pink), and inside a bank FX A–D each get their own color (green, orange, purple, red) on the title and cards.
 - **PT:** As abas de banco do Input FX agora usam a cor de cada banco do Setup (A ciano, B índigo, C âmbar, D rosa), e dentro de um banco os FX A–D têm cada um sua cor (verde, laranja, roxo, vermelho) no título e nos cards.
 - **EN:** Input FX → Bank A–D now uses cards. Switch and Switch Mode are one card that cycles **Off → Toggle → Moment**; Insert is a card that steps through the inputs; Effect is a card that opens the library, with an Edit button. The Effect library opens much larger, with a category sidebar and counts, an All / Factory / My effects filter, search, and presets as color-coded tiles.

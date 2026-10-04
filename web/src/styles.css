@@ -2161,6 +2161,35 @@ textarea {
   max-height: none;
 }
 
+.modal-sheet.ifx-edit-modal {
+  max-width: none;
+  width: 80vw;
+  height: 80vh;
+  max-height: none;
+}
+
+.ifx-edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 720px) {
+  .modal-backdrop:has(> .ifx-edit-modal) {
+    padding: 0;
+  }
+
+  .modal-sheet.ifx-edit-modal {
+    width: 100vw;
+    height: 100dvh;
+    border: none;
+    border-radius: 0;
+  }
+}
+
 .ifx-library-modal .modal-body {
   display: flex;
   flex-direction: column;
