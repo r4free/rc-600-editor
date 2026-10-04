@@ -24,6 +24,40 @@ function scaleLabel(def: ParamDef, raw: number): string | number {
   return def.format === "mixer" || def.format === "sec10" || def.format === "ms" ? displayParam(def, raw) : raw;
 }
 
+/** Catalog default, or center (pan) / 100 (play level) when the catalog omits one. */
+function resetTarget(def: ParamDef, kind: "pan" | "volume"): number | null {
+  if (typeof def.default === "number") return def.default;
+  const min = def.min ?? 0;
+  const max = def.max ?? 100;
+  if (kind === "pan") return Math.round((min + max) / 2);
+  return 100 >= min && 100 <= max ? 100 : null;
+}
+
+function ResetValueButton({
+  name,
+  targetLabel,
+  disabled,
+  onClick,
+}: {
+  name: string;
+  targetLabel: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="volume-param-reset"
+      aria-label={`Reset ${name} to ${targetLabel}`}
+      title={`Reset to ${targetLabel}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon name="restore" size={13} />
+    </button>
+  );
+}
+
 function volumeSegmentColor(segmentValue: number): string {
   if (segmentValue <= 100) {
     const progress = Math.max(0, segmentValue) / 100;
@@ -154,11 +188,22 @@ export function ParamControl({
     const centerIndex = Math.floor(PAN_SEGMENTS / 2);
     const activeStart = Math.min(centerIndex, selectedIndex);
     const activeEnd = Math.max(centerIndex, selectedIndex);
+    const reset = resetTarget(def, "pan");
     return (
       <div className={`param-row pan-param${disabled ? " readonly" : ""}`}>
         <div className="volume-param-head">
           <ParamLabel def={def} id={id} />
-          <strong className="volume-param-value">{displayParam(def, value)}</strong>
+          <strong className="volume-param-value">
+            {reset != null ? (
+              <ResetValueButton
+                name={def.name}
+                targetLabel={displayParam(def, reset)}
+                disabled={disabled || value === reset}
+                onClick={() => onChange(reset)}
+              />
+            ) : null}
+            {displayParam(def, value)}
+          </strong>
         </div>
         <div className="volume-param-slider pan-param-slider">
           <div className="volume-param-segments pan-param-segments" aria-hidden="true">
@@ -197,11 +242,20 @@ export function ParamControl({
     const progress = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)));
     const activeSegments = Math.round(progress * VOLUME_SEGMENTS);
     const segmentColor = meter?.color ?? volumeSegmentColor;
+    const reset = isVolumeParam(def) ? resetTarget(def, "volume") : null;
     return (
       <div className={`param-row volume-param${value <= min ? " is-zero" : ""}${disabled ? " readonly" : ""}`}>
         <div className="volume-param-head">
           <ParamLabel def={def} id={id} icon={meter?.labelIcon} />
           <strong className="volume-param-value">
+            {reset != null ? (
+              <ResetValueButton
+                name={def.name}
+                targetLabel={displayParam(def, reset)}
+                disabled={disabled || value === reset}
+                onClick={() => onChange(reset)}
+              />
+            ) : null}
             {meter?.valueIcon ? <Icon name={meter.valueIcon} className="volume-param-value-icon" /> : null}
             {displayParam(def, value)}
           </strong>
