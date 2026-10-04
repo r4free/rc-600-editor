@@ -668,6 +668,12 @@ textarea {
     box-shadow 140ms ease;
 }
 
+.audio-transport.is-bare {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
 .audio-transport.is-playing {
   border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
   box-shadow: 0 4px 18px color-mix(in srgb, var(--ok) 12%, transparent);
@@ -1064,6 +1070,22 @@ textarea {
   background: var(--track-color);
   border-color: var(--track-color);
   color: var(--bg-chain);
+}
+
+.audio-icon-btn.playback.is-loop:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ok) 60%, var(--line));
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
+  color: var(--ok);
+}
+
+.audio-icon-btn.playback.is-one-shot:not(:disabled) {
+  border-color: color-mix(in srgb, var(--warn) 70%, var(--line));
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
+
+.audio-icon-btn.playback:hover:not(:disabled) {
+  filter: brightness(1.15);
 }
 
 .audio-icon-btn.danger:hover:not(:disabled) {

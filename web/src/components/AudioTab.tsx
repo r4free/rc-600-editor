@@ -36,6 +36,13 @@ type TrackPlayer = {
   startedAt: number;
 };
 
+function playerPosition(player: TrackPlayer, now: number): number {
+  const duration = player.buffer.duration;
+  const pos = player.offsetSec + (now - player.startedAt);
+  if (player.source.loop && duration > 0) return pos % duration;
+  return Math.min(duration, pos);
+}
+
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
@@ -77,6 +84,13 @@ export function AudioTab({
   const buffersRef = useRef<Map<number, AudioBuffer>>(new Map());
   const positionsRef = useRef(positions);
   positionsRef.current = positions;
+  /** Tracks whose Playback (tag B, 1 Shot) is Loop. */
+  const loopTracks = new Set<number>(
+    TRACK_NOS.filter((n) => Number(model.tracks[n - 1]?.B ?? 0) === 0),
+  );
+  const loopTracksRef = useRef(loopTracks);
+  loopTracksRef.current = loopTracks;
+  const loopKey = [...loopTracks].join(",");
 
   const folderReady = Boolean(dirHandle);
 
@@ -149,6 +163,19 @@ export function AudioTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    for (const [track, player] of playersRef.current) {
+      const loop = loopTracksRef.current.has(track);
+      if (player.source.loop === loop) continue;
+      // Rebase so the playhead stays correct after the loop flag flips mid-playback.
+      player.offsetSec = playerPosition(player, ctx.currentTime);
+      player.startedAt = ctx.currentTime;
+      player.source.loop = loop;
+    }
+  }, [loopKey]);
+
   // Animate playheads
   useEffect(() => {
     if (playingTracks.size === 0) return;
@@ -160,10 +187,7 @@ export function AudioTab({
         const next = [...prev];
         let changed = false;
         for (const [track, player] of playersRef.current) {
-          const pos = Math.min(
-            player.buffer.duration,
-            player.offsetSec + (ctx.currentTime - player.startedAt),
-          );
+          const pos = playerPosition(player, ctx.currentTime);
           const i = track - 1;
           if (Math.abs((next[i] ?? 0) - pos) > 0.05) {
             next[i] = pos;
@@ -204,10 +228,7 @@ export function AudioTab({
     }
     const ctx = audioCtxRef.current;
     if (ctx && !keepPosition) {
-      const pos = Math.min(
-        player.buffer.duration,
-        player.offsetSec + (ctx.currentTime - player.startedAt),
-      );
+      const pos = playerPosition(player, ctx.currentTime);
       setPositions((prev) => {
         const next = [...prev];
         next[track - 1] = pos;
@@ -222,6 +243,11 @@ export function AudioTab({
     }
     playersRef.current.delete(track);
     setPlaying(track, false);
+  }
+
+  function toggleLoop(track: number) {
+    const loop = loopTracksRef.current.has(track);
+    onPatch({ type: "track", track, tags: { B: loop ? "1" : "0" } });
   }
 
   function stopTrack(track: number) {
@@ -325,6 +351,7 @@ export function AudioTab({
     const clipped = Math.max(0, Math.min(offsetSec, Math.max(0, buffer.duration - 0.01)));
     const src = ctx.createBufferSource();
     src.buffer = buffer;
+    src.loop = loopTracksRef.current.has(track);
     src.connect(ctx.destination);
     src.onended = () => {
       const cur = playersRef.current.get(track);
@@ -578,18 +605,13 @@ export function AudioTab({
         </p>
       ) : null}
 
-      {waveProbe?.waveOk ? (
-        <p className="hint audio-folder-hint" role="status">
-          <Icon name="folderOpen" size={14} /> Folder “{waveProbe.rootName}” connected
-          {wavInfos.some(Boolean) ? " — WAVE files ready to play." : "."}
-        </p>
-      ) : null}
-
       {localError && !(waveProbe && !waveProbe.waveOk && waveProbe.message === localError) ? (
         <p className="error">{localError}</p>
       ) : null}
 
-      <div className={`audio-transport${anyPlaying ? " is-playing" : ""}`}>
+      <div
+        className={`audio-transport${anyPlaying ? " is-playing" : ""}${folderReady ? "" : " is-bare"}`}
+      >
         {folderReady ? (
           <>
             <div className="audio-transport-buttons" role="group" aria-label="All tracks">
@@ -652,6 +674,7 @@ export function AudioTab({
           const wav = wavInfos[n - 1] ?? null;
           const busy = busyTracks.has(n);
           const playing = playingTracks.has(n);
+          const looping = loopTracks.has(n);
           const pos = positions[n - 1] ?? 0;
           const writeOk = folderReady && canWrite && !busy;
           const hasFile = Boolean(wav);
@@ -755,6 +778,19 @@ export function AudioTab({
                   onClick={() => stopTrack(n)}
                 >
                   <Icon name="stop" size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={`audio-icon-btn transport playback ${looping ? "is-loop" : "is-one-shot"}`}
+                  title={
+                    looping
+                      ? "Playback: Loop — the track repeats. Click to switch to 1 Shot."
+                      : "Playback: 1 Shot — the track plays once, then stops. Click to switch to Loop."
+                  }
+                  aria-label={`Track ${n} playback: ${looping ? "Loop" : "1 Shot"}`}
+                  onClick={() => toggleLoop(n)}
+                >
+                  <Icon name={looping ? "loop" : "oneShot"} size={17} />
                 </button>
                 <span className="audio-actions-spacer" />
                 <button
