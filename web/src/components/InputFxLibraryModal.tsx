@@ -20,7 +20,9 @@ import {
   upsertUserInputFxPreset,
   type InputFxPreset,
 } from "../presets/inputFxPreset";
+import { captureInputFxPresets, type CaptureMemory } from "../presets/inputFxCapture";
 import { Icon } from "./Icon";
+import { useDemoMode } from "../demoModeContext";
 import type { PatchHandler } from "./LoopTab";
 import { Modal } from "./Modal";
 
@@ -59,6 +61,7 @@ export function InputFxLibraryModal({
   onPatch,
   onClose,
   onOpenEdit,
+  pedalMemories,
 }: {
   model: MemoryModel;
   bank: number;
@@ -66,7 +69,10 @@ export function InputFxLibraryModal({
   onPatch: PatchHandler;
   onClose: () => void;
   onOpenEdit: () => void;
+  pedalMemories?: () => CaptureMemory[];
 }) {
+  const viewOnly = useDemoMode();
+  const [captureStatus, setCaptureStatus] = useState<string | null>(null);
   const [user, setUser] = useState<InputFxPreset[]>(() => loadUserInputFxPresets());
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -140,6 +146,31 @@ export function InputFxLibraryModal({
     setSaveName("");
   }
 
+  function captureFromPedal() {
+    const memories = pedalMemories?.() ?? [];
+    if (!memories.length) {
+      setCaptureStatus("No memories loaded. Open the ROLAND folder from the pedal first.");
+      return;
+    }
+    const result = captureInputFxPresets(memories, user);
+    if (result.added) {
+      setUser(result.presets);
+      saveUserInputFxPresets(result.presets);
+      setSource("user");
+      setCategory("all");
+      setFilter("");
+    }
+    const memLabel = `${result.memories} ${result.memories === 1 ? "memory" : "memories"}`;
+    const dupLabel = result.duplicates
+      ? ` ${result.duplicates} already in My effects or repeated, skipped.`
+      : "";
+    setCaptureStatus(
+      result.added
+        ? `Captured ${result.added} ${result.added === 1 ? "effect" : "effects"} from ${memLabel}.${dupLabel}`
+        : `No new effects in ${memLabel}.${dupLabel}`,
+    );
+  }
+
   function deletePreset(id: string) {
     const next = removeUserInputFxPreset(user, id);
     setUser(next);
@@ -177,14 +208,33 @@ export function InputFxLibraryModal({
       onClose={onClose}
       wide
       className="ifx-library-modal"
-      foot={foot}
+      foot={viewOnly ? undefined : foot}
       actions={
-        <button type="button" className="btn" title="Edit the current effect" onClick={onOpenEdit}>
-          <Icon name="tune" size={14} />
-          Edit
-        </button>
+        <>
+          {pedalMemories && !viewOnly ? (
+            <button
+              type="button"
+              className="btn"
+              title="Read the input effects of every memory on the pedal and save them to My effects. Effects already saved are skipped."
+              onClick={captureFromPedal}
+            >
+              <Icon name="download" size={14} />
+              Capture from pedal
+            </button>
+          ) : null}
+          <button type="button" className="btn" title="Edit the current effect" onClick={onOpenEdit}>
+            <Icon name="tune" size={14} />
+            Edit
+          </button>
+        </>
       }
     >
+      {captureStatus ? (
+        <p className="ifx-library-capture-status" role="status">
+          <Icon name="download" size={14} />
+          {captureStatus}
+        </p>
+      ) : null}
       <div className="ifx-library-head">
         <div className="ifx-library-target">
           <span className="ifx-library-target-slot">
@@ -256,7 +306,7 @@ export function InputFxLibraryModal({
               currentType={currentType}
               loadedId={loadedId}
               onSelect={applyPreset}
-              onDelete={deletePreset}
+              onDelete={viewOnly ? undefined : deletePreset}
             />
           ) : null}
           {visibleFactory.length ? (

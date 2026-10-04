@@ -8,6 +8,7 @@ import {
 } from "../tuner/pitch";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
+import { useDemoMode } from "../demoModeContext";
 
 const TUNER_PREFS_KEY = "rc600.tuner.prefs";
 const ANALYSIS_INTERVAL_MS = 50;
@@ -51,6 +52,7 @@ export function TunerTab({
   onEjectUsb?: () => void;
   onExit: () => void;
 }) {
+  const viewOnly = useDemoMode();
   const initialPrefs = useRef(loadPrefs()).current;
   const [a4, setA4] = useState(initialPrefs.a4);
   const [note, setNote] = useState<DetectedNote | null>(null);
@@ -66,8 +68,8 @@ export function TunerTab({
 
   useEffect(() => {
     a4Ref.current = a4;
-    saveA4(a4);
-  }, [a4]);
+    if (!viewOnly) saveA4(a4);
+  }, [a4, viewOnly]);
 
   const stopAnalysis = useCallback(() => {
     if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);

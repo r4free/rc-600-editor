@@ -9,6 +9,7 @@ import type { DrumPreset, DrumPresetPayload, DrumPresetSource } from "../presets
 import { DEFAULT_KIT_ID, type DrumKit } from "../presets/drumKit";
 import { browserPresetRepository } from "../presets/presetRepository";
 import { Icon } from "./Icon";
+import { useDemoMode } from "../demoModeContext";
 
 const repo = browserPresetRepository();
 
@@ -31,6 +32,7 @@ export function DrumPresetGallery({
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
 }) {
+  const viewOnly = useDemoMode();
   const [native, setNative] = useState<DrumPreset[]>([]);
   const [user, setUser] = useState<DrumPreset[]>([]);
   const [name, setName] = useState("");
@@ -164,9 +166,11 @@ export function DrumPresetGallery({
               />
             </label>
             <span className="drum-preset-gallery-hint">
-              {saveTarget === "native"
-                ? "Development: Save writes the Factory JSON library."
-                : "Production: Save writes My rhythms in this browser."}
+              {viewOnly
+                ? "Demo — choose a rhythm to hear it in this browser. Nothing is saved."
+                : saveTarget === "native"
+                  ? "Development: Save writes the Factory JSON library."
+                  : "Production: Save writes My rhythms in this browser."}
             </span>
           </>
         ) : null}
@@ -215,6 +219,7 @@ export function DrumPresetGallery({
             onSelect={loadPreset}
           />
         </div>
+        {viewOnly ? null : (
         <div className="drum-preset-save-row">
           <label className="drum-pad-field drum-preset-name-field">
             <span>Name</span>
@@ -259,6 +264,7 @@ export function DrumPresetGallery({
           </button>
           {status ? <span className="drum-preset-status">{status}</span> : null}
         </div>
+        )}
       </div>
     </div>
   );

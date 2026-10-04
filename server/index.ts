@@ -32,6 +32,8 @@ import {
   activationPageHtml,
   appShellAllowed,
   decidePaidShell,
+  demoViewAllowed,
+  demoViewCookie,
   isFormActivation,
   isPublicApiPath,
 } from "./shell-gate.js";
@@ -426,7 +428,13 @@ app.post("/api/assemble", requireAccess, async (c) => {
 const distWeb = resolve(process.cwd(), "dist/web");
 
 function sendShellGate(c: Context) {
-  const decision = decidePaidShell(c.req.path, appShellAllowed(c.req.header("cookie")));
+  const cookie = c.req.header("cookie");
+  const decision = decidePaidShell(c.req.path, appShellAllowed(cookie), demoViewAllowed(cookie));
+  if (decision.action === "demo") {
+    c.header("Set-Cookie", demoViewCookie());
+    c.header("Cache-Control", "no-store");
+    return null;
+  }
   if (decision.action === "next") return null;
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");

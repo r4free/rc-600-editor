@@ -21,6 +21,7 @@ import {
   type TrackFxPreset,
 } from "../presets/trackFxPreset";
 import { Icon } from "./Icon";
+import { useDemoMode } from "../demoModeContext";
 import type { PatchHandler } from "./LoopTab";
 import { Modal } from "./Modal";
 
@@ -44,6 +45,7 @@ export function TrackFxLibraryModal({
   onPatch: PatchHandler;
   onClose: () => void;
 }) {
+  const viewOnly = useDemoMode();
   const [user, setUser] = useState<TrackFxPreset[]>(() => loadUserTrackFxPresets());
   const [filter, setFilter] = useState("");
   const [category, setCategory] = useState<"all" | TrackFxCategory>("all");
@@ -161,10 +163,11 @@ export function TrackFxLibraryModal({
           empty="No saved effects yet."
           presets={visibleUser}
           onSelect={applyPreset}
-          onDelete={deletePreset}
+          onDelete={viewOnly ? undefined : deletePreset}
         />
       </div>
 
+      {viewOnly ? null : (
       <div className="ifx-library-save">
         <label className="drum-pad-field">
           <span>Save current as</span>
@@ -181,6 +184,7 @@ export function TrackFxLibraryModal({
           Save current
         </button>
       </div>
+      )}
     </Modal>
   );
 }

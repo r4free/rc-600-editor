@@ -64,23 +64,28 @@ export function usePersistedTab<T extends UiTabValue>(
   key: string,
   fallback: T,
   allowed: readonly T[],
+  options?: { persist?: boolean },
 ): [T, (value: T) => void] {
-  const [value, setValue] = useState<T>(() => readUiTab(key, fallback, allowed));
+  const persist = options?.persist !== false;
+  const [value, setValue] = useState<T>(() =>
+    persist ? readUiTab(key, fallback, allowed) : fallback,
+  );
   const set = useCallback(
     (next: T) => {
       setValue(next);
-      saveUiTab(key, next);
+      if (persist) saveUiTab(key, next);
     },
-    [key],
+    [key, persist],
   );
 
   useEffect(() => {
+    if (!persist) return;
     return subscribeUiTabs((changedKey, next) => {
       if (changedKey !== key) return;
       if (!(allowed as readonly unknown[]).includes(next)) return;
       setValue(next as T);
     });
-  }, [key, allowed]);
+  }, [key, allowed, persist]);
 
   return [value, set];
 }

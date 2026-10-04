@@ -45,6 +45,7 @@ import { DrumKitGallery } from "./DrumKitGallery";
 import { DrumPresetGallery } from "./DrumPresetGallery";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
+import { useDemoMode } from "../demoModeContext";
 
 const PAD_COUNT_OPTIONS = Array.from(
   { length: MAX_PAD_COUNT - MIN_PAD_COUNT + 1 },
@@ -131,6 +132,7 @@ export function PlayDrumTab({
   currentSlot?: number | null;
   onSelectMemory?: (slot: number) => void;
 }) {
+  const viewOnly = useDemoMode();
   const initial = useMemo(() => loadPlayDrumPrefs(), []);
   const kitRepo = useMemo(() => browserKitRepository(), []);
   const [velocity, setVelocity] = useState(initial.velocity);
@@ -235,6 +237,7 @@ export function PlayDrumTab({
   });
 
   useEffect(() => {
+    if (viewOnly) return;
     savePlayDrumPrefs({
       notes: visibleNotes,
       bpm: globalBpm,
@@ -260,6 +263,7 @@ export function PlayDrumTab({
     showPadSettings,
     galleryCollapsed,
     kitGalleryCollapsed,
+    viewOnly,
   ]);
 
   const midiLive = midiLinked && !usbStorageActive;
@@ -398,6 +402,7 @@ export function PlayDrumTab({
   }
 
   async function persistKitIfDirty(): Promise<string> {
+    if (viewOnly) return kitId;
     const listed = await kitRepo.list();
     const all = [...listed.native, ...listed.user];
     setKits(all);
@@ -462,6 +467,10 @@ export function PlayDrumTab({
               </button>
             </>
           ) : null}
+        </p>
+      ) : viewOnly ? (
+        <p className="drum-pad-hint">
+          Demo — pads play in this browser only. Nothing is sent to an RC-600.
         </p>
       ) : !midiLinked ? (
         <p className="drum-pad-hint warn">

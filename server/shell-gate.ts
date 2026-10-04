@@ -10,8 +10,32 @@ export type ShellRequestKind = "api" | "document" | "asset" | "guide";
 
 export type ShellDecision =
   | { action: "next" }
+  | { action: "demo" }
   | { action: "page"; status: 200; html: string }
   | { action: "deny" };
+
+/** Lets the view-only /demo page load its scripts. It is not a license session. */
+export const DEMO_COOKIE = "rc600_demo";
+
+export function demoViewCookie(): string {
+  return `${DEMO_COOKIE}=1; Path=/; Max-Age=86400; SameSite=Lax`;
+}
+
+export function demoViewAllowed(cookieHeader: string | undefined): boolean {
+  if (!cookieHeader) return false;
+  for (const part of cookieHeader.split(";")) {
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf("=");
+    if (eq < 0) continue;
+    if (trimmed.slice(0, eq) !== DEMO_COOKIE) continue;
+    return trimmed.slice(eq + 1) === "1";
+  }
+  return false;
+}
+
+export function isDemoDocument(rawPath: string): boolean {
+  return pathnameOf(rawPath) === "/demo";
+}
 
 const PUBLIC_API = new Set(["/api/health", "/api/session", "/api/license", "/api/lock"]);
 
@@ -80,9 +104,15 @@ export function appShellAllowed(cookieHeader: string | undefined): boolean {
   return verifyLicenseSessionToken(sessionTokenFromCookie(cookieHeader)) != null;
 }
 
-export function decidePaidShell(rawPath: string, sessionOk: boolean): ShellDecision {
+export function decidePaidShell(
+  rawPath: string,
+  sessionOk: boolean,
+  demoOk = false,
+): ShellDecision {
   const kind = shellRequestKind(rawPath);
   if (kind === "api" || kind === "guide" || sessionOk) return { action: "next" };
+  if (isDemoDocument(rawPath)) return { action: "demo" };
+  if (kind === "asset" && demoOk) return { action: "next" };
   if (kind === "document") {
     return { action: "page", status: 200, html: activationPageHtml() };
   }
@@ -178,11 +208,16 @@ export function activationPageHtml(error?: string): string {
       font-size: 0.82rem;
       line-height: 1.5;
     }
+    .intro-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      margin-top: 1.75rem;
+    }
     .guide {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      margin-top: 1.75rem;
       color: #00c7fd;
       font-size: 0.82rem;
       font-weight: 600;
@@ -317,7 +352,10 @@ export function activationPageHtml(error?: string): string {
           </div>
         </div>
       </div>
-      <a class="guide" href="/guia.html" target="_blank" rel="noopener noreferrer">Explore the user guide <span aria-hidden="true">↗</span></a>
+      <p class="intro-links">
+        <a class="guide" href="/demo">View a demo <span aria-hidden="true">↗</span></a>
+        <a class="guide" href="/guia.html" target="_blank" rel="noopener noreferrer">Explore the user guide <span aria-hidden="true">↗</span></a>
+      </p>
     </section>
     <section class="card" aria-labelledby="activation-title">
       <p class="kicker">Already have a license?</p>

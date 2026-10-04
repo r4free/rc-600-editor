@@ -1,6 +1,11 @@
 import type { Plugin } from "vite";
 import { editorSessionAllowed } from "./server/dev-session.js";
-import { decidePaidShell, shellRequestKind } from "./server/shell-gate.js";
+import {
+  decidePaidShell,
+  demoViewAllowed,
+  demoViewCookie,
+  shellRequestKind,
+} from "./server/shell-gate.js";
 
 /** Block editor modules in `npm run ui` when RC600_REQUIRE_LICENSE is on. */
 export function paidShellPlugin(): Plugin {
@@ -16,7 +21,13 @@ export function paidShellPlugin(): Plugin {
         const cookie = typeof req.headers.cookie === "string" ? req.headers.cookie : undefined;
         void editorSessionAllowed(cookie)
           .then((sessionOk) => {
-            const decision = decidePaidShell(url, sessionOk);
+            const decision = decidePaidShell(url, sessionOk, demoViewAllowed(cookie));
+            if (decision.action === "demo") {
+              res.setHeader("Set-Cookie", demoViewCookie());
+              res.setHeader("Cache-Control", "no-store");
+              next();
+              return;
+            }
             if (decision.action === "next") {
               next();
               return;

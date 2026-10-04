@@ -27,6 +27,7 @@ import {
   zipRoland,
 } from "@rc600/files/roland";
 import { copyTrackWavFolder } from "@rc600/files/wave";
+import type { CaptureMemory } from "./presets/inputFxCapture";
 import {
   assembleRemote,
   ejectUsbStorage,
@@ -107,6 +108,8 @@ import { usePersistedTab } from "./uiTabs";
 import { MemoryChainBar } from "./components/MemoryChainView";
 import { NavigationBreadcrumb } from "./components/NavigationBreadcrumb";
 import type { SetlistMidiAction } from "./presets/playlist";
+import { isDemoPage } from "./demoMode";
+import { DemoModeProvider } from "./demoModeContext";
 
 const WORKSPACES = ["memory", "system", "play-drum", "setlists", "tuner"] as const;
 type Workspace = (typeof WORKSPACES)[number];
@@ -150,6 +153,7 @@ function sysSectionTag(
 }
 
 export function App() {
+  const demoMode = isDemoPage();
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [files, setFiles] = useState<Map<string, string>>(new Map());
   const [rootLabel, setRootLabel] = useState<string | null>(null);
@@ -166,8 +170,12 @@ export function App() {
   const [activeSide, setActiveSide] = useState<"a" | "b">("a");
   const [baseXml, setBaseXml] = useState("");
   const [drafts, setDrafts] = useState<DraftMap>(() => new Map());
-  const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS);
-  const [workspace, setWorkspace] = usePersistedTab<Workspace>("workspace", "memory", WORKSPACES);
+  const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS, {
+    persist: !demoMode,
+  });
+  const [workspace, setWorkspace] = usePersistedTab<Workspace>("workspace", "memory", WORKSPACES, {
+    persist: !demoMode,
+  });
   const [setlistBackground, setSetlistBackground] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -217,6 +225,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (demoMode) return;
     let cancelled = false;
     let inFlight = false;
     async function refreshUsb() {
@@ -237,7 +246,7 @@ export function App() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [demoMode]);
 
   const sessionOk = session?.ok === true;
   const requireLicense = session?.requireLicense === true;
@@ -277,6 +286,18 @@ export function App() {
   activeSideRef.current = activeSide;
   const backupAckRef = useRef(backupAck);
   backupAckRef.current = backupAck;
+
+  const pedalMemories = useCallback((): CaptureMemory[] => {
+    const map = filesRef.current;
+    const out: CaptureMemory[] = [];
+    for (const s of listMemorySlots(map)) {
+      const a = map.get(slotFileName(s, "A")) ?? "";
+      const b = map.get(slotFileName(s, "B")) ?? "";
+      const xml = a && b ? pickActiveXml(a, b).xml : a || b;
+      if (xml) out.push({ slot: s, xml });
+    }
+    return out;
+  }, []);
 
   const baseModel: MemoryModel | null = useMemo(() => {
     if (!baseXml || slot == null) return null;
@@ -353,16 +374,20 @@ export function App() {
 
   const pushOps = useCallback(
     (next: PatchOp | PatchOp[]) => {
-      if (slot == null) return;
+      if (demoMode || slot == null) return;
       setDrafts((prev) => appendSlotDraft(prev, slot, normalizeOps(next)));
     },
-    [slot],
+    [demoMode, slot],
   );
 
-  const pushSysOps = useCallback((next: PatchOp | PatchOp[]) => {
-    setSysOps((prev) => [...prev, ...normalizeOps(next)]);
-    setSysDirty(true);
-  }, []);
+  const pushSysOps = useCallback(
+    (next: PatchOp | PatchOp[]) => {
+      if (demoMode) return;
+      setSysOps((prev) => [...prev, ...normalizeOps(next)]);
+      setSysDirty(true);
+    },
+    [demoMode],
+  );
 
   const applyRolandFiles = useCallback(
     (
@@ -375,19 +400,23 @@ export function App() {
       setBackupAck(opts?.backupAck ?? false);
       setPendingHandle(null);
       setDrafts(new Map());
-      setStatus(`${map.size} files · ${label}`);
+      setStatus(demoMode ? "" : `${map.size} files · ${label}`);
       const slotsNow = listMemorySlots(map);
       const preferred = opts?.preferredSlot;
       const first = preferred && slotsNow.includes(preferred) ? preferred : slotsNow[0];
       if (first) loadSlot(first, map);
       if (hasSystem(map)) loadSystem(map);
     },
-    [loadSlot, loadSystem],
+    [demoMode, loadSlot, loadSystem],
   );
   const applyRolandFilesRef = useRef(applyRolandFiles);
   applyRolandFilesRef.current = applyRolandFiles;
 
   useEffect(() => {
+    if (demoMode) {
+      setFolderReady(true);
+      return;
+    }
     let cancelled = false;
     async function restoreFolder() {
       try {
@@ -437,7 +466,12 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [demoMode]);
+
+  useEffect(() => {
+    if (!demoMode) return;
+    void loadDemoFixtures();
+  }, [demoMode]);
 
   async function attachDirectoryHandle(handle: DirectoryHandleLike, label: string | null) {
     dirHandleRef.current = handle;
@@ -944,6 +978,7 @@ export function App() {
 
   const requestMidi = useCallback(
     async (autoConnect = false) => {
+      if (demoMode) return;
       setMidiBusy(true);
       try {
         const ports = await midiRef.current.requestAccess();
@@ -956,12 +991,12 @@ export function App() {
         setMidiBusy(false);
       }
     },
-    [applyMidiPorts],
+    [applyMidiPorts, demoMode],
   );
 
   const playDrumNotes = useCallback(
     (notes: readonly number[], velocity: number, down: boolean) => {
-      if (dirHandleRef.current) return;
+      if (demoMode || dirHandleRef.current) return;
       if (!midiRef.current.connectedName && outId) {
         midiRef.current.channel = midiCh;
         midiRef.current.listenChannels = sendChannels;
@@ -974,7 +1009,7 @@ export function App() {
         }
       }
     },
-    [midiCh, outId, sendChannels],
+    [demoMode, midiCh, outId, sendChannels],
   );
 
   const silenceRhythm = useCallback(() => {
@@ -1181,7 +1216,7 @@ export function App() {
   }, [loadSlot, midiCh, outId, sendChannels]);
 
   useEffect(() => {
-    if (!env.supported) return;
+    if (demoMode || !env.supported) return;
     let cancelled = false;
     let status: PermissionStatus | undefined;
     const onPermissionChange = () => {
@@ -1217,7 +1252,7 @@ export function App() {
       cancelled = true;
       status?.removeEventListener("change", onPermissionChange);
     };
-  }, [env.supported]);
+  }, [demoMode, env.supported]);
 
   useEffect(() => {
     if (!hasDirHandle || slot == null) return;
@@ -1252,7 +1287,9 @@ export function App() {
     );
   }
 
-  if (requireLicense && !sessionOk) {
+  const showDemoFixtures = !demoMode && session.license == null;
+
+  if (requireLicense && !sessionOk && !demoMode) {
     return (
       <div className="app">
         <header className="topbar">
@@ -1268,12 +1305,14 @@ export function App() {
   }
 
   return (
-    <div className="app">
+    <DemoModeProvider enabled={demoMode}>
+    <div className={`app${demoMode ? " demo-mode" : ""}`}>
       <header className="topbar">
         <div className="topbar-start">
           <div className="brand">
             <div className="brand-row">
               <PlatformSelect current="rc-600" />
+              {demoMode ? null : (
               <MidiBar
                 env={env}
                 outputs={outputs}
@@ -1298,6 +1337,7 @@ export function App() {
                 channel={midiCh}
                 onChannel={setMidiCh}
               />
+              )}
             </div>
           </div>
         </div>
@@ -1305,6 +1345,12 @@ export function App() {
           <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
             <Icon name="help" size={14} /> Guide
           </a>
+          {demoMode ? (
+            <a className="btn primary" href="/" style={{ textDecoration: "none" }}>
+              {session.license || !requireLicense ? "Open editor" : "Get a license"}
+            </a>
+          ) : null}
+          {demoMode ? null : (
           <button
             type="button"
             className="btn primary"
@@ -1314,9 +1360,13 @@ export function App() {
             <Icon name="folderOpen" size={14} />
             Open folder
           </button>
+          )}
+          {showDemoFixtures ? (
           <button type="button" className="btn" onClick={loadDemoFixtures}>
             Demo fixtures
           </button>
+          ) : null}
+          {demoMode ? null : (
           <label
             className="btn"
             title="Load a ROLAND folder from disk without writing back. After Save, use Export ZIP to copy the files onto the pedal."
@@ -1332,6 +1382,8 @@ export function App() {
               onChange={(e) => openFiles(e.target.files)}
             />
           </label>
+          )}
+          {demoMode ? null : (
           <label
             className="btn"
             title="Load a ZIP backup of the ROLAND folder. After Save, use Export ZIP to copy the files onto the pedal."
@@ -1345,6 +1397,8 @@ export function App() {
               onChange={(e) => openZip(e.target.files?.[0] ?? null)}
             />
           </label>
+          )}
+          {demoMode ? null : (
           <button
             type="button"
             className="btn"
@@ -1355,7 +1409,8 @@ export function App() {
             <Icon name="download" size={14} />
             Export ZIP
           </button>
-          {hasDirHandle || usbVolumePresent ? (
+          )}
+          {demoMode ? null : hasDirHandle || usbVolumePresent ? (
             <button
               type="button"
               className="btn"
@@ -1378,6 +1433,7 @@ export function App() {
               Connect to USB
             </button>
           )}
+          {demoMode ? null : (
           <div
             className={`topbar-save-actions${anyMemoryDirty || sysDirty ? " has-pending" : ""}`}
             aria-label="Save and discard changes"
@@ -1419,7 +1475,8 @@ export function App() {
               Discard all
             </button>
           </div>
-          {requireLicense ? (
+          )}
+          {!demoMode && requireLicense ? (
             <button
               type="button"
               className="btn ghost"
@@ -1448,7 +1505,7 @@ export function App() {
                 Unsaved memories
               </span>
             ) : null}
-            {rootLabel ?? "no folder"}
+            {demoMode ? "Demo · view only" : (rootLabel ?? "no folder")}
             {session.license
               ? session.license.expiresAt
                 ? ` · license until ${session.license.expiresAt.slice(0, 10)}`
@@ -1461,9 +1518,18 @@ export function App() {
         </div>
       </header>
 
-      {env.blockReason === "ios" ? <IosMidiNotice /> : null}
+      {demoMode ? (
+        <div className="warn-banner demo-banner">
+          <p>
+            This is a view-only demo. Sample memories are loaded so you can look through Memory,
+            System, Play Drum, Setlists, and Tuner. Nothing here is saved or sent to an RC-600.
+          </p>
+        </div>
+      ) : null}
 
-      {!backupAck && files.size > 0 && (
+      {!demoMode && env.blockReason === "ios" ? <IosMidiNotice /> : null}
+
+      {!demoMode && !backupAck && files.size > 0 && (
         <div className="warn-banner">
           <p>
             Back up the ROLAND folder before writing to the looper. Saves patch .RC0 files in place
@@ -1484,7 +1550,20 @@ export function App() {
         </div>
       )}
 
-      {files.size === 0 ? (
+      {demoMode && files.size === 0 ? (
+        <div className="main">
+          <section className="editor-panel">
+            <div className="empty-state">
+              <h2>{error ? "Demo could not load" : "Loading demo"}</h2>
+              <p>
+                {error
+                  ? "Sample memories could not be opened. Refresh the page to try again."
+                  : "Sample memories and system settings are opening."}
+              </p>
+            </div>
+          </section>
+        </div>
+      ) : files.size === 0 ? (
         <div className="main">
           <section className="editor-panel">
             <div className="tabs tabs-workspace" role="tablist" aria-label="Workspace">
@@ -1638,9 +1717,11 @@ export function App() {
                   <Icon name="folderOpen" size={14} />
                   Open ROLAND folder
                 </button>
+                {showDemoFixtures ? (
                 <button type="button" className="btn" onClick={() => void loadDemoFixtures()}>
                   Load demo fixtures
                 </button>
+                ) : null}
               </div>
             </>
           )}
@@ -1710,6 +1791,7 @@ export function App() {
                   <span className="status-pill" style={{ marginLeft: "auto" }}>
                     SYSTEM{sysSide} · count {systemModel?.count ?? "—"}
                   </span>
+                  {demoMode ? null : (
                   <button
                     type="button"
                     className="btn warn"
@@ -1719,6 +1801,7 @@ export function App() {
                     <Icon name="save" size={14} />
                     Save system
                   </button>
+                  )}
                 </>
               ) : null}
             </div>
@@ -1771,6 +1854,7 @@ export function App() {
                   <div className="sidebar-head">
                     <span>Memories ({slots.length})</span>
                   </div>
+                  {demoMode ? null : (
                   <div className="sidebar-copy-actions">
                     <button
                       type="button"
@@ -1797,7 +1881,8 @@ export function App() {
                       Mass Apply
                     </button>
                   </div>
-                  {memoryClipboard ? (
+                  )}
+                  {!demoMode && memoryClipboard ? (
                     <p className="sidebar-clipboard-hint" title={memoryClipboard.summary}>
                       Clipboard: {String(memoryClipboard.sourceSlot).padStart(2, "0")} ·{" "}
                       {memoryClipboard.summary}
@@ -1809,7 +1894,7 @@ export function App() {
                     value={slot ?? ""}
                     onChange={(e) => {
                       const next = Number(e.target.value);
-                      if (Number.isFinite(next) && next > 0) loadSlot(next, files, { syncPedal: true });
+                      if (Number.isFinite(next) && next > 0) loadSlot(next, files, { syncPedal: !demoMode });
                     }}
                   >
                     {slot == null ? (
@@ -1845,7 +1930,7 @@ export function App() {
                                 ? `Memory ${String(s.slot).padStart(2, "0")} ${s.name || ""}, unsaved changes`
                                 : undefined
                             }
-                            onClick={() => loadSlot(s.slot, files, { syncPedal: true })}
+                            onClick={() => loadSlot(s.slot, files, { syncPedal: !demoMode })}
                           >
                             <span className="slot">{String(s.slot).padStart(2, "0")}</span>
                             <span className="name">{s.name || "—"}</span>
@@ -1962,7 +2047,7 @@ export function App() {
                     {tab === "mixer" && model ? <MixerTab model={model} onPatch={pushOps} /> : null}
 
                     {tab === "ifx" && model ? (
-                      <InputFxTab model={model} onPatch={pushOps} />
+                      <InputFxTab model={model} onPatch={pushOps} pedalMemories={pedalMemories} />
                     ) : null}
 
                     {tab === "tfx" && model ? (
@@ -2114,5 +2199,6 @@ export function App() {
         </div>
       ) : null}
     </div>
+    </DemoModeProvider>
   );
 }

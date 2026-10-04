@@ -10,6 +10,9 @@ import {
   activationPageHtml,
   appShellAllowed,
   decidePaidShell,
+  demoViewAllowed,
+  demoViewCookie,
+  isDemoDocument,
   isFormActivation,
   isPublicApiPath,
   shellRequestKind,
@@ -46,6 +49,8 @@ describe("shell gate", () => {
     assert.match(html, /Your RC-600, easier to organize/);
     assert.match(html, /Shape every memory/);
     assert.match(html, /action="\/api\/license"/);
+    assert.match(html, /href="\/demo"/);
+    assert.match(html, /View a demo/);
     assert.match(html, /href="\/guia.html"/);
     assert.match(html, /Get a license/);
     assert.match(html, /https:\/\/buy\.stripe\.com\/cNicN62zPgLL38J8O94Ni00/);
@@ -81,12 +86,24 @@ describe("shell gate", () => {
     assert.equal(appShellAllowed(undefined), false);
     assert.equal(appShellAllowed(`rc600_session=${token}`), true);
     assert.equal(decidePaidShell("/", false).action, "page");
+    assert.equal(isDemoDocument("/demo"), true);
+    assert.equal(isDemoDocument("/demo/"), true);
+    assert.equal(decidePaidShell("/demo", false).action, "demo");
     assert.equal(decidePaidShell("/assets/app.js", false).action, "deny");
+    assert.equal(decidePaidShell("/assets/app.js", false, true).action, "next");
+    assert.equal(demoViewAllowed(undefined), false);
+    assert.equal(demoViewAllowed("rc600_demo=1"), true);
+    assert.equal(decidePaidShell("/", false, true).action, "page");
     assert.equal(decidePaidShell("/assets/app.js", true).action, "next");
 
     const app = new Hono();
     app.use("*", async (c, next) => {
-      const decision = decidePaidShell(c.req.path, appShellAllowed(c.req.header("cookie")));
+      const cookie = c.req.header("cookie");
+      const decision = decidePaidShell(c.req.path, appShellAllowed(cookie), demoViewAllowed(cookie));
+      if (decision.action === "demo") {
+        c.header("Set-Cookie", demoViewCookie());
+        return next();
+      }
       if (decision.action === "next") return next();
       c.header("Cache-Control", "no-store");
       if (decision.action === "page") return c.html(decision.html, 200);
@@ -104,6 +121,7 @@ describe("shell gate", () => {
     });
     app.get("/assets/app.js", (c) => c.text("window.SECRET_EDITOR=1"));
     app.get("/guia.html", (c) => c.text("USER_GUIDE"));
+    app.get("/demo", (c) => c.html('<script type="module" src="/assets/app.js"></script>'));
     app.get("/", (c) => c.html('<script type="module" src="/assets/app.js"></script>'));
 
     const locked = await app.request("http://localhost/");
@@ -117,6 +135,23 @@ describe("shell gate", () => {
     const asset = await app.request("http://localhost/assets/app.js");
     assert.equal(asset.status, 404);
     assert.equal(await asset.text(), "");
+
+    const demo = await app.request("http://localhost/demo");
+    assert.equal(demo.status, 200);
+    assert.match(await demo.text(), /type="module"/);
+    assert.match(demo.headers.get("set-cookie") ?? "", /rc600_demo=1/);
+
+    const demoAsset = await app.request("http://localhost/assets/app.js", {
+      headers: { cookie: "rc600_demo=1" },
+    });
+    assert.equal(demoAsset.status, 200);
+
+    const stillLocked = await app.request("http://localhost/", {
+      headers: { cookie: "rc600_demo=1" },
+    });
+    const stillLockedHtml = await stillLocked.text();
+    assert.match(stillLockedHtml, /Welcome back/);
+    assert.equal(stillLockedHtml.includes("SECRET_EDITOR"), false);
 
     const guide = await app.request("http://localhost/guia.html");
     assert.equal(guide.status, 200);

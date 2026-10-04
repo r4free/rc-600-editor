@@ -3,6 +3,7 @@ import { MAX_PAD_COUNT, MIN_PAD_COUNT, clampPadCount } from "../drumMap";
 import type { DrumKit, DrumKitSource } from "../presets/drumKit";
 import { browserKitRepository } from "../presets/kitRepository";
 import { Icon } from "./Icon";
+import { useDemoMode } from "../demoModeContext";
 
 const repo = browserKitRepository();
 
@@ -32,6 +33,7 @@ export function DrumKitGallery({
   onPadCountChange: (padCount: number) => void;
   onSaved?: (kit: DrumKit) => void;
 }) {
+  const viewOnly = useDemoMode();
   const [native, setNative] = useState<DrumKit[]>([]);
   const [user, setUser] = useState<DrumKit[]>([]);
   const [name, setName] = useState(kit.name);
@@ -183,6 +185,7 @@ export function DrumKitGallery({
           />
         </div>
         <div className="drum-preset-save-row">
+          {viewOnly ? null : (
           <label className="drum-pad-field drum-preset-name-field">
             <span>Name</span>
             <input
@@ -194,6 +197,7 @@ export function DrumKitGallery({
               onChange={(e) => setName(e.target.value)}
             />
           </label>
+          )}
           <label className="drum-pad-field drum-preset-pads-field">
             <span>Pads</span>
             <select
@@ -208,6 +212,8 @@ export function DrumKitGallery({
               ))}
             </select>
           </label>
+          {viewOnly ? null : (
+          <>
           <button type="button" className="btn" disabled={busy} onClick={() => void saveCurrent()}>
             <Icon name="save" />
             Save kit
@@ -221,6 +227,8 @@ export function DrumKitGallery({
             <Icon name="close" />
             Delete
           </button>
+          </>
+          )}
           {status ? <span className="drum-preset-status">{status}</span> : null}
         </div>
       </div>

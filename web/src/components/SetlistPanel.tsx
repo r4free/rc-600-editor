@@ -20,6 +20,8 @@ import {
 import { userSetlistStore } from "../presets/userPlaylistStore";
 import { scoreAssetStore } from "../setlists/scoreAssetStore";
 import { Icon } from "./Icon";
+import { demoSetlist } from "../demoMode";
+import { useDemoMode } from "../demoModeContext";
 import { SetlistSongMusicEditor } from "./SetlistSongMusicEditor";
 import { SetlistChartViewer } from "./SetlistChartViewer";
 import { VoiceToneMonitor } from "./VoiceToneMonitor";
@@ -91,7 +93,10 @@ export function SetlistPanel({
   onBackgroundPlaybackChange?: (active: boolean) => void;
   onRequestShowSetlists?: () => void;
 }) {
-  const [setlists, setSetlists] = useState<Setlist[]>(() => userSetlistStore.list());
+  const viewOnly = useDemoMode();
+  const [setlists, setSetlists] = useState<Setlist[]>(() =>
+    viewOnly ? [demoSetlist()] : userSetlistStore.list(),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(() => setlists[0]?.id ?? null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -189,7 +194,7 @@ export function SetlistPanel({
 
   function handleKeepPlayingChange(next: boolean) {
     setKeepPlaying(next);
-    writeKeepPlayingPreference(next);
+    if (!viewOnly) writeKeepPlayingPreference(next);
     if (!next) {
       clearBackgroundSession();
       return;
@@ -228,6 +233,10 @@ export function SetlistPanel({
   }
 
   function commit(next: Setlist[]) {
+    if (viewOnly) {
+      setSetlists(next);
+      return;
+    }
     userSetlistStore.replace(next);
     setSetlists(next);
     const referenced = new Set(next.flatMap((setlist) =>
@@ -449,8 +458,9 @@ export function SetlistPanel({
         <div className="playlist-panel-head">
           <div>
             <span className="playlist-eyebrow">Setlists</span>
-            <strong>Choose a setlist to perform</strong>
+            <strong>{viewOnly ? "Sample setlist" : "Choose a setlist to perform"}</strong>
           </div>
+          {viewOnly ? null : (
           <div className="setlist-panel-actions">
             <input
               ref={fileRef}
@@ -473,6 +483,7 @@ export function SetlistPanel({
               New setlist
             </button>
           </div>
+          )}
         </div>
 
         {setlists.length ? (
@@ -504,6 +515,7 @@ export function SetlistPanel({
                     </small>
                   </div>
                   <div className="setlist-card-actions" onClick={(event) => event.stopPropagation()}>
+                    {viewOnly ? null : (
                     <button
                       type="button"
                       className="btn ghost"
@@ -513,6 +525,7 @@ export function SetlistPanel({
                     >
                       <Icon name="edit" />
                     </button>
+                    )}
                     <button
                       type="button"
                       className="btn primary"

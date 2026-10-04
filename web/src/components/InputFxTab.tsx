@@ -13,6 +13,7 @@ import {
 } from "@rc600/catalog/params";
 import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import type { PatchOp } from "@rc600/rc0/ops";
+import type { CaptureMemory } from "../presets/inputFxCapture";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { InputFxEditModal } from "./InputFxEditModal";
@@ -154,6 +155,7 @@ export function InputFxTab({
   backupAck,
   saving,
   onCopyToMemories,
+  pedalMemories,
 }: {
   model: MemoryModel;
   onPatch: PatchHandler;
@@ -162,6 +164,7 @@ export function InputFxTab({
   backupAck?: boolean;
   saving?: boolean;
   onCopyToMemories?: (targets: number[]) => void | Promise<void>;
+  pedalMemories?: () => CaptureMemory[];
 }) {
   const [page, setPage] = usePersistedTab<IfxPage>("ifx", "setup", IFX_PAGES);
   const [copyTargets, setCopyTargets] = useState<Set<number>>(() => new Set());
@@ -387,6 +390,7 @@ export function InputFxTab({
           bank={bank}
           slot={librarySlot}
           onPatch={onPatch}
+          pedalMemories={pedalMemories}
           onClose={() => setLibrarySlot(null)}
           onOpenEdit={() => {
             setEditSlot(librarySlot);
