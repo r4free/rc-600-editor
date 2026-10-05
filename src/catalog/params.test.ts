@@ -33,7 +33,9 @@ import {
   TRACK_PARAMS,
   assignSourceLabel,
   bitOn,
+  ctlFunctionCategory,
   ctlFunctionLabel,
+  expFunctionCategory,
   displayParam,
   expFunctionLabel,
   fxSlotSection,
@@ -150,6 +152,17 @@ describe("ctl func catalog", () => {
     assert.equal(ctlFunctionLabel(Number(mode1[8].A)), "ALL START/STOP2");
   });
 
+  it("groups expression functions by what the pedal controls", () => {
+    assert.equal(expFunctionCategory(0), "Off");
+    assert.equal(expFunctionCategory(1), "Level 1");
+    assert.equal(expFunctionCategory(7), "Level 2");
+    assert.equal(expFunctionCategory(13), "Current Track");
+    assert.equal(expFunctionCategory(15), "Tempo");
+    assert.equal(expFunctionCategory(17), "Input FX");
+    assert.equal(expFunctionCategory(22), "Track FX");
+    assert.equal(expFunctionCategory(27), "Rhythm");
+  });
+
   it("maps EXP defaults IN FX CUR / TR FX CUR", () => {
     const mem = parseMemory(xml, 1);
     assert.equal(expFunctionLabel(Number(mem.ectlExp[0].A)), "IN FX CUR CTL");
@@ -163,6 +176,25 @@ describe("ctl func catalog", () => {
     assert.equal(ctlFunctionLabel(30), "TRK2 REC/PLAY4");
     assert.equal(ctlFunctionLabel(56), "TRK3 REC/PLAY4");
     assert.equal(ctlFunctionLabel(186), "ALL START/STOP1");
+  });
+
+  it("groups CTL FUNC values the way the pedal list is organized", () => {
+    assert.equal(ctlFunctionCategory(0), "Off");
+    assert.equal(ctlFunctionCategory(1), "Track 1");
+    assert.equal(ctlFunctionCategory(26), "Track 1");
+    assert.equal(ctlFunctionCategory(27), "Track 2");
+    assert.equal(ctlFunctionCategory(156), "Track 6");
+    assert.equal(ctlFunctionCategory(157), "Current Track");
+    assert.equal(ctlFunctionCategory(185), "Current Track");
+    assert.equal(ctlFunctionCategory(186), "All Tracks");
+    assert.equal(ctlFunctionCategory(190), "Tempo");
+    assert.equal(ctlFunctionCategory(193), "Pedal Mode");
+    assert.equal(ctlFunctionCategory(195), "Input FX");
+    assert.equal(ctlFunctionCategory(201), "Track FX");
+    assert.equal(ctlFunctionCategory(207), "Rhythm");
+    assert.equal(ctlFunctionCategory(210), "Memory");
+    assert.equal(ctlFunctionCategory(213), "Mic");
+    assert.equal(ctlFunctionCategory(216), "Indicator");
   });
 });
 

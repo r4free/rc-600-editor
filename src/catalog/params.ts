@@ -2222,6 +2222,23 @@ export function ctlFunctionInfo(v: number): string | undefined {
   return CTL_FUNCTIONS.find((f) => f.value === v)?.info;
 }
 
+/** List group for a CTL FUNC value. Each track block is 26 functions. */
+export function ctlFunctionCategory(value: number): string {
+  if (value <= 0) return "Off";
+  if (value <= 156) return `Track ${Math.ceil(value / 26)}`;
+  if (value <= 185) return "Current Track";
+  if (value <= 189) return "All Tracks";
+  if (value <= 192) return "Tempo";
+  if (value <= 194) return "Pedal Mode";
+  if (value <= 200) return "Input FX";
+  if (value <= 206) return "Track FX";
+  if (value <= 209) return "Rhythm";
+  if (value <= 212) return "Memory";
+  if (value <= 215) return "Mic";
+  if (value === 216) return "Indicator";
+  return "Other";
+}
+
 export function ctlFunctionDef(tag: string, name: string, value: number, role?: string): ParamDef {
   const options = ctlFunctionOptions();
   if (!options.some((o) => o.value === value)) options.push({ value, label: `Value ${value}` });
@@ -2292,6 +2309,23 @@ export function expFunctionOptions(): EnumOption[] {
 
 export function expFunctionLabel(v: number): string {
   return EXP_FUNCTIONS.find((f) => f.value === v)?.label ?? String(v);
+}
+
+export function expFunctionInfo(v: number): string | undefined {
+  return EXP_FUNCTIONS.find((f) => f.value === v)?.info;
+}
+
+/** List group for an expression-pedal function. */
+export function expFunctionCategory(value: number): string {
+  if (value <= 0) return "Off";
+  if (value <= 6) return "Level 1";
+  if (value <= 12) return "Level 2";
+  if (value <= 14) return "Current Track";
+  if (value <= 16) return "Tempo";
+  if (value <= 21) return "Input FX";
+  if (value <= 26) return "Track FX";
+  if (value <= 28) return "Rhythm";
+  return "Other";
 }
 
 export function expFunctionDef(tag: string, name: string, value: number): ParamDef {

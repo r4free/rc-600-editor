@@ -1531,6 +1531,73 @@ textarea {
   grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
 }
 
+.ctl-pedal-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.45rem;
+}
+
+.ectl-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.ctl-pedal[data-pedal="7"],
+.ctl-pedal[data-pedal="8"],
+.ctl-pedal[data-pedal="9"] {
+  grid-column: span 2;
+}
+
+.ctl-pedal.play-state-param {
+  min-height: 8.6rem;
+}
+
+.ctl-pedal .play-state-btn {
+  width: 100%;
+  min-width: 0;
+}
+
+.ctl-pedal-fn {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.ctl-pedal .play-state-footer {
+  white-space: normal;
+  text-wrap: balance;
+}
+
+@media (max-width: 800px) {
+  .ctl-pedal-board,
+  .ectl-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.55rem;
+  }
+
+  .ctl-pedal[data-pedal="7"],
+  .ctl-pedal[data-pedal="8"],
+  .ctl-pedal[data-pedal="9"] {
+    grid-column: auto;
+  }
+
+  .ctl-pedal.play-state-param {
+    min-height: 7.2rem;
+  }
+}
+
 .editor-body .hint {
   font-size: 0.78rem;
   color: var(--muted);
