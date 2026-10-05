@@ -2459,7 +2459,7 @@ export const USB_PARAMS: ParamDef[] = [
     min: 0,
     max: 200,
     default: 100,
-    info: "Level of audio coming from the computer into the RC-600 (0–200).",
+    info: "USB input level of audio coming from the computer into the RC-600 (0–200).",
   },
   {
     tag: "E",
@@ -2468,7 +2468,7 @@ export const USB_PARAMS: ParamDef[] = [
     min: 0,
     max: 200,
     default: 100,
-    info: "Level of audio leaving the RC-600 USB port to the computer (0–200).",
+    info: "USB output level of audio leaving the RC-600 to the computer (0–200).",
   },
 ];
 
@@ -2790,6 +2790,58 @@ export function knobFunctionLabel(v: number): string {
 
 export function knobFunctionInfo(v: number): string | undefined {
   return KNOB_FUNCTIONS.find((f) => f.value === v)?.info;
+}
+
+/** List group for a KNOB FUNC value. */
+export function knobFunctionCategory(value: number): string {
+  const label = KNOB_FUNCTIONS.find((fn) => fn.value === value)?.label;
+  if (!label || label === "OFF") return "Off";
+  if (label === "MEMORY") return "Memory";
+  const track = /^TRK(\d) /.exec(label);
+  if (track) return `Track ${track[1]}`;
+  if (
+    label === "DUB MODE" ||
+    label === "AUTO REC" ||
+    label === "BOUNCE" ||
+    label === "CURRENT TRACK" ||
+    label.startsWith("FD TIME")
+  ) {
+    return "Loop";
+  }
+  if (label.startsWith("IN FX")) return "Input FX";
+  if (label.startsWith("TR FX")) return "Track FX";
+  if (
+    label === "RHYTHM LEVEL" ||
+    label === "RHYTHM VARI" ||
+    label === "RHYTHM KIT" ||
+    label === "RHYTHM R.INTRO" ||
+    label === "RHYTHM P.INTRO" ||
+    label === "RHYTHM ENDING"
+  ) {
+    return "Rhythm";
+  }
+  if (/^MIC\d (LEVEL|MUTE)$/.test(label)) return "Mic";
+  if (/^INST\dR? (LEVEL|MUTE)$/.test(label) || /^INST\d GAIN$/.test(label)) return "Inst";
+  if (
+    label === "LOOP LEVEL" ||
+    label === "RHYTHM OUT LEVEL" ||
+    /^(MAIN R|MAIN|SUB1R|SUB1|SUB2R|SUB2|PHONES|MASTER) LEVEL$/.test(label)
+  ) {
+    return "Level";
+  }
+  if (/ EQ /.test(label)) return /^(MAIN|SUB)/.test(label) ? "Output EQ" : "Input EQ";
+  if (label.startsWith("MFX")) return "Master FX";
+  if (/ (COMP|NS)$/.test(label)) return "Dynamics";
+  if (label === "RHYTHM OUT" || label === "INPUT THRU" || label === "PHONES OUT") return "Routing";
+  if (
+    label === "PEDAL MODE" ||
+    label === "DISPLAY MODE" ||
+    label === "LOOP INDICAT" ||
+    label === "ORB INDICAT"
+  ) {
+    return "Setup";
+  }
+  return "Other";
 }
 
 export function knobFunctionDef(tag: string, name: string, value: number): ParamDef {

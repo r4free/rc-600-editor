@@ -3,9 +3,11 @@ import { createPortal } from "react-dom";
 import {
   CTL_FUNCTIONS,
   EXP_FUNCTIONS,
+  KNOB_FUNCTIONS,
   ctlFunctionCategory,
   ctlFunctionLabel,
   expFunctionCategory,
+  knobFunctionCategory,
   type CtlFunction,
 } from "@rc600/catalog/params";
 import { Icon, type IconName } from "./Icon";
@@ -124,6 +126,76 @@ const CTL_CATALOG: FunctionCatalog = {
   order: CATEGORY_ORDER,
   icon: ctlFunctionIcon,
   color: ctlFunctionColor,
+};
+
+const KNOB_CATEGORY_ORDER = [
+  "Off",
+  "Memory",
+  "Track 1",
+  "Track 2",
+  "Track 3",
+  "Track 4",
+  "Track 5",
+  "Track 6",
+  "Loop",
+  "Input FX",
+  "Track FX",
+  "Rhythm",
+  "Mic",
+  "Inst",
+  "Level",
+  "Input EQ",
+  "Dynamics",
+  "Routing",
+  "Output EQ",
+  "Master FX",
+  "Setup",
+  "Other",
+];
+
+function knobFunctionIcon(value: number): IconName {
+  if (value <= 0) return "notesOff";
+  const category = knobFunctionCategory(value);
+  if (category.startsWith("Track") || category === "Loop") return "play";
+  if (category === "Memory") return "scene";
+  if (category === "Input FX" || category === "Track FX" || category === "Master FX") return "mfx";
+  if (category === "Rhythm") return "tempo";
+  if (category === "Mic") return "mic";
+  if (category === "Inst") return "guitar";
+  if (category === "Level") return "master";
+  if (category === "Input EQ" || category === "Output EQ") return "equalizer";
+  if (category === "Dynamics") return "compressor";
+  if (category === "Routing") return "speaker";
+  if (category === "Setup") return "tune";
+  return "controls";
+}
+
+function knobFunctionColor(value: number): string | undefined {
+  if (value <= 0) return undefined;
+  const category = knobFunctionCategory(value);
+  if (category.startsWith("Track ")) return "#34d399";
+  if (category === "Loop") return "#a3e635";
+  if (category === "Memory") return "#818cf8";
+  if (category === "Input FX") return "#22d3ee";
+  if (category === "Track FX") return "#fb923c";
+  if (category === "Rhythm") return "#f472b6";
+  if (category === "Mic") return "#38bdf8";
+  if (category === "Inst") return "#f59e0b";
+  if (category === "Level") return "#2dd4bf";
+  if (category === "Input EQ" || category === "Output EQ") return "#c084fc";
+  if (category === "Dynamics") return "#facc15";
+  if (category === "Routing") return "#94a3b8";
+  if (category === "Master FX") return "#fb7185";
+  if (category === "Setup") return "#a78bfa";
+  return "#94a3b8";
+}
+
+export const KNOB_CATALOG: FunctionCatalog = {
+  functions: KNOB_FUNCTIONS,
+  category: knobFunctionCategory,
+  order: KNOB_CATEGORY_ORDER,
+  icon: knobFunctionIcon,
+  color: knobFunctionColor,
 };
 
 export const EXP_CATALOG: FunctionCatalog = {

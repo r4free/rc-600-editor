@@ -7879,6 +7879,11 @@ button[role="switch"]:focus-visible {
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 75%, transparent);
 }
 
+.param-row.play-state-param.readonly,
+.param-row.play-state-param.readonly .play-state-btn {
+  cursor: default;
+}
+
 .is-dim .play-state-btn .play-state-icon {
   opacity: 0.45;
   filter: none;

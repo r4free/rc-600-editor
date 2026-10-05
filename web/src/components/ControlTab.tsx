@@ -10,7 +10,8 @@ import type { MemoryModel, TagMap } from "@rc600/rc0/memory";
 import { CtlFunctionSelect, EXP_CATALOG, ctlFunctionColor, type FunctionCatalog } from "./CtlFunctionSelect";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
-import { ScrubCard, type PatchHandler } from "./LoopTab";
+import { preferenceView } from "./InputTab";
+import { ScrubCard, TrackStateCard, onOffView, type PatchHandler } from "./LoopTab";
 import { ParamControl } from "./ParamControl";
 
 const CTL_SUBS_WITH_PREF = ["mode1", "mode2", "mode3", "ext", "pref"] as const;
@@ -108,26 +109,30 @@ export function ControlTab({
       </div>
 
       {visibleSub === "pref" && preference ? (
-        <>
-          <h3 className="section-title">{PREF_CTL_GROUP.title}</h3>
-          <div className="param-columns">
-            {PREF_CTL_GROUP.params.map((def) => (
-              <ParamControl
-                key={def.tag}
-                id={`ctl-pref-${def.tag}`}
-                def={def}
-                value={num(preference.tags, def.tag, def.default ?? 0)}
-                onChange={(v) => preference.onChange(def.tag, v)}
-              />
-            ))}
-            <ParamControl
-              id="ctl-pref-allclear"
-              def={PREF_ALL_CLEAR}
-              value={num(preference.tags, PREF_ALL_CLEAR.tag, PREF_ALL_CLEAR.default ?? 0)}
-              onChange={(v) => preference.onChange(PREF_ALL_CLEAR.tag, v)}
+        <div className="track-state-cards" aria-label="Preference">
+          {PREF_CTL_GROUP.params.map((def) => (
+            <TrackStateCard
+              key={def.tag}
+              id={`ctl-pref-${def.tag}`}
+              def={def}
+              view={preferenceView(def.name)}
+              value={num(preference.tags, def.tag, def.default ?? 0)}
+              onChange={(v) => preference.onChange(def.tag, v)}
             />
-          </div>
-        </>
+          ))}
+          <TrackStateCard
+            id="ctl-pref-allclear"
+            def={PREF_ALL_CLEAR}
+            view={onOffView(
+              "All Clear",
+              "trash",
+              "Long-pressing ALL START/STOP does not clear the tracks.",
+              "Long-pressing ALL START/STOP clears all tracks.",
+            )}
+            value={num(preference.tags, PREF_ALL_CLEAR.tag, PREF_ALL_CLEAR.default ?? 0)}
+            onChange={(v) => preference.onChange(PREF_ALL_CLEAR.tag, v)}
+          />
+        </div>
       ) : null}
 
       {modeNo ? (

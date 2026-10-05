@@ -352,6 +352,7 @@ export function TrackStateCard({
   value,
   onChange,
   group,
+  disabled = false,
 }: {
   id: string;
   def: ParamDef;
@@ -360,6 +361,8 @@ export function TrackStateCard({
   onChange: (v: number) => void;
   /** Shown above the parameter label, e.g. "Bank A". */
   group?: string;
+  /** Shown, but clicks do not change the value. */
+  disabled?: boolean;
 }) {
   const { states } = view;
   const index = value >= 0 && value < states.length ? value : 0;
@@ -371,9 +374,10 @@ export function TrackStateCard({
     : undefined;
   return (
     <div
-      className={`param-row play-state-param is-${view.variant} is-v${index}${state.alert ? " is-alert" : ""}${state.dim ? " is-dim" : ""}${group ? " has-footer" : ""}`}
+      className={`param-row play-state-param is-${view.variant} is-v${index}${state.alert ? " is-alert" : ""}${state.dim ? " is-dim" : ""}${group ? " has-footer" : ""}${disabled ? " readonly" : ""}`}
       style={style}
       onClick={(e) => {
+        if (disabled) return;
         if ((e.target as HTMLElement).closest("button, .param-label")) return;
         onChange(nextValue);
       }}
@@ -388,9 +392,12 @@ export function TrackStateCard({
         role={binary ? "switch" : undefined}
         className="play-state-btn"
         aria-checked={binary ? index === 1 : undefined}
+        aria-disabled={disabled || undefined}
         aria-label={`${def.name}: ${state.text}`}
-        title={`${state.title} Click for ${states[nextValue].text}.`}
-        onClick={() => onChange(nextValue)}
+        title={disabled ? state.title : `${state.title} Click for ${states[nextValue].text}.`}
+        onClick={() => {
+          if (!disabled) onChange(nextValue);
+        }}
       >
         <Icon name={state.icon} className="play-state-icon" />
         <span className="play-state-text">{state.text}</span>

@@ -42,6 +42,8 @@ import {
   inputEqChannelLabel,
   inputEqLinkPartner,
   inputFxInsertDef,
+  KNOB_FUNCTIONS,
+  knobFunctionCategory,
   knobFunctionLabel,
   measureLabel,
   outputEqChannelLabel,
@@ -492,6 +494,24 @@ describe("system SETUP / COLOR catalog", () => {
     assert.equal(knobFunctionLabel(116), "RHYTHM LEVEL");
     assert.equal(knobFunctionLabel(118), "RHYTHM KIT");
     assert.equal(knobFunctionLabel(300), "MFX REVERB");
+    assert.equal(knobFunctionCategory(0), "Off");
+    assert.equal(knobFunctionCategory(1), "Memory");
+    assert.equal(knobFunctionCategory(116), "Rhythm");
+    assert.equal(knobFunctionCategory(300), "Master FX");
+    const named = (label: string) => KNOB_FUNCTIONS.find((fn) => fn.label === label)!.value;
+    assert.equal(knobFunctionCategory(named("TRK1 REVERSE")), "Track 1");
+    assert.equal(knobFunctionCategory(named("TRK6 BNC IN")), "Track 6");
+    assert.equal(knobFunctionCategory(named("IN FX A PRM1")), "Input FX");
+    assert.equal(knobFunctionCategory(named("TR FX D SW MODE")), "Track FX");
+    assert.equal(knobFunctionCategory(named("MIC1 EQ LM F")), "Input EQ");
+    assert.equal(knobFunctionCategory(named("MAINL EQ SW")), "Output EQ");
+    assert.equal(knobFunctionCategory(named("PHONES LEVEL")), "Level");
+    assert.equal(knobFunctionCategory(named("RHYTHM OUT")), "Routing");
+    assert.equal(knobFunctionCategory(named("LOOP INDICAT")), "Setup");
+    assert.deepEqual(
+      KNOB_FUNCTIONS.filter((fn) => knobFunctionCategory(fn.value) === "Other").map((fn) => fn.label),
+      [],
+    );
   });
 
   it("uses LOOP STATUS COLOR enums (Off…White)", () => {
