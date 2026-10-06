@@ -38,6 +38,7 @@ import {
   isPublicApiPath,
 } from "./shell-gate.js";
 import { fulfillStripeCheckout, paidLicensePageHtml } from "./stripe-license.js";
+import { devLicenseIssuerAllowed, issueLocalLicense } from "./dev-license.js";
 
 try {
   process.loadEnvFile?.();
@@ -47,6 +48,15 @@ try {
 const app = new Hono();
 
 app.use("/api/*", async (c, next) => {
+  if (c.req.path === "/api/dev/licenses") {
+    const allowed = devLicenseIssuerAllowed(
+      process.env,
+      c.req.header("host"),
+      c.req.header("x-forwarded-host"),
+    );
+    if (!allowed) return c.json({ error: "Not found" }, 404);
+    return next();
+  }
   if (!requireLicenseEnabled()) return next();
   if (isPublicApiPath(c.req.path)) return next();
   return requireAccess(c, next);
@@ -108,6 +118,28 @@ app.post("/api/entitlements/devices/revoke", async (c) => {
     ...(result.error ? { error: result.error } : {}),
     entitlements: result.entitlements,
   });
+});
+
+/** Local development only. Production and public hosts get 404 before this handler runs. */
+app.post("/api/dev/licenses", async (c) => {
+  const allowed = devLicenseIssuerAllowed(
+    process.env,
+    c.req.header("host"),
+    c.req.header("x-forwarded-host"),
+  );
+  if (!allowed) return c.json({ error: "Not found" }, 404);
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  try {
+    return c.json({ ok: true, ...issueLocalLicense(body) });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not create the license";
+    return c.json({ error: message }, 400);
+  }
 });
 
 /** Activate a license key. A browser form gets the activation page or a redirect; JSON clients keep the API shape. */

@@ -6,6 +6,8 @@ export type LicenseRecord = {
   id: string;
   /** sha256 hex of normalized key */
   keyHash: string;
+  /** ISO timestamp; absent means the key is valid immediately */
+  startsAt?: string;
   /** ISO timestamp; absent means the key never expires */
   expiresAt?: string;
   note?: string;
@@ -66,10 +68,14 @@ export function saveLicenses(file: LicenseFile): void {
 }
 
 export function createLicense(opts: {
-  /** Omit for a lifetime key */
+  /** Omit for a lifetime key. Ignored when expiresAt is set. */
   days?: number;
   note?: string;
   key?: string;
+  /** ISO timestamp. Omit to make the key valid immediately. */
+  startsAt?: string;
+  /** ISO timestamp. Omit (and omit days) for a key that never expires. */
+  expiresAt?: string;
 }): { record: LicenseRecord; key: string } {
   const key = opts.key ? normalizeKey(opts.key) : generateLicenseKey();
   const record: LicenseRecord = {
@@ -78,7 +84,10 @@ export function createLicense(opts: {
     note: opts.note,
     createdAt: new Date().toISOString(),
   };
-  if (opts.days !== undefined) {
+  if (opts.startsAt) record.startsAt = opts.startsAt;
+  if (opts.expiresAt) {
+    record.expiresAt = opts.expiresAt;
+  } else if (opts.days !== undefined) {
     const expires = new Date();
     expires.setUTCDate(expires.getUTCDate() + Math.max(1, opts.days));
     expires.setUTCHours(23, 59, 59, 999);
@@ -113,5 +122,11 @@ export function findLicenseById(id: string): LicenseRecord | null {
 
 export function isLicenseStillValid(lic: LicenseRecord): boolean {
   if (lic.revoked) return false;
-  return !lic.expiresAt || Date.parse(lic.expiresAt) >= Date.now();
+  if (lic.startsAt) {
+    const start = Date.parse(lic.startsAt);
+    if (!Number.isFinite(start) || start > Date.now()) return false;
+  }
+  if (!lic.expiresAt) return true;
+  const exp = Date.parse(lic.expiresAt);
+  return Number.isFinite(exp) && exp >= Date.now();
 }

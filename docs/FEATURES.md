@@ -1,6 +1,6 @@
 # RC-600 Editor — Feature registry / Registro de funcionalidades
 
-**Version:** pre-release · **Updated:** 2026-10-04
+**Version:** pre-release · **Updated:** 2026-10-05
 
 Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature-registry.mdc`).
 
@@ -64,6 +64,10 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - Safari and Chrome on iOS do not expose Web MIDI; live pedal control needs Web MIDI Browser (or a desktop Chrome/Edge session).
 - On the hosted site, a license key is required before the editor loads. The same gate is on locally when `RC600_REQUIRE_LICENSE=1` is set, so the activation page can be tried before a key is entered.
 
+### Internal
+
+- **Local license key:** a local development build has an **Issue key** button in the top bar. It asks for name, email, an optional location, and optional start and end dates. Empty dates create a key that never expires. The button is left out of the production build, and the hosted site answers the same request with “not found.”
+
 ## PT
 
 ### Entregue
@@ -124,7 +128,16 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - Safari e Chrome no iOS não expõem Web MIDI; o controle ao vivo do pedal exige o Web MIDI Browser (ou Chrome/Edge no computador).
 - No site hospedado, a chave de licença é exigida antes de o editor carregar. A mesma trava vale no local quando `RC600_REQUIRE_LICENSE=1` está ligado, para testar a tela de ativação antes de informar a chave.
 
+### Interno
+
+- **Chave local:** o build de desenvolvimento local tem o botão **Issue key** na barra de cima. Ele pede nome, e-mail, local opcional e datas opcionais de início e fim. Sem datas, a chave não expira. O botão fica de fora do build de produção, e o site hospedado responde o mesmo pedido com “não encontrado”.
+
 ## Changelog
+
+### 2026-10-05
+
+- **EN:** Local development can issue a license key from **Issue key** in the top bar (name, email, optional location, optional start and end). With no dates the key never expires. Production builds omit the button, and the hosted site does not offer the action.
+- **PT:** O desenvolvimento local pode emitir uma chave em **Issue key**, na barra de cima (nome, e-mail, local opcional, início e fim opcionais). Sem datas, a chave não expira. O build de produção omite o botão, e o site hospedado não oferece a ação.
 
 ### 2026-10-04
 

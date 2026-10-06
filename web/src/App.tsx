@@ -66,6 +66,7 @@ import {
   type MemoryCopySelection,
 } from "./presets/memoryClipboard";
 import { Icon } from "./components/Icon";
+import { DevLicenseSlot } from "./dev/DevLicenseSlot";
 import {
   Rc600Midi,
   midiEnvironment,
@@ -1317,6 +1318,9 @@ export function App() {
               <PlatformSelect current="rc-600" />
             </div>
           </div>
+          <div className="topbar-actions">
+            <DevLicenseSlot />
+          </div>
         </header>
         <LicenseScreen onActivated={setSession} />
       </div>
@@ -1361,6 +1365,7 @@ export function App() {
           </div>
         </div>
         <div className="topbar-actions">
+          <DevLicenseSlot />
           <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
             <Icon name="help" size={14} /> Guide
           </a>

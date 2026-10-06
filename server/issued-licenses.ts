@@ -9,6 +9,7 @@ export type IssuedLicense = {
   id: string;
   key: string;
   note?: string;
+  startsAt?: string;
   expiresAt?: string;
   createdAt: string;
 };
