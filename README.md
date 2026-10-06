@@ -6,7 +6,7 @@ Gravar `.RC0` (Save / Copy) passa por uma API no servidor que monta o XML. Sem o
 
 **Guidelines:** [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) · [docs/FEATURES.md](./docs/FEATURES.md) · shared: [boss-editor-guidelines](https://github.com/r4free/boss-editor-guidelines)
 
-**User guide:** click **Guide** in the editor or open `/guia.html`. Includes screenshots, tab descriptions, file and MIDI workflows, light/dark themes and Print / Save PDF.
+**User guide:** click **Guide** in the editor or open `/guia.html`. Includes current screenshots of the visual editors, cards/faders, EQ curves, effect audio previews and step sequences, plus tab descriptions, file/MIDI workflows, image enlargement, light/dark themes and Print / Save PDF.
 
 ## Rodar (dev)
 

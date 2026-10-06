@@ -41,7 +41,7 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 .bar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 button { font: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-raised); color: var(--text); padding: 10px 16px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
-main { max-width: 900px; margin: auto; padding: 0 24px 40px; }
+main { max-width: 1080px; margin: auto; padding: 0 24px 40px; }
 .intro { padding: 54px 0 28px; max-width: 730px; }
 h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.12; letter-spacing: -.04em; margin: 12px 0 24px; }
 h2 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.25; margin: 8px 0 24px; letter-spacing: -.025em; }
@@ -93,5 +93,10 @@ footer { font-size: .85rem; color: var(--muted); padding-top: 30px; }
 .guide-figure img { display: block; width: auto; max-width: 100%; height: auto; margin-inline: auto; border-radius: 5px; }
 .guide-figure figcaption { margin-top: 12px; font-size: .9rem; color: var(--muted); line-height: 1.6; }
 .screen-hint { display: block; color: var(--accent); font-size: .82rem; }
+.image-viewer { width: min(96vw, 1600px); max-width: 96vw; max-height: 94vh; padding: 18px; color: var(--text); background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px; }
+.image-viewer::backdrop { background: rgb(0 0 0 / 80%); }
+.image-viewer button { display: block; margin: 0 0 16px auto; }
+.image-viewer img { display: block; max-width: 100%; height: auto; margin: auto; }
+.image-viewer p { margin: 16px 0 0; color: var(--muted); }
 .workflow-map { padding: 0 22px 22px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: 10px; }
-@media print { .guide-figure { break-inside: avoid; padding: 6px; } .guide-figure figcaption { font-size: 8pt; } .screen-hint { display: none; } .guide-figure img { max-height: 105mm; object-fit: contain; } }
+@media print { .image-viewer { display: none; } .guide-figure { break-inside: avoid; padding: 6px; } .guide-figure figcaption { font-size: 8pt; } .screen-hint { display: none; } .guide-figure img { max-height: 105mm; object-fit: contain; } }

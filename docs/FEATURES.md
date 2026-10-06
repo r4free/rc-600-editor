@@ -1,6 +1,6 @@
 # RC-600 Editor — Feature registry / Registro de funcionalidades
 
-**Version:** pre-release · **Updated:** 2026-10-05
+**Version:** pre-release · **Updated:** 2026-10-06
 
 Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature-registry.mdc`).
 
@@ -21,7 +21,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **System requirements:** the activation screen has a **System requirements** button that opens a window you can copy. It says the editor runs in any modern browser, including phones and tablets, and that live MIDI does not work in Safari or Chrome on iPhone and iPad. Opening the site in Web MIDI Browser (App Store) enables live MIDI there; on a computer, Chrome or Edge is enough.
 - **Pedal photo on the activation screen:** a picture of the RC-600 sits above “Your RC-600, easier to organize.” so the pedal is clear before you enter a license key.
 - **Paid activation:** on the hosted site, a welcoming first screen introduces the editor's memory, backup/MIDI, and performance tools; returning users can enter a license key, while new users can open Stripe Checkout or explore the user guide. The key is sent by email after payment and never expires. The editor pages and scripts stay on the server until that key is accepted. Local development still opens the editor without a key.
-- **User guide:** the Guide link opens an English beginner walkthrough in a new tab, with real editor screenshots, all main tabs and sub-tabs, file/MIDI workflows, troubleshooting, light/dark themes and browser printing to PDF.
+- **User guide:** the Guide link opens an expanded English visual walkthrough with current editor screenshots, card/slider/fader gestures, EQ and routing, pedal controls, dedicated effect editors, step sequences and browser audio previews. Includes listening exercises, file/MIDI workflows, troubleshooting, light/dark themes, keyboard-accessible image enlargement and printing to PDF.
 - Memory / looper oriented web editor for the Boss RC-600.
 - Horizontal editor tabs and English-only UI (see Cursor rules).
 - Links to sibling VG / GM / GT / TONEX editors.
@@ -85,7 +85,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **Requisitos de sistema:** a tela de ativação tem um botão **System requirements** que abre uma janela com texto que dá para copiar. Ela diz que o editor roda em qualquer navegador moderno, inclusive celular e tablet, e que o MIDI ao vivo não funciona no Safari ou Chrome do iPhone e do iPad. Abrir o site no Web MIDI Browser (App Store) libera o MIDI ao vivo ali; no computador, Chrome ou Edge bastam.
 - **Foto da pedaleira na tela de ativação:** uma imagem da RC-600 fica acima de “Your RC-600, easier to organize.”, para deixar claro qual é o pedal antes de informar a chave.
 - **Ativação paga:** no site hospedado, uma tela inicial mais acolhedora apresenta os recursos de memórias, backup/MIDI e performance do editor; quem já comprou informa a chave, enquanto novos usuários podem abrir o Stripe Checkout ou conhecer o guia. A chave é enviada por e-mail depois do pagamento e não expira. Páginas e scripts do editor ficam no servidor até a chave ser aceita. No desenvolvimento local, o editor ainda abre sem chave.
-- **Guia de uso:** o link Guide abre em nova aba um passo a passo em inglês para iniciantes, com capturas reais do editor, abas e subabas, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro e impressão em PDF pelo navegador.
+- **Guia de uso:** o link Guide abre um guia visual ampliado em inglês, com capturas atuais do editor, gestos dos cards/sliders/faders, EQ e roteamento, controles dos pedais, editores dedicados de efeitos, sequências de passos e previews de áudio no navegador. Inclui exercícios de escuta, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro, ampliação de imagens acessível por teclado e impressão em PDF.
 - Editor web orientado a memória / looper para o Boss RC-600.
 - Abas horizontais e UI só em inglês (ver Cursor rules).
 - Links para os editores irmãos VG / GM / GT / TONEX.
@@ -133,6 +133,11 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **Chave local:** o build de desenvolvimento local tem o botão **Issue key** na barra de cima. Ele pede nome, e-mail, local opcional e datas opcionais de início e fim. Sem datas, a chave não expira. O botão fica de fora do build de produção, e o site hospedado responde o mesmo pedido com “não encontrado”.
 
 ## Changelog
+
+### 2026-10-06
+
+- **EN:** Expanded the user guide around the new visual editing layout, with current screenshots of tracks, EQ, routing, mixer, assignments and effect editors. New walkthroughs explain audio preview Play/Stop, BPM/Tap, comparison controls, EQ curves, Freeze envelopes, Preamp pictures and step sequences. Screenshots enlarge in an accessible viewer.
+- **PT:** Guia ampliado com foco no novo layout visual de edição, com capturas atuais de tracks, EQ, roteamento, mixer, assigns e editores de efeitos. Novos passos explicam Play/Stop do preview de áudio, BPM/Tap, controles de comparação, curvas de EQ, envelopes de Freeze, imagens do Preamp e sequências de passos. As imagens podem ser ampliadas em um visualizador acessível.
 
 ### 2026-10-05
 
