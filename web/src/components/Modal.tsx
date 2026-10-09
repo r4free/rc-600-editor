@@ -19,13 +19,12 @@ export function Modal({
   className?: string;
 }) {
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <div className="modal-backdrop" role="presentation">
       <div
         className={`modal-sheet${wide ? " modal-sheet-wide" : ""}${className ? ` ${className}` : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
           <h2>{title}</h2>

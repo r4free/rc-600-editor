@@ -16,5 +16,4 @@ test("workspaces and leaf tabs do not inherit another branch", () => {
   const groups: ActiveTabGroup[] = [{ name: "Workspace", selected: "Setlists" }, { name: "System", selected: "Setup" }];
   assert.deepEqual(navigationTrail(groups), [groups[0]]);
   assert.deepEqual(trail(["Workspace", "Memory"], ["Memory editor", "Assigns"], ["Loop", "Tracks"]), ["Memory", "Assigns"]);
-  assert.deepEqual(trail(["Workspace", "Memory"]), ["Memory"]);
-});
+  assert.deepEqual(trail(["Workspace", "Memory"]), ["Memory"]);});

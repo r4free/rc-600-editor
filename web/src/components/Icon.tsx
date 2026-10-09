@@ -32,6 +32,7 @@ const ICONS = {
   chorus: "mdi:waves",
   reverb: "mdi:blur",
   close: "mdi:close",
+  eraser: "mdi:eraser",
   back: "mdi:arrow-left",
   search: "mdi:magnify",
   notesOff: "mdi:music-off",
@@ -73,6 +74,7 @@ const ICONS = {
   record: "mdi:record-circle",
   folderOpen: "mdi:folder-open-outline",
   eject: "mdi:eject",
+  keyRemove: "mdi:key-remove",
   archive: "mdi:folder-zip-outline",
   restore: "mdi:restore",
   note: "mdi:music-note",
@@ -80,6 +82,9 @@ const ICONS = {
   radio: "mdi:radio",
   equalizer: "mdi:equalizer",
   chevronDown: "mdi:chevron-down",
+  autoFix: "mdi:auto-fix",
+  arrowUp: "mdi:arrow-up",
+  arrowDown: "mdi:arrow-down",
   chevronRight: "mdi:chevron-right",
   chevronLeft: "mdi:chevron-left",
   measureAuto: "mdi:alpha-a-circle-outline",
@@ -118,6 +123,12 @@ const ICONS = {
   power: "mdi:power",
   toggle: "mdi:toggle-switch-outline",
   moment: "mdi:gesture-tap-hold",
+  undo: "mdi:undo",
+  redo: "mdi:redo",
+  plus: "mdi:plus",
+  moveLeft: "mdi:arrow-left-bold-outline",
+  moveRight: "mdi:arrow-right-bold-outline",
+  grid: "mdi:table-large",
 } as const;
 
 export type IconName = keyof typeof ICONS;

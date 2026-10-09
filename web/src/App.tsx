@@ -49,6 +49,7 @@ import { TrackFxTab } from "./components/TrackFxTab";
 import { AudioTab } from "./components/AudioTab";
 import { SystemTab } from "./components/SystemTab";
 import { PlayDrumTab } from "./components/PlayDrumTab";
+import { RhythmConverterTab } from "./components/RhythmConverterTab";
 import { SetlistPanel } from "./components/SetlistPanel";
 import { TunerTab } from "./components/TunerTab";
 import { LicenseScreen } from "./components/LicenseScreen";
@@ -114,6 +115,8 @@ import { DemoModeProvider } from "./demoModeContext";
 
 const WORKSPACES = ["memory", "system", "play-drum", "setlists", "tuner"] as const;
 type Workspace = (typeof WORKSPACES)[number];
+const RHYTHM_CONVERTER_VIEWS = ["closed", "open"] as const;
+type RhythmConverterView = (typeof RHYTHM_CONVERTER_VIEWS)[number];
 
 const MEMORY_TABS = [
   "info",
@@ -182,6 +185,42 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [discardAllOpen, setDiscardAllOpen] = useState(false);
+  const [rhythmConverterView, setRhythmConverterView] = usePersistedTab<RhythmConverterView>(
+    "rhythmConverter",
+    "closed",
+    RHYTHM_CONVERTER_VIEWS,
+    { persist: !demoMode },
+  );
+  const rhythmConverterOpen = rhythmConverterView === "open";
+  const setRhythmConverterOpen = useCallback(
+    (open: boolean) => setRhythmConverterView(open ? "open" : "closed"),
+    [setRhythmConverterView],
+  );
+  /** Stays mounted after the first open so a closed converter keeps its file and edits. */
+  const [rhythmConverterMounted, setRhythmConverterMounted] = useState(rhythmConverterOpen);
+
+  function openRhythmConverter() {
+    setRhythmConverterMounted(true);
+    setRhythmConverterOpen(true);
+  }
+
+  /** What the converter has not saved yet (null when nothing); Close asks before leaving it. */
+  const rhythmConverterUnsavedRef = useRef<string | null>(null);
+
+  function closeRhythmConverter() {
+    const pending = rhythmConverterUnsavedRef.current;
+    if (pending && !window.confirm(`${pending}\n\nClose the Rhythm Converter anyway?`)) return;
+    setRhythmConverterOpen(false);
+  }
+
+  useEffect(() => {
+    if (!rhythmConverterOpen) return;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [rhythmConverterOpen]);
 
   const midiRef = useRef(new Rc600Midi());
   const pendingMemoryReloadRef = useRef<{
@@ -1052,6 +1091,11 @@ export function App() {
     );
   }
 
+  function selectPedalRhythmKit(kit: number) {
+    if (demoMode || dirHandleRef.current) return;
+    emitRhythmKitCc(kit, resolveRhythmKitAssign(model?.assigns));
+  }
+
   function recallPedalMemory(targetSlot: number, xml: string) {
     if (
       !shouldSyncPedalOnMemorySelect({
@@ -1369,6 +1413,21 @@ export function App() {
           <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
             <Icon name="help" size={14} /> Guide
           </a>
+          {!demoMode && requireLicense ? (
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label="Clear license"
+              title="Clear license: removes the license from this browser so you can use it somewhere else"
+              onClick={() => {
+                void lockSession().finally(() => {
+                  window.location.assign("/");
+                });
+              }}
+            >
+              <Icon name="keyRemove" size={14} />
+            </button>
+          ) : null}
           {demoMode ? (
             <a className="btn primary" href="/" style={{ textDecoration: "none" }}>
               {session.license || !requireLicense ? "Open editor" : "Get a license"}
@@ -1500,19 +1559,17 @@ export function App() {
             </button>
           </div>
           )}
-          {!demoMode && requireLicense ? (
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => {
-                void lockSession().finally(() => {
-                  window.location.assign("/");
-                });
-              }}
-            >
-              Clear license
-            </button>
-          ) : null}
+          {(() => {
+            const statusText = [
+              demoMode ? "Demo · view only" : null,
+              !session.license && session.mode === "open" ? "public" : null,
+              status || null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const showUnsaved = dirty || sysDirty || anyMemoryDirty;
+            if (!statusText && !showUnsaved) return null;
+            return (
           <span
             className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}
             role="status"
@@ -1529,16 +1586,10 @@ export function App() {
                 Unsaved memories
               </span>
             ) : null}
-            {demoMode ? "Demo · view only" : (rootLabel ?? "no folder")}
-            {session.license
-              ? session.license.expiresAt
-                ? ` · license until ${session.license.expiresAt.slice(0, 10)}`
-                : " · licensed"
-              : session.mode === "open"
-                ? " · public"
-                : ""}
-            {status ? ` · ${status}` : ""}
+            {statusText}
           </span>
+            );
+          })()}
         </div>
       </header>
 
@@ -1640,6 +1691,15 @@ export function App() {
               >
                 <Icon name="guitar" size={14} />
                 Tuner
+              </button>
+              <button
+                type="button"
+                className={`tab ${rhythmConverterOpen ? "active" : ""}`}
+                aria-haspopup="dialog"
+                onClick={openRhythmConverter}
+              >
+                <Icon name="fileMusic" size={14} />
+                Rhythm Converter
               </button>
             </div>
             <NavigationBreadcrumb />
@@ -1809,6 +1869,15 @@ export function App() {
               >
                 <Icon name="guitar" size={14} />
                 Tuner
+              </button>
+              <button
+                type="button"
+                className={`tab ${rhythmConverterOpen ? "active" : ""}`}
+                aria-haspopup="dialog"
+                onClick={openRhythmConverter}
+              >
+                <Icon name="fileMusic" size={14} />
+                Rhythm Converter
               </button>
               {sysBaseXml && (workspace === "system" || sysDirty) ? (
                 <>
@@ -2101,6 +2170,51 @@ export function App() {
 
       {usbConnectOpen ? (
         <UsbConnectModal onClose={() => setUsbConnectOpen(false)} onOpenFolder={confirmUsbConnect} />
+      ) : null}
+
+      {rhythmConverterMounted ? (
+        <div className="modal-backdrop rhythm-converter-modal" role="presentation" hidden={!rhythmConverterOpen}>
+          <div className="modal-sheet modal-fullscreen" role="dialog" aria-modal="true" aria-label="Rhythm Converter">
+            <div className="modal-head">
+              <h2>
+                <Icon name="fileMusic" size={16} />
+                Rhythm Converter
+              </h2>
+              <div className="modal-head-actions">
+                <button
+                  type="button"
+                  className="btn ghost modal-close"
+                  onClick={closeRhythmConverter}
+                  aria-label="Close"
+                >
+                  <Icon name="close" size={14} />
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="modal-body">
+              <RhythmConverterTab
+                active={rhythmConverterOpen}
+                midiLive={Boolean(connected) && !hasDirHandle}
+                onPlayNotes={playDrumNotes}
+                onSilence={silenceRhythm}
+                onRequestMidi={() => void requestMidi(true)}
+                onSelectPedalKit={selectPedalRhythmKit}
+                dirHandle={hasDirHandle ? dirHandleRef.current : null}
+                writeBlockedReason={
+                  requireLicense && !sessionOk
+                    ? "Enter a valid license key before saving to the RC-600."
+                    : !backupAck
+                      ? "Confirm the backup before saving to the RC-600."
+                      : null
+                }
+                onUnsavedChange={(pending) => {
+                  rhythmConverterUnsavedRef.current = pending;
+                }}
+              />
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {discardAllOpen ? (

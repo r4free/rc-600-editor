@@ -25,6 +25,8 @@ import {
 } from "./wave-files.js";
 import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-presets.js";
 import { createNativeKitFileStore, isNativeKitWriteAllowed } from "./drum-kits.js";
+import { createNativePartFileStore, isNativePartWriteAllowed } from "./rhythm-parts.js";
+import { createNativeRhythmFileStore } from "./rhythm-library.js";
 import { AiRateLimiter, serializeAiLimit } from "./ai-rate-limit.js";
 import { generateChartWithAi } from "./chart-ai.js";
 import { resolveEntitlements, revokeDeviceForRequest } from "./entitlements.js";
@@ -68,6 +70,12 @@ const nativePresetStore = createNativePresetFileStore(
 );
 const nativeKitStore = createNativeKitFileStore(
   resolve(process.cwd(), "web/public/play-drum/kits.json"),
+);
+const nativePartStore = createNativePartFileStore(
+  resolve(process.cwd(), "web/public/rhythm-converter/parts.json"),
+);
+const nativeRhythmStore = createNativeRhythmFileStore(
+  resolve(process.cwd(), "web/public/rhythm-converter/rhythms.json"),
 );
 
 app.get("/api/session", (c) => {
@@ -337,6 +345,66 @@ app.delete("/api/drum-presets/:id", async (c) => {
   }
   const id = c.req.param("id");
   const ok = await nativePresetStore.remove(id);
+  if (!ok) return c.json({ error: "Rhythm not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.get("/api/rhythm-parts", async (c) => {
+  return c.json({ version: 1, parts: await nativePartStore.list() });
+});
+
+app.post("/api/rhythm-parts", async (c) => {
+  if (!isNativePartWriteAllowed()) {
+    return c.json({ error: "Factory rhythm parts are read-only in production" }, 403);
+  }
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  try {
+    return c.json(await nativePartStore.upsert(body));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : "Could not save rhythm part" }, 400);
+  }
+});
+
+app.delete("/api/rhythm-parts/:id", async (c) => {
+  if (!isNativePartWriteAllowed()) {
+    return c.json({ error: "Factory rhythm parts are read-only in production" }, 403);
+  }
+  const ok = await nativePartStore.remove(c.req.param("id"));
+  if (!ok) return c.json({ error: "Rhythm part not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.get("/api/rhythm-library", async (c) => {
+  return c.json({ version: 1, rhythms: await nativeRhythmStore.list() });
+});
+
+app.post("/api/rhythm-library", async (c) => {
+  if (!isNativePartWriteAllowed()) {
+    return c.json({ error: "Factory rhythms are read-only in production" }, 403);
+  }
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  try {
+    return c.json(await nativeRhythmStore.upsert(body));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : "Could not save rhythm" }, 400);
+  }
+});
+
+app.delete("/api/rhythm-library/:id", async (c) => {
+  if (!isNativePartWriteAllowed()) {
+    return c.json({ error: "Factory rhythms are read-only in production" }, 403);
+  }
+  const ok = await nativeRhythmStore.remove(c.req.param("id"));
   if (!ok) return c.json({ error: "Rhythm not found" }, 404);
   return c.json({ ok: true });
 });

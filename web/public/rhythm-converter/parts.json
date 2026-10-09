@@ -1,0 +1,2212 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "bemmaior-variation-a-mv1j37pm",
+      "name": "bemmaior Variation A",
+      "kind": "variation",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.374Z",
+      "tempoBpm": 120,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 35,
+          "velocity": 95
+        },
+        {
+          "tick": 0,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 0,
+          "note": 70,
+          "velocity": 21
+        },
+        {
+          "tick": 120,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 240,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 240,
+          "note": 70,
+          "velocity": 29
+        },
+        {
+          "tick": 360,
+          "note": 42,
+          "velocity": 40
+        },
+        {
+          "tick": 480,
+          "note": 37,
+          "velocity": 115
+        },
+        {
+          "tick": 480,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 480,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 600,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 720,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 720,
+          "note": 70,
+          "velocity": 27
+        },
+        {
+          "tick": 840,
+          "note": 35,
+          "velocity": 85
+        },
+        {
+          "tick": 840,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 960,
+          "note": 35,
+          "velocity": 88
+        },
+        {
+          "tick": 960,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 960,
+          "note": 70,
+          "velocity": 28
+        },
+        {
+          "tick": 1080,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1200,
+          "note": 35,
+          "velocity": 95
+        },
+        {
+          "tick": 1200,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1200,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 1320,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1440,
+          "note": 37,
+          "velocity": 115
+        },
+        {
+          "tick": 1440,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1440,
+          "note": 70,
+          "velocity": 36
+        },
+        {
+          "tick": 1560,
+          "note": 35,
+          "velocity": 90
+        },
+        {
+          "tick": 1560,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1680,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1680,
+          "note": 70,
+          "velocity": 31
+        },
+        {
+          "tick": 1800,
+          "note": 35,
+          "velocity": 53
+        },
+        {
+          "tick": 1800,
+          "note": 42,
+          "velocity": 45
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-variation-b-mv1j37pm",
+      "name": "bemmaior Variation B",
+      "kind": "variation",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.391Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 56,
+          "note": 42,
+          "velocity": 44
+        },
+        {
+          "tick": 56,
+          "note": 70,
+          "velocity": 26
+        },
+        {
+          "tick": 64,
+          "note": 37,
+          "velocity": 118
+        },
+        {
+          "tick": 176,
+          "note": 42,
+          "velocity": 43
+        },
+        {
+          "tick": 182,
+          "note": 35,
+          "velocity": 92
+        },
+        {
+          "tick": 299,
+          "note": 42,
+          "velocity": 49
+        },
+        {
+          "tick": 303,
+          "note": 70,
+          "velocity": 33
+        },
+        {
+          "tick": 417,
+          "note": 35,
+          "velocity": 61
+        },
+        {
+          "tick": 417,
+          "note": 46,
+          "velocity": 28
+        },
+        {
+          "tick": 483,
+          "note": 42,
+          "velocity": 40
+        },
+        {
+          "tick": 536,
+          "note": 70,
+          "velocity": 24
+        },
+        {
+          "tick": 540,
+          "note": 42,
+          "velocity": 47
+        },
+        {
+          "tick": 544,
+          "note": 35,
+          "velocity": 98
+        },
+        {
+          "tick": 665,
+          "note": 42,
+          "velocity": 46
+        },
+        {
+          "tick": 781,
+          "note": 42,
+          "velocity": 43
+        },
+        {
+          "tick": 781,
+          "note": 70,
+          "velocity": 28
+        },
+        {
+          "tick": 899,
+          "note": 42,
+          "velocity": 50
+        },
+        {
+          "tick": 1016,
+          "note": 37,
+          "velocity": 111
+        },
+        {
+          "tick": 1017,
+          "note": 42,
+          "velocity": 44
+        },
+        {
+          "tick": 1017,
+          "note": 70,
+          "velocity": 29
+        },
+        {
+          "tick": 1142,
+          "note": 42,
+          "velocity": 50
+        },
+        {
+          "tick": 1258,
+          "note": 35,
+          "velocity": 73
+        },
+        {
+          "tick": 1259,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1264,
+          "note": 70,
+          "velocity": 27
+        },
+        {
+          "tick": 1375,
+          "note": 42,
+          "velocity": 41
+        },
+        {
+          "tick": 1382,
+          "note": 35,
+          "velocity": 72
+        },
+        {
+          "tick": 1500,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1503,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 1618,
+          "note": 42,
+          "velocity": 48
+        },
+        {
+          "tick": 1735,
+          "note": 70,
+          "velocity": 34
+        },
+        {
+          "tick": 1744,
+          "note": 35,
+          "velocity": 84
+        },
+        {
+          "tick": 1745,
+          "note": 42,
+          "velocity": 39
+        },
+        {
+          "tick": 1862,
+          "note": 42,
+          "velocity": 43
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-variation-c-mv1j37pm",
+      "name": "bemmaior Variation C",
+      "kind": "variation",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.399Z",
+      "tempoBpm": 120,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 60,
+          "note": 45,
+          "velocity": 120
+        },
+        {
+          "tick": 60,
+          "note": 70,
+          "velocity": 36
+        },
+        {
+          "tick": 180,
+          "note": 43,
+          "velocity": 120
+        },
+        {
+          "tick": 300,
+          "note": 35,
+          "velocity": 81
+        },
+        {
+          "tick": 300,
+          "note": 38,
+          "velocity": 103
+        },
+        {
+          "tick": 300,
+          "note": 70,
+          "velocity": 36
+        },
+        {
+          "tick": 420,
+          "note": 35,
+          "velocity": 109
+        },
+        {
+          "tick": 540,
+          "note": 35,
+          "velocity": 67
+        },
+        {
+          "tick": 540,
+          "note": 49,
+          "velocity": 40
+        },
+        {
+          "tick": 660,
+          "note": 42,
+          "velocity": 38
+        },
+        {
+          "tick": 780,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 780,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 900,
+          "note": 42,
+          "velocity": 44
+        },
+        {
+          "tick": 1020,
+          "note": 38,
+          "velocity": 109
+        },
+        {
+          "tick": 1020,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1020,
+          "note": 70,
+          "velocity": 36
+        },
+        {
+          "tick": 1140,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1260,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1260,
+          "note": 70,
+          "velocity": 34
+        },
+        {
+          "tick": 1380,
+          "note": 35,
+          "velocity": 57
+        },
+        {
+          "tick": 1380,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1500,
+          "note": 35,
+          "velocity": 70
+        },
+        {
+          "tick": 1500,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1500,
+          "note": 70,
+          "velocity": 33
+        },
+        {
+          "tick": 1620,
+          "note": 42,
+          "velocity": 40
+        },
+        {
+          "tick": 1740,
+          "note": 35,
+          "velocity": 103
+        },
+        {
+          "tick": 1740,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1740,
+          "note": 70,
+          "velocity": 37
+        },
+        {
+          "tick": 1860,
+          "note": 42,
+          "velocity": 45
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-variation-d-mv1j37pm",
+      "name": "bemmaior Variation D",
+      "kind": "variation",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.404Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 60,
+          "note": 42,
+          "velocity": 43
+        },
+        {
+          "tick": 61,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 62,
+          "note": 38,
+          "velocity": 100
+        },
+        {
+          "tick": 180,
+          "note": 42,
+          "velocity": 49
+        },
+        {
+          "tick": 298,
+          "note": 42,
+          "velocity": 41
+        },
+        {
+          "tick": 300,
+          "note": 70,
+          "velocity": 39
+        },
+        {
+          "tick": 302,
+          "note": 35,
+          "velocity": 51
+        },
+        {
+          "tick": 425,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 537,
+          "note": 70,
+          "velocity": 39
+        },
+        {
+          "tick": 538,
+          "note": 35,
+          "velocity": 105
+        },
+        {
+          "tick": 540,
+          "note": 42,
+          "velocity": 46
+        },
+        {
+          "tick": 660,
+          "note": 42,
+          "velocity": 35
+        },
+        {
+          "tick": 779,
+          "note": 70,
+          "velocity": 42
+        },
+        {
+          "tick": 781,
+          "note": 42,
+          "velocity": 42
+        },
+        {
+          "tick": 896,
+          "note": 42,
+          "velocity": 41
+        },
+        {
+          "tick": 1016,
+          "note": 70,
+          "velocity": 48
+        },
+        {
+          "tick": 1017,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1018,
+          "note": 38,
+          "velocity": 89
+        },
+        {
+          "tick": 1142,
+          "note": 42,
+          "velocity": 49
+        },
+        {
+          "tick": 1257,
+          "note": 42,
+          "velocity": 41
+        },
+        {
+          "tick": 1263,
+          "note": 70,
+          "velocity": 40
+        },
+        {
+          "tick": 1375,
+          "note": 35,
+          "velocity": 81
+        },
+        {
+          "tick": 1380,
+          "note": 42,
+          "velocity": 40
+        },
+        {
+          "tick": 1497,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1499,
+          "note": 35,
+          "velocity": 89
+        },
+        {
+          "tick": 1502,
+          "note": 42,
+          "velocity": 39
+        },
+        {
+          "tick": 1623,
+          "note": 42,
+          "velocity": 46
+        },
+        {
+          "tick": 1737,
+          "note": 70,
+          "velocity": 31
+        },
+        {
+          "tick": 1741,
+          "note": 35,
+          "velocity": 105
+        },
+        {
+          "tick": 1744,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1864,
+          "note": 42,
+          "velocity": 51
+        }
+      ]
+    },
+    {
+      "id": "falamansa-xo-variation-a-mv1b5bb7",
+      "name": "falamansa xo Variation A",
+      "kind": "variation",
+      "tags": [],
+      "updatedAt": "2026-10-09T18:37:32.440Z",
+      "tempoBpm": 165,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 0,
+          "note": 44,
+          "velocity": 96
+        },
+        {
+          "tick": 0,
+          "note": 49,
+          "velocity": 95
+        },
+        {
+          "tick": 0,
+          "note": 80,
+          "velocity": 79
+        },
+        {
+          "tick": 240,
+          "note": 80,
+          "velocity": 79
+        },
+        {
+          "tick": 480,
+          "note": 37,
+          "velocity": 95
+        },
+        {
+          "tick": 480,
+          "note": 44,
+          "velocity": 95
+        },
+        {
+          "tick": 480,
+          "note": 80,
+          "velocity": 79
+        },
+        {
+          "tick": 480,
+          "note": 81,
+          "velocity": 79
+        },
+        {
+          "tick": 720,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 960,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 960,
+          "note": 44,
+          "velocity": 95
+        },
+        {
+          "tick": 960,
+          "note": 80,
+          "velocity": 79
+        },
+        {
+          "tick": 1200,
+          "note": 80,
+          "velocity": 79
+        },
+        {
+          "tick": 1440,
+          "note": 37,
+          "velocity": 95
+        },
+        {
+          "tick": 1440,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 1440,
+          "note": 44,
+          "velocity": 95
+        },
+        {
+          "tick": 1440,
+          "note": 80,
+          "velocity": 79
+        },
+        {
+          "tick": 1440,
+          "note": 81,
+          "velocity": 79
+        }
+      ]
+    },
+    {
+      "id": "xote-bar-4-mv1bjc6n",
+      "name": "Xote Bar 4",
+      "kind": "variation",
+      "tags": [
+        "Baião",
+        "Xote"
+      ],
+      "updatedAt": "2026-10-09T18:48:26.738Z",
+      "tempoBpm": 177,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 0,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 0,
+          "note": 56,
+          "velocity": 79
+        },
+        {
+          "tick": 240,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 480,
+          "note": 46,
+          "velocity": 79
+        },
+        {
+          "tick": 960,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 960,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 960,
+          "note": 56,
+          "velocity": 79
+        },
+        {
+          "tick": 1200,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 1440,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 1440,
+          "note": 46,
+          "velocity": 79
+        }
+      ]
+    },
+    {
+      "id": "xote-das-meninas-mv1bhnpo",
+      "name": "Xote Das Meninas",
+      "kind": "variation",
+      "tags": [
+        "Baião",
+        "Xote"
+      ],
+      "updatedAt": "2026-10-09T18:47:08.378Z",
+      "tempoBpm": 120,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 0,
+          "note": 81,
+          "velocity": 95
+        },
+        {
+          "tick": 240,
+          "note": 81,
+          "velocity": 95
+        },
+        {
+          "tick": 480,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 480,
+          "note": 80,
+          "velocity": 95
+        },
+        {
+          "tick": 720,
+          "note": 80,
+          "velocity": 95
+        },
+        {
+          "tick": 960,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 960,
+          "note": 81,
+          "velocity": 95
+        },
+        {
+          "tick": 1200,
+          "note": 81,
+          "velocity": 95
+        },
+        {
+          "tick": 1440,
+          "note": 41,
+          "velocity": 95
+        },
+        {
+          "tick": 1440,
+          "note": 80,
+          "velocity": 95
+        },
+        {
+          "tick": 1680,
+          "note": 80,
+          "velocity": 95
+        }
+      ]
+    },
+    {
+      "id": "zeca-pagodin-bar-2-mv1dq0ie",
+      "name": "Zeca Pagodin Bar 2",
+      "kind": "variation",
+      "tags": [
+        "brazil",
+        "Pagode"
+      ],
+      "updatedAt": "2026-10-09T19:49:37.442Z",
+      "tempoBpm": 120,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 41,
+          "velocity": 74
+        },
+        {
+          "tick": 0,
+          "note": 42,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 70,
+          "velocity": 70
+        },
+        {
+          "tick": 120,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 120,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 120,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 120,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 240,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 240,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 360,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 360,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 61,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 480,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 480,
+          "note": 37,
+          "velocity": 80
+        },
+        {
+          "tick": 480,
+          "note": 41,
+          "velocity": 92
+        },
+        {
+          "tick": 480,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 480,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 600,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 600,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 720,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 720,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 720,
+          "note": 61,
+          "velocity": 70
+        },
+        {
+          "tick": 720,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 720,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 840,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 840,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 840,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 960,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 960,
+          "note": 42,
+          "velocity": 65
+        },
+        {
+          "tick": 960,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 960,
+          "note": 63,
+          "velocity": 70
+        },
+        {
+          "tick": 960,
+          "note": 70,
+          "velocity": 65
+        },
+        {
+          "tick": 1080,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1080,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1200,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 1200,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1200,
+          "note": 61,
+          "velocity": 70
+        },
+        {
+          "tick": 1200,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 1200,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 1320,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 1320,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1320,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1440,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 37,
+          "velocity": 80
+        },
+        {
+          "tick": 1440,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1440,
+          "note": 42,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 70,
+          "velocity": 70
+        },
+        {
+          "tick": 1560,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1560,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1560,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 1560,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1680,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 1680,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 1800,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 1800,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1800,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1800,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 1800,
+          "note": 70,
+          "velocity": 45
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-fill-a-mv1j37pm",
+      "name": "bemmaior Fill A",
+      "kind": "fill",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.411Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 58,
+          "note": 44,
+          "velocity": 58
+        },
+        {
+          "tick": 541,
+          "note": 44,
+          "velocity": 52
+        },
+        {
+          "tick": 718,
+          "note": 47,
+          "velocity": 98
+        },
+        {
+          "tick": 779,
+          "note": 50,
+          "velocity": 125
+        },
+        {
+          "tick": 1019,
+          "note": 44,
+          "velocity": 56
+        },
+        {
+          "tick": 1255,
+          "note": 50,
+          "velocity": 84
+        },
+        {
+          "tick": 1381,
+          "note": 50,
+          "velocity": 91
+        },
+        {
+          "tick": 1503,
+          "note": 48,
+          "velocity": 106
+        },
+        {
+          "tick": 1616,
+          "note": 48,
+          "velocity": 103
+        },
+        {
+          "tick": 1680,
+          "note": 48,
+          "velocity": 88
+        },
+        {
+          "tick": 1735,
+          "note": 48,
+          "velocity": 79
+        },
+        {
+          "tick": 1856,
+          "note": 45,
+          "velocity": 98
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-fill-b-mv1j37pm",
+      "name": "bemmaior Fill B",
+      "kind": "fill",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.416Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 56,
+          "note": 38,
+          "velocity": 88
+        },
+        {
+          "tick": 57,
+          "note": 70,
+          "velocity": 56
+        },
+        {
+          "tick": 177,
+          "note": 47,
+          "velocity": 120
+        },
+        {
+          "tick": 298,
+          "note": 35,
+          "velocity": 73
+        },
+        {
+          "tick": 300,
+          "note": 45,
+          "velocity": 115
+        },
+        {
+          "tick": 305,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 415,
+          "note": 35,
+          "velocity": 69
+        },
+        {
+          "tick": 415,
+          "note": 52,
+          "velocity": 70
+        },
+        {
+          "tick": 535,
+          "note": 57,
+          "velocity": 53
+        },
+        {
+          "tick": 539,
+          "note": 70,
+          "velocity": 53
+        },
+        {
+          "tick": 543,
+          "note": 35,
+          "velocity": 99
+        },
+        {
+          "tick": 543,
+          "note": 55,
+          "velocity": 66
+        },
+        {
+          "tick": 1018,
+          "note": 44,
+          "velocity": 31
+        },
+        {
+          "tick": 1499,
+          "note": 44,
+          "velocity": 51
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-fill-c-mv1j37pm",
+      "name": "bemmaior Fill C",
+      "kind": "fill",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.433Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 56,
+          "note": 44,
+          "velocity": 39
+        },
+        {
+          "tick": 542,
+          "note": 44,
+          "velocity": 45
+        },
+        {
+          "tick": 662,
+          "note": 35,
+          "velocity": 65
+        },
+        {
+          "tick": 717,
+          "note": 35,
+          "velocity": 110
+        },
+        {
+          "tick": 778,
+          "note": 52,
+          "velocity": 62
+        },
+        {
+          "tick": 779,
+          "note": 38,
+          "velocity": 58
+        },
+        {
+          "tick": 1024,
+          "note": 44,
+          "velocity": 44
+        },
+        {
+          "tick": 1505,
+          "note": 44,
+          "velocity": 43
+        },
+        {
+          "tick": 1616,
+          "note": 47,
+          "velocity": 125
+        },
+        {
+          "tick": 1740,
+          "note": 45,
+          "velocity": 102
+        },
+        {
+          "tick": 1859,
+          "note": 43,
+          "velocity": 115
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-fill-d-mv1j37pm",
+      "name": "bemmaior Fill D",
+      "kind": "fill",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.458Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 57,
+          "note": 70,
+          "velocity": 34
+        },
+        {
+          "tick": 58,
+          "note": 47,
+          "velocity": 125
+        },
+        {
+          "tick": 181,
+          "note": 45,
+          "velocity": 115
+        },
+        {
+          "tick": 295,
+          "note": 43,
+          "velocity": 122
+        },
+        {
+          "tick": 301,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 303,
+          "note": 35,
+          "velocity": 76
+        },
+        {
+          "tick": 539,
+          "note": 35,
+          "velocity": 69
+        },
+        {
+          "tick": 542,
+          "note": 49,
+          "velocity": 45
+        },
+        {
+          "tick": 660,
+          "note": 42,
+          "velocity": 39
+        },
+        {
+          "tick": 781,
+          "note": 70,
+          "velocity": 34
+        },
+        {
+          "tick": 782,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 902,
+          "note": 42,
+          "velocity": 49
+        },
+        {
+          "tick": 1016,
+          "note": 38,
+          "velocity": 108
+        },
+        {
+          "tick": 1016,
+          "note": 70,
+          "velocity": 36
+        },
+        {
+          "tick": 1022,
+          "note": 42,
+          "velocity": 43
+        },
+        {
+          "tick": 1140,
+          "note": 42,
+          "velocity": 49
+        },
+        {
+          "tick": 1255,
+          "note": 70,
+          "velocity": 32
+        },
+        {
+          "tick": 1260,
+          "note": 42,
+          "velocity": 47
+        },
+        {
+          "tick": 1376,
+          "note": 35,
+          "velocity": 54
+        },
+        {
+          "tick": 1382,
+          "note": 42,
+          "velocity": 47
+        },
+        {
+          "tick": 1496,
+          "note": 42,
+          "velocity": 44
+        },
+        {
+          "tick": 1497,
+          "note": 70,
+          "velocity": 28
+        },
+        {
+          "tick": 1505,
+          "note": 35,
+          "velocity": 76
+        },
+        {
+          "tick": 1622,
+          "note": 42,
+          "velocity": 36
+        },
+        {
+          "tick": 1736,
+          "note": 42,
+          "velocity": 48
+        },
+        {
+          "tick": 1738,
+          "note": 70,
+          "velocity": 38
+        },
+        {
+          "tick": 1741,
+          "note": 35,
+          "velocity": 109
+        },
+        {
+          "tick": 1855,
+          "note": 42,
+          "velocity": 49
+        }
+      ]
+    },
+    {
+      "id": "bemmaior-ending-mv1j37pm",
+      "name": "bemmaior Ending",
+      "kind": "ending",
+      "tags": [
+        "bemmaior",
+        "Rock"
+      ],
+      "updatedAt": "2026-10-09T22:19:51.465Z",
+      "tempoBpm": 76,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 58,
+          "note": 70,
+          "velocity": 31
+        },
+        {
+          "tick": 177,
+          "note": 45,
+          "velocity": 124
+        },
+        {
+          "tick": 296,
+          "note": 45,
+          "velocity": 118
+        },
+        {
+          "tick": 303,
+          "note": 35,
+          "velocity": 56
+        },
+        {
+          "tick": 303,
+          "note": 70,
+          "velocity": 34
+        },
+        {
+          "tick": 539,
+          "note": 35,
+          "velocity": 49
+        },
+        {
+          "tick": 544,
+          "note": 49,
+          "velocity": 38
+        }
+      ]
+    },
+    {
+      "id": "xote-end-mv1bkqj5",
+      "name": "Xote end",
+      "kind": "ending",
+      "tags": [
+        "Xote",
+        "Baião"
+      ],
+      "updatedAt": "2026-10-09T18:49:31.988Z",
+      "tempoBpm": 177,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 2,
+      "lengthTicks": 3840,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 0,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 0,
+          "note": 56,
+          "velocity": 79
+        },
+        {
+          "tick": 240,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 480,
+          "note": 46,
+          "velocity": 79
+        },
+        {
+          "tick": 960,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 960,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 960,
+          "note": 56,
+          "velocity": 79
+        },
+        {
+          "tick": 1200,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 1440,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 1440,
+          "note": 46,
+          "velocity": 79
+        },
+        {
+          "tick": 1920,
+          "note": 35,
+          "velocity": 79
+        },
+        {
+          "tick": 1920,
+          "note": 44,
+          "velocity": 79
+        },
+        {
+          "tick": 1920,
+          "note": 56,
+          "velocity": 79
+        },
+        {
+          "tick": 2160,
+          "note": 44,
+          "velocity": 79
+        }
+      ]
+    },
+    {
+      "id": "zeca-pagodino-end-mv1doxfj",
+      "name": "Zeca Pagodino End",
+      "kind": "ending",
+      "tags": [
+        "brazil",
+        "Pagode"
+      ],
+      "updatedAt": "2026-10-09T19:48:46.796Z",
+      "tempoBpm": 120,
+      "numerator": 4,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 42,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 0,
+          "note": 70,
+          "velocity": 70
+        },
+        {
+          "tick": 120,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 120,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 120,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 120,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 240,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 240,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 360,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 360,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 61,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 360,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 480,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 480,
+          "note": 37,
+          "velocity": 80
+        },
+        {
+          "tick": 480,
+          "note": 41,
+          "velocity": 92
+        },
+        {
+          "tick": 480,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 480,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 600,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 600,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 720,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 720,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 720,
+          "note": 61,
+          "velocity": 70
+        },
+        {
+          "tick": 720,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 720,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 840,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 840,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 840,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 960,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 960,
+          "note": 42,
+          "velocity": 65
+        },
+        {
+          "tick": 960,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 960,
+          "note": 63,
+          "velocity": 70
+        },
+        {
+          "tick": 960,
+          "note": 70,
+          "velocity": 65
+        },
+        {
+          "tick": 1080,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1080,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1080,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1200,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1200,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 1200,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1200,
+          "note": 61,
+          "velocity": 70
+        },
+        {
+          "tick": 1200,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 1200,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 1320,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 1320,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1320,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1320,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1440,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 37,
+          "velocity": 80
+        },
+        {
+          "tick": 1440,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1440,
+          "note": 42,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 1440,
+          "note": 70,
+          "velocity": 70
+        },
+        {
+          "tick": 1560,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1560,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1560,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1560,
+          "note": 64,
+          "velocity": 70
+        },
+        {
+          "tick": 1560,
+          "note": 70,
+          "velocity": 45
+        },
+        {
+          "tick": 1680,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1680,
+          "note": 42,
+          "velocity": 80
+        },
+        {
+          "tick": 1680,
+          "note": 70,
+          "velocity": 80
+        },
+        {
+          "tick": 1800,
+          "note": 36,
+          "velocity": 70
+        },
+        {
+          "tick": 1800,
+          "note": 41,
+          "velocity": 89
+        },
+        {
+          "tick": 1800,
+          "note": 42,
+          "velocity": 45
+        },
+        {
+          "tick": 1800,
+          "note": 54,
+          "velocity": 70
+        },
+        {
+          "tick": 1800,
+          "note": 62,
+          "velocity": 70
+        },
+        {
+          "tick": 1800,
+          "note": 70,
+          "velocity": 45
+        }
+      ]
+    }
+  ]
+}

@@ -206,6 +206,24 @@ export async function writeFileToDirectory(
   await w.close();
 }
 
+/** Bytes of `relativePath` under the ROLAND (or DATA) root, or null when it does not exist. */
+export async function readBinaryFromDirectory(
+  root: DirectoryHandleLike,
+  relativePath: string,
+): Promise<Uint8Array | null> {
+  const parts = normalizeRolandPath(relativePath).split("/");
+  if (root.name.toUpperCase() === "DATA" && parts[0]?.toUpperCase() === "DATA") parts.shift();
+  try {
+    let dir = root;
+    for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]!);
+    const file = await (await dir.getFileHandle(parts[parts.length - 1]!)).getFile();
+    return new Uint8Array(await file.arrayBuffer());
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "NotFoundError") return null;
+    throw err;
+  }
+}
+
 declare global {
   interface Window {
     showDirectoryPicker?: (opts?: { mode?: string }) => Promise<DirectoryHandleLike>;
