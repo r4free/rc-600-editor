@@ -3,11 +3,14 @@ export type LicensePlan = "full" | "preview";
 export const PREVIEW_LIST_SAVE =
   "A preview key can play songs and look through the editor. It cannot save setlists or rhythm lists.";
 
+export const PREVIEW_RHYTHM_SAVE =
+  "A preview key saves RHYTHM.RC0 with one rhythm only. It replaces every user rhythm on the RC-600.";
+
 export const PREVIEW_PEDAL_SAVE =
   "A preview key can save memories while editing offline. Saving is turned off while the RC-600 is connected.";
 
 export const PREVIEW_BANNER =
-  "Preview key: you can play and edit. Setlists and rhythm lists are not saved. Memories save only while the RC-600 is not connected.";
+  "Preview key: you can play and edit. Setlists and rhythm lists are not saved; RHYTHM.RC0 holds one rhythm. Memories save only while the RC-600 is not connected.";
 
 const DAY_MS = 86_400_000;
 

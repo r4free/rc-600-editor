@@ -237,9 +237,8 @@ export function RhythmSlotManager({
         </div>
       </div>
 
-      {listLocked ? (
-        <p className="drum-pad-hint warn">{listLocked}</p>
-      ) : mode === "drive" && writeBlocked ? (
+      {listLocked ? <p className="drum-pad-hint warn">{listLocked}</p> : null}
+      {mode === "drive" && writeBlocked ? (
         <p className="drum-pad-hint warn">
           {writeBlocked}
           {onBackupDone ? (

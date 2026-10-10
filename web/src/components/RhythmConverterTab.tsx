@@ -116,7 +116,7 @@ import {
   type PartRole,
 } from "../rhythmConverter/sectionSuggest";
 import { emptyPart, type EditGrid } from "../rhythmConverter/partEdit";
-import { PREVIEW_LIST_SAVE } from "../licensePlan";
+import { PREVIEW_LIST_SAVE, PREVIEW_RHYTHM_SAVE } from "../licensePlan";
 import { usePreview } from "../licensePlanContext";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
@@ -1292,7 +1292,7 @@ export function RhythmConverterTab({
 
   /** Writes the slot list: straight to the open drive, or to the offline copy in this browser. */
   async function commitSlots(records: SlotRecord[], origin?: string | null): Promise<void> {
-    if (preview) throw new Error(PREVIEW_LIST_SAVE);
+    if (preview && (records.length > 1 || !dirHandle)) throw new Error(PREVIEW_LIST_SAVE);
     if (dirHandle) {
       if (writeBlockedReason) throw new Error(writeBlockedReason);
       await writeFileToDirectory(dirHandle, RHYTHM_RC0_PATH, await writeRhythmFile(records));
@@ -1700,8 +1700,43 @@ export function RhythmConverterTab({
     });
   }
 
+  /** Preview key: RHYTHM.RC0 with this rhythm alone, written to the drive or downloaded. */
+  async function saveSingleRhythm() {
+    const others = slotList?.records.length ?? 0;
+    if (
+      dirHandle &&
+      others > 0 &&
+      !window.confirm(
+        `A preview key saves RHYTHM.RC0 with one rhythm only. This replaces the ${others} user rhythm${others === 1 ? "" : "s"} on the RC-600. Continue?`,
+      )
+    )
+      return;
+    setSaving(true);
+    setError(null);
+    try {
+      const [record] = await encodeRhythms([{ parts: resolved, name: patternName, kit }]);
+      if (dirHandle) {
+        await commitSlots([record!]);
+        setSlot(0);
+        setStatus(`Saved "${record!.name}" as the only user rhythm. Eject the drive to load it on the RC-600.`);
+      } else {
+        downloadBytes(await writeRhythmFile([record!]), "RHYTHM.RC0", "application/octet-stream");
+        setStatus(`Downloaded RHYTHM.RC0 with "${record!.name}". Copy it to ROLAND/DATA on the RC-600.`);
+      }
+      setSavedParts({ plan, overrides });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save the rhythm.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveToSlot() {
     if (!resolved.length) return;
+    if (preview) {
+      await saveSingleRhythm();
+      return;
+    }
     const base = slotBase();
     if (!base) return;
     setSaving(true);
@@ -3045,19 +3080,25 @@ export function RhythmConverterTab({
           type="button"
           className="btn primary"
           onClick={() => void saveToSlot()}
-          disabled={!resolved.length || preview || (Boolean(dirHandle) && Boolean(writeBlockedReason)) || saving}
+          disabled={!resolved.length || (Boolean(dirHandle) && Boolean(writeBlockedReason)) || saving}
           title={
-            preview
-              ? PREVIEW_LIST_SAVE
+            dirHandle && writeBlockedReason
+              ? writeBlockedReason
+              : preview
+              ? PREVIEW_RHYTHM_SAVE
               : dirHandle
-              ? (writeBlockedReason ?? "Write this rhythm to the RC-600 drive")
+              ? "Write this rhythm to the RC-600 drive"
               : "No RC-600 connected: saves into the offline slot list; download RHYTHM.RC0 under RC-600 Slots when you are done"
           }
         >
-          <Icon name={dirHandle ? "upload" : "save"} size={14} />
+          <Icon name={dirHandle ? "upload" : preview ? "download" : "save"} size={14} />
           {saving
             ? "Saving…"
-            : `${dirHandle ? "Save to RC-600" : "Save to Offline Slot"} ${slot === NEW_SLOT ? (pedalNames?.length ?? 0) + 1 : slot + 1}`}
+            : preview
+              ? dirHandle
+                ? "Save to RC-600 (1 rhythm)"
+                : "Download RHYTHM.RC0 (1 rhythm)"
+              : `${dirHandle ? "Save to RC-600" : "Save to Offline Slot"} ${slot === NEW_SLOT ? (pedalNames?.length ?? 0) + 1 : slot + 1}`}
         </button>
         <button
           type="button"

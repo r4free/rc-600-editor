@@ -76,7 +76,7 @@ const ICONS = {
   eject: "mdi:eject",
   keyRemove: "mdi:key-remove",
   key: "mdi:key-variant",
-  emailSend: "mdi:email-send-outline",
+  emailSend: "mdi:email-fast-outline",
   archive: "mdi:folder-zip-outline",
   restore: "mdi:restore",
   note: "mdi:music-note",

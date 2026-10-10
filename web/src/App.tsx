@@ -143,7 +143,6 @@ import { isDemoPage } from "./demoMode";
 import { DemoModeProvider } from "./demoModeContext";
 import {
   PREVIEW_BANNER,
-  PREVIEW_LIST_SAVE,
   PREVIEW_PEDAL_SAVE,
   licenseBadgeText,
   previewBlocksPedalSave,
@@ -3032,9 +3031,7 @@ export function App() {
                 onSelectPedalKit={selectPedalRhythmKit}
                 dirHandle={hasDirHandle ? dirHandleRef.current : null}
                 writeBlockedReason={
-                  session.plan === "preview"
-                    ? PREVIEW_LIST_SAVE
-                    : requireLicense && !sessionOk
+                  requireLicense && !sessionOk
                     ? "Enter a valid license key before saving to the RC-600."
                     : !backupAck
                       ? "Confirm the backup before saving to the RC-600."
@@ -3045,11 +3042,9 @@ export function App() {
                 }}
                 onConnectUsb={() => setUsbConnectOpen(true)}
                 onBackupDone={
-                  session.plan === "preview"
-                    ? undefined
-                    : hasDirHandle && !backupAck && !(requireLicense && !sessionOk)
-                      ? () => setBackupAck(true)
-                      : undefined
+                  hasDirHandle && !backupAck && !(requireLicense && !sessionOk)
+                    ? () => setBackupAck(true)
+                    : undefined
                 }
               />
             </div>
