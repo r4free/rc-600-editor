@@ -67,6 +67,7 @@ import {
   type MemoryCopySelection,
 } from "./presets/memoryClipboard";
 import { Icon } from "./components/Icon";
+import { InfoTip } from "./components/InfoTip";
 import { DevLicenseSlot } from "./dev/DevLicenseSlot";
 import {
   Rc600Midi,
@@ -2174,6 +2175,13 @@ export function App() {
               <h2>
                 <Icon name="fileMusic" size={16} />
                 Rhythm Converter
+                <span className="beta-badge" title="Beta: in testing">
+                  Beta
+                </span>
+                <InfoTip
+                  label="Beta"
+                  text="The Rhythm Converter is in beta testing. It should already work almost perfectly, but some test coverage is still being added. Keep a backup of ROLAND/DATA/RHYTHM.RC0 before writing to the pedal, and please report anything that looks wrong."
+                />
               </h2>
               <div className="modal-head-actions">
                 <button

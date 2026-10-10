@@ -138,6 +138,11 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ## Changelog
 
+### 2026-10-10
+
+- **EN:** The Rhythm Converter is marked **Beta**: a badge and info tip in its title say it should already work almost perfectly, but some tests are still being added, and recommend keeping a backup of RHYTHM.RC0.
+- **PT:** O Rhythm Converter está marcado como **Beta**: um selo e um info no título dizem que ele já deve funcionar quase perfeitamente, mas ainda faltam alguns testes, e recomendam guardar um backup do RHYTHM.RC0.
+
 ### 2026-10-09
 
 - **EN:** RC-600 Slots: clearer offline vs pedal. A bar shows the offline list (this browser) and the RC-600 side by side; **Connect RC-600** opens the USB steps from the converter, and with the pedal connected **Add to RC-600**, **Replace RC-600** and **Copy to Offline** move rhythms between them. The backup confirmation can be done inside the converter.
