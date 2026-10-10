@@ -19,14 +19,15 @@ export function licenseDaysLeft(expiresAt: string | null | undefined, now = Date
   return Math.max(0, Math.ceil((end - now) / DAY_MS));
 }
 
-/** Top-bar label for a key with a time limit or a preview plan; null for a full key that never ends. */
+/** Top-bar label for a preview key or a trial key (30 days or less); null for a regular license, dated or not. */
 export function licenseBadgeText(
   plan: string | null | undefined,
   expiresAt: string | null | undefined,
+  trial: boolean | null | undefined,
   now = Date.now(),
 ): string | null {
   const days = licenseDaysLeft(expiresAt, now);
-  const kind = isPreviewPlan(plan) ? "Preview" : days != null ? "Trial" : null;
+  const kind = isPreviewPlan(plan) ? "Preview" : trial ? "Trial" : null;
   if (!kind) return null;
   if (days == null) return kind;
   if (days <= 1) return `${kind} · ends today`;

@@ -62,6 +62,13 @@ function trialWindow(days: number): { startsOn: string; endsOn: string } {
   return { startsOn: localYmd(start), endsOn: localYmd(end) };
 }
 
+/** Same rule as the server: a full key valid for 30 days or less. */
+function isTrialKey(lic: Pick<ManagedLicense, "startsAt" | "expiresAt" | "createdAt">): boolean {
+  if (!lic.expiresAt) return false;
+  const span = Date.parse(lic.expiresAt) - Date.parse(lic.startsAt ?? lic.createdAt);
+  return Number.isFinite(span) && span <= 31 * 86_400_000;
+}
+
 function formatDay(iso: string | undefined): string {
   if (!iso) return "";
   const date = new Date(iso);
@@ -455,7 +462,11 @@ function KeysPanel({ licenses, loading, error, reload }: {
                 >
                   <span className="dev-license-row-head">
                     <strong>{lic.name || "(no name)"}</strong>
-                    {lic.plan === "preview" ? <span className="dev-license-state is-wait">Preview</span> : null}
+                    {lic.plan === "preview" ? (
+                      <span className="dev-license-state is-wait">Preview</span>
+                    ) : isTrialKey(lic) ? (
+                      <span className="dev-license-state is-wait">Trial</span>
+                    ) : null}
                     <span className={`dev-license-state is-${state.tone}`}>{state.label}</span>
                   </span>
                   <span className="dev-license-row-sub">{lic.email || "—"}</span>

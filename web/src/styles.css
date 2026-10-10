@@ -296,14 +296,19 @@ textarea {
   gap: 0.5rem;
 }
 
-.sidebar-copy-actions {
+.memory-layout.no-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.memory-tab-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  padding: 0.45rem 0.55rem 0.25rem;
+  margin-left: auto;
+  align-items: center;
 }
 
-.sidebar-copy-actions .btn {
+.memory-tab-actions .btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -312,7 +317,7 @@ textarea {
 }
 
 .sidebar-clipboard-hint {
-  margin: 0 0.55rem 0.35rem;
+  margin: 0.45rem 0.55rem 0.35rem;
   font-size: 0.68rem;
   line-height: 1.35;
   color: var(--muted);
@@ -7573,6 +7578,11 @@ button[role="switch"]:focus-visible {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
+  gap: 0.6rem;
+}
+
+.connection-state.is-online {
+  color: var(--ok);
 }
 
 .connection-state {
@@ -10835,3 +10845,150 @@ select option {
   }
 }
 
+/* Editor settings: Full Width */
+.app.app-full-width {
+  max-width: none;
+  padding-inline: 0;
+}
+
+.tab.tab-memory-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.tab-memory-select select {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  max-width: 16rem;
+  cursor: pointer;
+}
+
+.tab-memory-select select option {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.modal-sheet.tuner-window-modal {
+  max-width: min(26rem, 94vw);
+}
+
+.tuner-body-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tuner-body-compact .tuner-header {
+  gap: 0.5rem;
+}
+
+.tuner-body-compact .tuner-settings {
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+}
+
+.tuner-body-compact .tuner-display {
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 1rem 0.75rem;
+}
+
+.tuner-body-compact .tuner-note {
+  min-height: 3.5rem;
+  font-size: 3.5rem;
+}
+
+.tuner-body-compact .tuner-meter {
+  width: 100%;
+}
+
+.tuner-body-compact .tuner-readouts {
+  min-width: 0;
+  width: 100%;
+}
+
+.tuner-body-compact.is-storage-blocked .tuner-input-level {
+  opacity: 0.55;
+}
+
+.auto-save-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.auto-save-pill.is-blocked {
+  color: var(--warn);
+}
+
+.auto-save-pill.is-saving {
+  color: var(--accent);
+}
+
+.auto-save-bar {
+  position: relative;
+  display: inline-block;
+  width: 4.5rem;
+  height: 3px;
+  margin-left: 0.2rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.auto-save-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: auto-save-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes auto-save-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.modal-sheet.editor-settings-modal {
+  max-width: min(46rem, 96vw);
+}
+
+.editor-settings-modal .section-title.editor-settings-section {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.editor-settings-modal .section-title.editor-settings-section .ui-icon {
+  color: var(--accent);
+}
+
+.editor-settings-modal .param-columns {
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  margin-bottom: 1.1rem;
+}
+
+.editor-settings-modal .param-columns:last-child {
+  margin-bottom: 0;
+}
+
+.editor-settings-modal .param-control select,
+.editor-settings-modal .param-slider {
+  width: 100%;
+}
+
+.editor-settings-modal .param-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}

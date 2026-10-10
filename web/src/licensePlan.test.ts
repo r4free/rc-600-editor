@@ -22,11 +22,12 @@ describe("preview license", () => {
     assert.equal(licenseDaysLeft("2026-10-09T00:00:00Z", now), 0);
   });
 
-  it("labels trial and preview keys, not a permanent full key", () => {
+  it("labels trial and preview keys, not a regular license", () => {
     const now = Date.parse("2026-10-10T12:00:00Z");
-    assert.equal(licenseBadgeText("full", undefined, now), null);
-    assert.equal(licenseBadgeText("full", "2026-10-17T11:00:00Z", now), "Trial · 7 days left");
-    assert.equal(licenseBadgeText("preview", "2026-10-10T23:00:00Z", now), "Preview · ends today");
-    assert.equal(licenseBadgeText("preview", undefined, now), "Preview");
+    assert.equal(licenseBadgeText("full", undefined, false, now), null);
+    assert.equal(licenseBadgeText("full", "2026-10-17T11:00:00Z", true, now), "Trial · 7 days left");
+    assert.equal(licenseBadgeText("full", "2026-10-17T11:00:00Z", false, now), null);
+    assert.equal(licenseBadgeText("preview", "2026-10-10T23:00:00Z", false, now), "Preview · ends today");
+    assert.equal(licenseBadgeText("preview", undefined, false, now), "Preview");
   });
 });

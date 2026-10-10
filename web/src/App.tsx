@@ -57,6 +57,8 @@ import { PlatformSelect } from "./components/PlatformSelect";
 import { MemoryCopyModal } from "./components/MemoryCopyModal";
 import { MemoryApplyTargetsModal } from "./components/MemoryApplyTargetsModal";
 import { UsbConnectModal } from "./components/UsbConnectModal";
+import { EditorSettingsModal } from "./components/EditorSettingsModal";
+import { saveLastMemorySlot, startMemorySlot, useEditorSettings } from "./editorSettings";
 import { Modal } from "./components/Modal";
 import {
   loadMemoryClipboard,
@@ -107,6 +109,8 @@ import {
   appendSlotDraft,
   clearSlotDraft,
   dirtySlotNumbers,
+  opsAfterSave,
+  removeSavedOps,
   type DraftMap,
 } from "./presets/memoryDrafts";
 import {
@@ -207,6 +211,9 @@ export function App() {
   const [usbEjectLocal, setUsbEjectLocal] = useState(false);
   const [usbVolumePresent, setUsbVolumePresent] = useState(false);
   const [usbConnectOpen, setUsbConnectOpen] = useState(false);
+  const [editorSettingsOpen, setEditorSettingsOpen] = useState(false);
+  const [editorSettings, updateEditorSettings] = useEditorSettings();
+  const [tunerWindowOpen, setTunerWindowOpen] = useState(false);
   const [ejecting, setEjecting] = useState(false);
   const [backupAck, setBackupAck] = useState(false);
   const [slot, setSlot] = useState<number | null>(null);
@@ -247,6 +254,23 @@ export function App() {
   );
   /** Stays mounted after the first open so a closed converter keeps its file and edits. */
   const [rhythmConverterMounted, setRhythmConverterMounted] = useState(rhythmConverterOpen);
+
+  function openTuner() {
+    if (editorSettings.tunerView === "window") setTunerWindowOpen(true);
+    else setWorkspace("tuner");
+  }
+
+  function switchTunerToWindow() {
+    updateEditorSettings({ tunerView: "window" });
+    setWorkspace("memory");
+    setTunerWindowOpen(true);
+  }
+
+  function switchTunerToFull() {
+    updateEditorSettings({ tunerView: "full" });
+    setTunerWindowOpen(false);
+    setWorkspace("tuner");
+  }
 
   function openRhythmConverter() {
     setRhythmConverterMounted(true);
@@ -530,7 +554,7 @@ export function App() {
       committedRef.current = emptyCommitted();
       setStatus(demoMode ? "" : label === OFFLINE_LABEL ? "Editing offline · 99 memories" : `${map.size} files · ${label}`);
       const slotsNow = listMemorySlots(map);
-      const preferred = opts?.preferredSlot;
+      const preferred = demoMode ? opts?.preferredSlot : startMemorySlot(opts?.preferredSlot);
       const first = preferred && slotsNow.includes(preferred) ? preferred : slotsNow[0];
       if (first) loadSlot(first, map);
       if (hasSystem(map)) loadSystem(map);
@@ -762,31 +786,41 @@ export function App() {
   startOfflineRef.current = startOffline;
 
   const offline = rootLabel === OFFLINE_LABEL && files.size > 0;
-  const pedalConnected = hasDirHandle || usbVolumePresent || Boolean(connected);
+  /** USB Storage (files). MIDI is separate: it only sends memory changes and transport, never edits. */
+  const usbConnected = hasDirHandle || usbVolumePresent;
   const connectionState = offline
     ? {
         kind: "offline" as const,
         short: "Editing",
         label: "Editing offline",
-        text: "You are editing without the RC-600. Changes stay in this browser. Use Connect RC-600 to send them to the pedal, or Export edits to take them to another device.",
+        text: "You are editing without the RC-600 on USB. Changes stay in this browser. Use Connect RC-600 to send them to the pedal, or Export edits to take them to another device.",
       }
-    : pedalConnected
+    : usbConnected
       ? {
           kind: "online" as const,
-          short: "",
-          label: "RC-600 connected",
+          short: "USB",
+          label: "RC-600 connected over USB",
           text: hasDirHandle
-            ? "The RC-600 ROLAND folder is open. Save writes straight to the pedal."
-            : connected
-              ? `The RC-600 is connected over MIDI (${connected}).`
-              : "The RC-600 drive is on this computer. Open its ROLAND folder to edit it.",
+            ? "The RC-600 ROLAND folder is open over USB Storage. Save writes straight to the pedal."
+            : "The RC-600 drive is on this computer over USB Storage. Open its ROLAND folder to edit it.",
         }
       : {
           kind: "idle" as const,
-          short: "",
-          label: "RC-600 not connected",
-          text: "The pedal is not connected and you are not editing offline. Use Connect to USB or Edit offline to start.",
+          short: "USB",
+          label: "RC-600 not connected over USB",
+          text: "The pedal is not connected over USB Storage and you are not editing offline. Use Connect to USB or Edit offline to start.",
         };
+  const midiState = connected
+    ? {
+        kind: "online" as const,
+        label: "MIDI connected",
+        text: `MIDI is linked to ${connected}. It changes memories and controls playback on the pedal; it does not read or write settings.`,
+      }
+    : {
+        kind: "idle" as const,
+        label: "MIDI not connected",
+        text: "No MIDI link. MIDI is optional: it changes memories and controls playback live. Editing settings uses USB Storage or offline mode.",
+      };
   const hasSessionEdits =
     anyMemoryDirty || sysDirty || committed.memories.size > 0 || committed.system.length > 0;
 
@@ -1177,7 +1211,7 @@ export function App() {
     }
   }
 
-  async function saveAll() {
+  async function saveAll({ auto = false }: { auto?: boolean } = {}) {
     if (dirtySlots.length === 0) return;
     if (previewBlocksPedalSave(session?.plan, Boolean(dirHandleRef.current))) {
       setError(PREVIEW_PEDAL_SAVE);
@@ -1187,7 +1221,7 @@ export function App() {
       setError("Enter a valid license key before saving.");
       return;
     }
-    if (!backupAck) {
+    if (!backupAck && (dirHandleRef.current || !auto)) {
       setError("Confirm the backup before writing to the looper.");
       return;
     }
@@ -1197,6 +1231,7 @@ export function App() {
       let next = new Map(files);
       let savedCount = 0;
       let nextCommitted = committed;
+      const savedOps = new Map<number, PatchOp[]>();
       for (const s of dirtySlots) {
         const slotOps = drafts.get(s) ?? [];
         if (slotOps.length === 0) continue;
@@ -1204,10 +1239,15 @@ export function App() {
         next = await commitSlotFiles(written, next);
         if (s === slot) setBaseXml(saved);
         nextCommitted = commitMemoryOps(nextCommitted, s, slotOps);
+        savedOps.set(s, slotOps);
         savedCount += 1;
       }
       setFiles(next);
-      setDrafts(new Map());
+      setDrafts((prev) => {
+        let out = prev;
+        for (const [s, slotOps] of savedOps) out = removeSavedOps(out, s, slotOps);
+        return out;
+      });
       setCommitted(nextCommitted);
       if (dirHandleRef.current && slot != null && dirtySlots.includes(slot)) {
         pendingMemoryReloadRef.current = {
@@ -1216,11 +1256,15 @@ export function App() {
           assign: model ? findRhythmKitAssign(model.assigns) : null,
         };
       }
-      setStatus(
-        dirHandleRef.current
-          ? `Saved ${savedCount} memor${savedCount === 1 ? "y" : "ies"} (A and B). On the pedal, switch memory and back so the new kit loads.`
-          : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — Export ZIP to copy onto the pedal`,
-      );
+      if (auto) {
+        noteAutoSave(`${savedCount} memor${savedCount === 1 ? "y" : "ies"}`);
+      } else {
+        setStatus(
+          dirHandleRef.current
+            ? `Saved ${savedCount} memor${savedCount === 1 ? "y" : "ies"} (A and B). On the pedal, switch memory and back so the new kit loads.`
+            : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — Export ZIP to copy onto the pedal`,
+        );
+      }
     } catch (e) {
       setError(String(e));
       if (String(e).includes("License required") || String(e).includes("expired")) {
@@ -1230,6 +1274,42 @@ export function App() {
       setSaving(false);
     }
   }
+
+  const autoSaveActive = editorSettings.autoSave && (hasDirHandle || offline) && !demoMode;
+  const autoSaveBlocked = !autoSaveActive
+    ? null
+    : previewBlocksPedalSave(session?.plan, hasDirHandle)
+      ? PREVIEW_PEDAL_SAVE
+      : requireLicense && !sessionOk
+        ? "Enter a valid license key to auto-save."
+        : hasDirHandle && !backupAck
+          ? "Confirm the backup to start auto-saving."
+          : null;
+  const [lastAutoSave, setLastAutoSave] = useState<{ time: string; detail: string } | null>(null);
+  function noteAutoSave(what: string) {
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setLastAutoSave({
+      time,
+      detail: `Auto-saved ${what} at ${time}${
+        dirHandleRef.current ? " to the RC-600." : " in this offline session. Use Export edits or Export ZIP to take it to the pedal."
+      }`,
+    });
+  }
+  const autoSaveTickRef = useRef<() => void>(() => {});
+  autoSaveTickRef.current = () => {
+    if (!autoSaveActive || autoSaveBlocked || saving) return;
+    // One write per tick: memory and System saves both commit into `files`.
+    if (anyMemoryDirty) void saveAll({ auto: true });
+    else if (sysDirty && sysBaseXml) void saveSystem({ auto: true });
+  };
+  useEffect(() => {
+    if (!autoSaveActive) return;
+    const timer = window.setInterval(
+      () => autoSaveTickRef.current(),
+      editorSettings.autoSaveSeconds * 1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [autoSaveActive, editorSettings.autoSaveSeconds]);
 
   function discardMemory() {
     if (slot == null || !dirty) return;
@@ -1259,13 +1339,16 @@ export function App() {
     const next = await commitSlotFiles(written, filesRef.current);
     setFiles(next);
     setSysBaseXml(saved);
-    setSysOps([]);
-    setSysDirty(false);
+    setSysOps((prev) => {
+      const rest = opsAfterSave(prev, opsToApply);
+      setSysDirty(rest.length > 0);
+      return rest;
+    });
     setSysSide("1");
     return saved;
   }
 
-  async function saveSystem() {
+  async function saveSystem({ auto = false }: { auto?: boolean } = {}) {
     if (!sysBaseXml) return;
     if (previewBlocksPedalSave(session?.plan, Boolean(dirHandleRef.current))) {
       setError(PREVIEW_PEDAL_SAVE);
@@ -1275,7 +1358,7 @@ export function App() {
       setError("Enter a valid license key before saving.");
       return;
     }
-    if (!backupAck) {
+    if (!backupAck && (dirHandleRef.current || !auto)) {
       setError("Confirm the backup before writing.");
       return;
     }
@@ -1285,7 +1368,8 @@ export function App() {
       const applied = sysOps;
       await writeSystemXml(applied);
       setCommitted((prev) => commitSystemOps(prev, applied));
-      setStatus(
+      if (auto) noteAutoSave("System");
+      else setStatus(
         dirHandleRef.current
           ? "Saved SYSTEM1.RC0 and SYSTEM2.RC0"
           : "System updated — Export ZIP to copy onto the pedal",
@@ -1773,9 +1857,10 @@ export function App() {
   }, [demoMode, env.supported]);
 
   useEffect(() => {
-    if (!hasDirHandle || slot == null) return;
-    saveFolderMeta({ lastSlot: slot });
-  }, [hasDirHandle, slot]);
+    if (demoMode || slot == null) return;
+    saveLastMemorySlot(slot);
+    if (hasDirHandle) saveFolderMeta({ lastSlot: slot });
+  }, [demoMode, hasDirHandle, slot]);
 
   useEffect(() => {
     if (!hasDirHandle) return;
@@ -1795,6 +1880,26 @@ export function App() {
     { id: "tfx", label: "Track FX" },
   ];
 
+  const memoryOptions = (
+    <>
+      {slot == null ? (
+        <option value="" disabled>
+          Select a memory
+        </option>
+      ) : null}
+      {summaries.map((s) => {
+        const unsaved = (drafts.get(s.slot)?.length ?? 0) > 0;
+        return (
+          <option key={s.slot} value={s.slot}>
+            {unsaved ? "• " : ""}
+            {String(s.slot).padStart(2, "0")} {(pendingName(s.slot) ?? s.name) || "—"}{" "}
+            {s.active.toUpperCase()}
+          </option>
+        );
+      })}
+    </>
+  );
+
   if (session === null) {
     return (
       <div className="app">
@@ -1806,7 +1911,7 @@ export function App() {
   }
 
   const showDemoFixtures = !demoMode && session.license == null;
-  const licenseBadge = licenseBadgeText(session.plan, session.license?.expiresAt);
+  const licenseBadge = licenseBadgeText(session.plan, session.license?.expiresAt, session.license?.trial);
 
   if (requireLicense && !sessionOk && !demoMode) {
     return (
@@ -1829,7 +1934,7 @@ export function App() {
   return (
     <DemoModeProvider enabled={demoMode}>
     <PreviewProvider enabled={session.plan === "preview"}>
-    <div className={`app${demoMode ? " demo-mode" : ""}`}>
+    <div className={`app${demoMode ? " demo-mode" : ""}${editorSettings.fullWidth ? " app-full-width" : ""}`}>
       <header className="topbar">
         <div className="topbar-start">
           <div className="brand">
@@ -1861,10 +1966,46 @@ export function App() {
                 onChannel={setMidiCh}
               />
               )}
+              {autoSaveActive ? (
+                autoSaveBlocked ? (
+                  <span className="status-pill auto-save-pill is-blocked" role="status" title={autoSaveBlocked}>
+                    <Icon name="alert" size={13} />
+                    Auto-save paused
+                  </span>
+                ) : anyMemoryDirty || sysDirty || saving ? (
+                  <span
+                    className="status-pill auto-save-pill is-saving"
+                    role="status"
+                    aria-live="polite"
+                    title={`Memory and System changes are saved every ${editorSettings.autoSaveSeconds} seconds. Change this under Editor settings.`}
+                  >
+                    <Icon name="save" size={13} />
+                    Saving…
+                    <span className="auto-save-bar" aria-hidden="true">
+                      <i />
+                    </span>
+                  </span>
+                ) : lastAutoSave ? (
+                  <span className="status-pill auto-save-pill" role="status" title={lastAutoSave.detail}>
+                    <Icon name="save" size={13} />
+                    Auto-saved {lastAutoSave.time}
+                  </span>
+                ) : null
+              ) : null}
             </div>
           </div>
           {demoMode ? null : (
             <div className="topbar-connection">
+              <HoverTip label={midiState.label} text={midiState.text}>
+                <span
+                  className={`connection-state connection-midi is-${midiState.kind}`}
+                  role="status"
+                  aria-label={midiState.label}
+                >
+                  <span className="connection-dot" aria-hidden="true" />
+                  MIDI
+                </span>
+              </HoverTip>
               <HoverTip label={connectionState.label} text={connectionState.text}>
                 <span
                   className={`connection-state is-${connectionState.kind}`}
@@ -1891,9 +2032,11 @@ export function App() {
               onActivated={setSession}
             />
           ) : null}
+          {editorSettings.showGuide ? (
           <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
             <Icon name="help" size={14} /> Guide
           </a>
+          ) : null}
           {!demoMode && requireLicense ? (
             <button
               type="button"
@@ -1925,7 +2068,7 @@ export function App() {
             Open folder
           </button>
           )}
-          {demoMode || offline || pedalConnected ? null : (
+          {demoMode || offline || usbConnected ? null : (
           <HoverTip
             label="Edit offline"
             text="Edit all 99 memories and the system settings without the RC-600 connected. Edits are kept in this browser. When you are done, use Export edits to take them to another device, or Export ZIP to copy them onto the pedal."
@@ -2061,7 +2204,7 @@ export function App() {
               <Icon name="eject" size={14} />
               {ejecting ? "Ejecting…" : "Eject USB"}
             </button>
-          ) : (
+          ) : connected ? null : (
             <button
               type="button"
               className="btn primary"
@@ -2073,7 +2216,7 @@ export function App() {
               Connect to USB
             </button>
           )}
-          {demoMode ? null : (
+          {demoMode || autoSaveActive ? null : (
           <div
             className={`topbar-save-actions${anyMemoryDirty || sysDirty ? " has-pending" : ""}`}
             aria-label="Save and discard changes"
@@ -2126,20 +2269,22 @@ export function App() {
             ]
               .filter(Boolean)
               .join(" · ");
-            const showUnsaved = dirty || sysDirty || anyMemoryDirty;
+            const memoryUnsaved = !autoSaveActive && (dirty || anyMemoryDirty);
+            const systemUnsaved = !autoSaveActive && sysDirty;
+            const showUnsaved = memoryUnsaved || systemUnsaved;
             if (!statusText && !showUnsaved) return null;
             return (
           <span
-            className={`status-pill ${dirty || sysDirty ? "dirty" : ""}`}
+            className={`status-pill ${(memoryUnsaved && dirty) || systemUnsaved ? "dirty" : ""}`}
             role="status"
             aria-live="polite"
           >
-            {dirty || sysDirty ? (
+            {(memoryUnsaved && dirty) || systemUnsaved ? (
               <span className="unsaved-indicator">
                 <Icon name="dirty" size={11} />
                 Unsaved changes
               </span>
-            ) : anyMemoryDirty ? (
+            ) : memoryUnsaved ? (
               <span className="unsaved-indicator">
                 <Icon name="dirty" size={11} />
                 Unsaved memories
@@ -2244,9 +2389,9 @@ export function App() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={workspace === "tuner"}
-                className={`tab ${workspace === "tuner" ? "active" : ""}`}
-                onClick={() => setWorkspace("tuner")}
+                aria-selected={workspace === "tuner" || tunerWindowOpen}
+                className={`tab ${workspace === "tuner" || tunerWindowOpen ? "active" : ""}`}
+                onClick={openTuner}
               >
                 <Icon name="guitar" size={14} />
                 Tuner
@@ -2260,13 +2405,23 @@ export function App() {
                 <Icon name="fileMusic" size={14} />
                 Rhythm Converter
               </button>
+              <button
+                type="button"
+                className={`tab ${editorSettingsOpen ? "active" : ""}`}
+                aria-haspopup="dialog"
+                onClick={() => setEditorSettingsOpen(true)}
+              >
+                <Icon name="system" size={14} />
+                Editor
+              </button>
             </div>
-            <NavigationBreadcrumb />
+            {editorSettings.showBreadcrumbs ? <NavigationBreadcrumb /> : null}
             {workspace === "tuner" ? (
               <TunerTab
                 usbStorageActive={hasDirHandle}
                 onEjectUsb={() => void ejectUsb()}
                 onExit={() => setWorkspace("memory")}
+                onSwitchView={switchTunerToWindow}
               />
             ) : workspace === "play-drum" ? (
               <PlayDrumTab
@@ -2305,7 +2460,7 @@ export function App() {
             ) : workspace === "system" ? (
               <div className="empty-state">
                 <h2>Open the ROLAND folder to edit System</h2>
-                {pedalConnected ? (
+                {usbConnected ? (
                   <p>Play Drum works over MIDI without a folder. Memory and System need DATA/*.RC0 files.</p>
                 ) : (
                   <>
@@ -2349,7 +2504,7 @@ export function App() {
                   <Icon name="folderOpen" size={14} />
                   Choose a different folder
                 </button>
-                {pedalConnected ? null : (
+                {usbConnected ? null : (
                 <button type="button" className="btn" onClick={() => void startOffline()}>
                   <Icon name="edit" size={14} />
                   Edit offline
@@ -2385,7 +2540,7 @@ export function App() {
                   <Icon name="folderOpen" size={14} />
                   Open ROLAND folder
                 </button>
-                {pedalConnected ? null : (
+                {usbConnected ? null : (
                 <button
                   type="button"
                   className="btn"
@@ -2412,6 +2567,7 @@ export function App() {
         <div className="main">
           <section className="editor-panel">
             <div className="tabs tabs-workspace" role="tablist" aria-label="Workspace">
+              {editorSettings.showMemorySidebar ? (
               <button
                 type="button"
                 role="tab"
@@ -2422,6 +2578,23 @@ export function App() {
                 <Icon name="library" size={14} />
                 Memory
               </button>
+              ) : (
+              <label className={`tab tab-memory-select ${workspace === "memory" ? "active" : ""}`}>
+                <Icon name="library" size={14} />
+                <select
+                  aria-label="Memory"
+                  value={slot ?? ""}
+                  onClick={() => setWorkspace("memory")}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    if (Number.isFinite(next) && next > 0) loadSlot(next, files, { syncPedal: !demoMode });
+                    setWorkspace("memory");
+                  }}
+                >
+                  {memoryOptions}
+                </select>
+              </label>
+              )}
               <button
                 type="button"
                 role="tab"
@@ -2458,9 +2631,9 @@ export function App() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={workspace === "tuner"}
-                className={`tab ${workspace === "tuner" ? "active" : ""}`}
-                onClick={() => setWorkspace("tuner")}
+                aria-selected={workspace === "tuner" || tunerWindowOpen}
+                className={`tab ${workspace === "tuner" || tunerWindowOpen ? "active" : ""}`}
+                onClick={openTuner}
               >
                 <Icon name="guitar" size={14} />
                 Tuner
@@ -2474,12 +2647,21 @@ export function App() {
                 <Icon name="fileMusic" size={14} />
                 Rhythm Converter
               </button>
+              <button
+                type="button"
+                className={`tab ${editorSettingsOpen ? "active" : ""}`}
+                aria-haspopup="dialog"
+                onClick={() => setEditorSettingsOpen(true)}
+              >
+                <Icon name="system" size={14} />
+                Editor
+              </button>
               {sysBaseXml && (workspace === "system" || sysDirty) ? (
                 <>
                   <span className="status-pill" style={{ marginLeft: "auto" }}>
                     SYSTEM{sysSide} · count {systemModel?.count ?? "—"}
                   </span>
-                  {demoMode ? null : (
+                  {demoMode || autoSaveActive ? null : (
                   <HoverTip
                     label="Save system"
                     text={
@@ -2509,12 +2691,13 @@ export function App() {
               ) : null}
             </div>
 
-            <NavigationBreadcrumb />
+            {editorSettings.showBreadcrumbs ? <NavigationBreadcrumb /> : null}
             {workspace === "tuner" ? (
               <TunerTab
                 usbStorageActive={hasDirHandle}
                 onEjectUsb={() => void ejectUsb()}
                 onExit={() => setWorkspace("memory")}
+                onSwitchView={switchTunerToWindow}
               />
             ) : workspace === "play-drum" ? (
               <PlayDrumTab
@@ -2552,39 +2735,12 @@ export function App() {
                 />
               </div>
             ) : workspace === "memory" ? (
-              <div className="memory-layout">
+              <div className={`memory-layout${editorSettings.showMemorySidebar ? "" : " no-sidebar"}`}>
+                {editorSettings.showMemorySidebar ? (
                 <aside className="sidebar">
                   <div className="sidebar-head">
                     <span>Memories ({slots.length})</span>
                   </div>
-                  {demoMode ? null : (
-                  <div className="sidebar-copy-actions">
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      disabled={!slot || !baseXml || saving}
-                      title="Copy settings from the current memory"
-                      onClick={() => setCopyModalOpen(true)}
-                    >
-                      <Icon name="copy" size={14} />
-                      Copy
-                    </button>
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      disabled={!memoryClipboard || saving}
-                      title={
-                        memoryClipboard
-                          ? `Mass apply: ${memoryClipboard.summary}`
-                          : "Copy settings first"
-                      }
-                      onClick={() => setMassApplyOpen(true)}
-                    >
-                      <Icon name="paste" size={14} />
-                      Mass Apply
-                    </button>
-                  </div>
-                  )}
                   {!demoMode && memoryClipboard ? (
                     <p className="sidebar-clipboard-hint" title={memoryClipboard.summary}>
                       Clipboard: {String(memoryClipboard.sourceSlot).padStart(2, "0")} ·{" "}
@@ -2600,21 +2756,7 @@ export function App() {
                       if (Number.isFinite(next) && next > 0) loadSlot(next, files, { syncPedal: !demoMode });
                     }}
                   >
-                    {slot == null ? (
-                      <option value="" disabled>
-                        Select a memory
-                      </option>
-                    ) : null}
-                    {summaries.map((s) => {
-                      const unsaved = (drafts.get(s.slot)?.length ?? 0) > 0;
-                      return (
-                        <option key={s.slot} value={s.slot}>
-                          {unsaved ? "• " : ""}
-                          {String(s.slot).padStart(2, "0")} {(pendingName(s.slot) ?? s.name) || "—"}{" "}
-                          {s.active.toUpperCase()}
-                        </option>
-                      );
-                    })}
+                    {memoryOptions}
                   </select>
                   <div className="mem-list" ref={memListRef}>
                     {summaries.map((s) => {
@@ -2700,12 +2842,15 @@ export function App() {
                     })}
                   </div>
                 </aside>
+                ) : null}
 
                 <div className="memory-editor">
                   <MemoryChainBar
                     model={model}
                     onPatch={pushOps}
                     memoryTab={tab}
+                    chainEnabled={editorSettings.showChain}
+                    modelEnabled={editorSettings.show3dModel}
                     onJumpTab={(next) => {
                       if ((MEMORY_TABS as readonly string[]).includes(next)) {
                         setTab(next as TabId);
@@ -2725,6 +2870,34 @@ export function App() {
                         {t.label}
                       </button>
                     ))}
+                    {demoMode ? null : (
+                      <div className="memory-tab-actions">
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          disabled={!slot || !baseXml || saving}
+                          title="Copy settings from the current memory"
+                          onClick={() => setCopyModalOpen(true)}
+                        >
+                          <Icon name="copy" size={14} />
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          disabled={!memoryClipboard || saving}
+                          title={
+                            memoryClipboard
+                              ? `Mass apply: ${memoryClipboard.summary}`
+                              : "Copy settings first"
+                          }
+                          onClick={() => setMassApplyOpen(true)}
+                        >
+                          <Icon name="paste" size={14} />
+                          Mass Apply
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="editor-body">
                     {!model ? <p className="hint">Select a memory.</p> : null}
@@ -2759,6 +2932,7 @@ export function App() {
                         model={model}
                         onPatch={pushOps}
                         dirHandle={hasDirHandle ? dirHandleRef.current : null}
+                        offline={offline}
                         canWrite={
                           hasDirHandle &&
                           backupAck &&
@@ -2883,6 +3057,24 @@ export function App() {
         </div>
       ) : null}
 
+      {tunerWindowOpen && workspace !== "tuner" ? (
+        <Modal title="Tuner" onClose={() => setTunerWindowOpen(false)} className="tuner-window-modal">
+          <TunerTab
+            compact
+            usbStorageActive={hasDirHandle}
+            onEjectUsb={() => void ejectUsb()}
+            onExit={() => setTunerWindowOpen(false)}
+            onSwitchView={switchTunerToFull}
+          />
+        </Modal>
+      ) : null}
+      {editorSettingsOpen ? (
+        <EditorSettingsModal
+          settings={editorSettings}
+          onChange={updateEditorSettings}
+          onClose={() => setEditorSettingsOpen(false)}
+        />
+      ) : null}
       {usbConnectOpen ? (
         <UsbConnectModal onClose={() => setUsbConnectOpen(false)} onOpenFolder={confirmUsbConnect} />
       ) : null}

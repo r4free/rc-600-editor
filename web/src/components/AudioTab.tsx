@@ -55,12 +55,14 @@ export function AudioTab({
   dirHandle,
   canWrite,
   writeBlockedReason,
+  offline = false,
 }: {
   model: MemoryModel;
   onPatch: PatchHandler;
   dirHandle: DirectoryHandleLike | null;
   canWrite: boolean;
   writeBlockedReason: string | null;
+  offline?: boolean;
 }) {
   const [wavInfos, setWavInfos] = useState<Array<TrackWavInfo | null>>(() =>
     Array.from({ length: 6 }, () => null),
@@ -574,6 +576,17 @@ export function AudioTab({
   const anyPlayable = playableCount > 0;
   const allPlaying = anyPlayable && playingTracks.size >= playableCount;
   const anyMoved = positions.some((p) => p > 0);
+
+  if (offline) {
+    return (
+      <div className="audio-tab">
+        <p className="hint audio-folder-hint" role="status">
+          <Icon name="folderOpen" size={14} /> Track audio is not available while editing offline.
+          Connect the RC-600 over USB to play, import, export, or clear track WAV files.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="audio-tab">

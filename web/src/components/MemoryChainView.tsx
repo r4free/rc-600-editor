@@ -177,14 +177,20 @@ export function MemoryChainBar({
   onPatch,
   memoryTab,
   onJumpTab,
+  chainEnabled = true,
+  modelEnabled = true,
 }: {
   model: MemoryModel | null;
   onPatch: PatchHandler;
   memoryTab: string;
   onJumpTab: (tab: string) => void;
+  chainEnabled?: boolean;
+  modelEnabled?: boolean;
 }) {
-  const [visible, setVisible] = usePersistedTab("memory.chain", "off", CHAIN_VIS);
-  const [modelVisible, setModelVisible] = usePersistedTab("memory.model3d", "off", CHAIN_VIS);
+  const [chainPref, setVisible] = usePersistedTab("memory.chain", "off", CHAIN_VIS);
+  const [modelPref, setModelVisible] = usePersistedTab("memory.model3d", "off", CHAIN_VIS);
+  const visible = chainEnabled ? chainPref : "off";
+  const modelVisible = modelEnabled ? modelPref : "off";
   const [zoom, setZoom] = usePersistedTab("memory.chainZoom", 1, ZOOM_PRESETS);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -301,9 +307,12 @@ export function MemoryChainBar({
     return false;
   }
 
+  if (!chainEnabled && !modelEnabled) return null;
+
   return (
     <div className="memory-chain">
       <div className="memory-chain-toolbar">
+        {chainEnabled ? (
         <button
           type="button"
           className={`tone-view-btn${visible === "on" ? " active" : ""}`}
@@ -314,6 +323,8 @@ export function MemoryChainBar({
           <Icon name="chain" size={14} />
           Chain
         </button>
+        ) : null}
+        {modelEnabled ? (
         <button
           type="button"
           className={`tone-view-btn${modelVisible === "on" ? " active" : ""}`}
@@ -325,6 +336,7 @@ export function MemoryChainBar({
           <Icon name="board" size={14} />
           3D Model
         </button>
+        ) : null}
         {visible === "on" ? (
           <div className="memory-chain-zoom" role="group" aria-label="Chain zoom">
             <button

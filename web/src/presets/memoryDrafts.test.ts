@@ -4,6 +4,8 @@ import {
   appendSlotDraft,
   clearSlotDraft,
   dirtySlotNumbers,
+  opsAfterSave,
+  removeSavedOps,
   type DraftMap,
 } from "./memoryDrafts";
 import type { PatchOp } from "@rc600/rc0/ops";
@@ -31,6 +33,23 @@ describe("memoryDrafts", () => {
     assert.ok(slot2 && slot2.type === "track");
     assert.equal(slot2.tags.D, "90");
     assert.deepEqual(dirtySlotNumbers(drafts), [2]);
+  });
+
+  it("removeSavedOps keeps ops appended while the save ran", () => {
+    let drafts: DraftMap = appendSlotDraft(new Map(), 1, [op(1, "110")]);
+    const saved = drafts.get(1)!;
+    drafts = appendSlotDraft(drafts, 1, [op(2, "120")]);
+    drafts = removeSavedOps(drafts, 1, saved);
+    assert.deepEqual(drafts.get(1), [op(2, "120")]);
+    drafts = removeSavedOps(drafts, 1, drafts.get(1)!);
+    assert.equal(drafts.has(1), false);
+  });
+
+  it("opsAfterSave returns only what came after the saved snapshot", () => {
+    const saved = [op(1, "1")];
+    assert.deepEqual(opsAfterSave([...saved, op(2, "2")], saved), [op(2, "2")]);
+    assert.deepEqual(opsAfterSave(saved, saved), []);
+    assert.deepEqual(opsAfterSave([op(3, "3")], saved), []);
   });
 
   it("discard all is an empty map", () => {

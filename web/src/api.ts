@@ -69,6 +69,8 @@ export type LicenseInfo = {
   expiresAt?: string;
   note?: string;
   plan?: "full" | "preview";
+  /** Full key valid for 30 days or less. */
+  trial?: boolean;
 };
 
 export type SessionInfo = {

@@ -47,10 +47,15 @@ export function TunerTab({
   usbStorageActive = false,
   onEjectUsb,
   onExit,
+  compact = false,
+  onSwitchView,
 }: {
   usbStorageActive?: boolean;
   onEjectUsb?: () => void;
   onExit: () => void;
+  /** Small-window layout: no page chrome, title and close live in the host modal. */
+  compact?: boolean;
+  onSwitchView?: () => void;
 }) {
   const viewOnly = useDemoMode();
   const initialPrefs = useRef(loadPrefs()).current;
@@ -141,7 +146,9 @@ export function TunerTab({
   const listening = audio.active;
 
   return (
-    <div className={`tuner-body${usbStorageActive ? " is-storage-blocked" : ""}`}>
+    <div
+      className={`${compact ? "tuner-body-compact" : "tuner-body"}${usbStorageActive ? " is-storage-blocked" : ""}`}
+    >
       {usbStorageActive ? (
         <div className="tuner-storage-warning" role="status">
           <div>
@@ -163,7 +170,7 @@ export function TunerTab({
       <header className="tuner-header">
         <div>
           <h2>
-            USB Audio Tuner
+            {compact ? null : "USB Audio Tuner"}
             <InfoTip
               label="USB Audio Tuner"
               text="Chromatic tuner using the audio sent from the RC-600 to this computer. Choose the RC-600 audio input. If the meter stays empty, check the pedal’s USB routing and make sure System → USB → Output Level is above 0."
@@ -180,10 +187,23 @@ export function TunerTab({
             <Icon name={listening ? "stop" : "mic"} size={16} />
             {audio.starting ? "Starting…" : listening ? "Stop" : "Listen"}
           </button>
-          <button type="button" className="btn ghost" onClick={onExit}>
-            <Icon name="fullscreenExit" size={16} />
-            Exit tuner
-          </button>
+          {onSwitchView ? (
+            <button
+              type="button"
+              className="btn ghost"
+              title={compact ? "Open the tuner full screen" : "Open the tuner in a small window"}
+              onClick={onSwitchView}
+            >
+              <Icon name={compact ? "fullscreen" : "fullscreenExit"} size={16} />
+              {compact ? "Full Screen" : "Small Window"}
+            </button>
+          ) : null}
+          {compact ? null : (
+            <button type="button" className="btn ghost" onClick={onExit}>
+              <Icon name="close" size={16} />
+              Exit tuner
+            </button>
+          )}
         </div>
       </header>
 

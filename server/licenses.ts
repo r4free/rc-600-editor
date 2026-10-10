@@ -29,7 +29,20 @@ export type LicensePublic = {
   expiresAt?: string;
   note?: string;
   plan: LicensePlan;
+  /** Full key whose whole validity is 30 days or less. Longer dated keys are regular licenses. */
+  trial: boolean;
 };
+
+/** Longest validity, start to end, that still counts as a trial (a 30-day window plus slack for the last day). */
+export const TRIAL_MAX_MS = 31 * 86_400_000;
+
+export function isTrialLicense(lic: Pick<LicenseRecord, "plan" | "startsAt" | "expiresAt" | "createdAt">): boolean {
+  if (lic.plan === "preview" || !lic.expiresAt) return false;
+  const end = Date.parse(lic.expiresAt);
+  const start = Date.parse(lic.startsAt ?? lic.createdAt);
+  if (!Number.isFinite(end) || !Number.isFinite(start)) return false;
+  return end - start <= TRIAL_MAX_MS;
+}
 
 export function readLicensePlan(value: unknown): LicensePlan {
   return value === "preview" ? "preview" : "full";
@@ -144,6 +157,7 @@ export function licensePublic(lic: LicenseRecord): LicensePublic {
     expiresAt: lic.expiresAt,
     note: lic.note,
     plan: lic.plan === "preview" ? "preview" : "full",
+    trial: isTrialLicense(lic),
   };
 }
 

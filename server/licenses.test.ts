@@ -87,6 +87,21 @@ describe("licenses", () => {
     assert.equal(findValidLicense(preview.key)?.plan, "preview");
   });
 
+  it("calls a full key a trial only when it lasts 30 days or less", () => {
+    const day = 86_400_000;
+    const now = Date.now();
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const month = createLicense({ note: "trial", startsAt: iso(now - day), expiresAt: iso(now + 29 * day) });
+    assert.equal(licensePublic(month.record).trial, true);
+    const halfYear = createLicense({ note: "six months", expiresAt: iso(now + 180 * day) });
+    assert.equal(licensePublic(halfYear.record).trial, false);
+    const lateHalfYear = createLicense({ note: "ending soon", startsAt: iso(now - 170 * day), expiresAt: iso(now + 10 * day) });
+    assert.equal(licensePublic(lateHalfYear.record).trial, false);
+    assert.equal(licensePublic(createLicense({ note: "forever" }).record).trial, false);
+    const preview = createLicense({ note: "p", plan: "preview", expiresAt: iso(now + 7 * day) });
+    assert.equal(licensePublic(preview.record).trial, false);
+  });
+
   it("says when a trial key ended or has not started", () => {
     const ended = createLicense({ note: "ended", expiresAt: new Date(Date.now() - 86_400_000).toISOString() });
     assert.equal(findValidLicense(ended.key), null);
