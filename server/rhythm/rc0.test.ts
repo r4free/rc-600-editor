@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { DrumHit, DrumScore, PlayedBar } from "./scoreDrumEvents.js";
-import type { PartPlan } from "./sectionSuggest.js";
-import { DEFAULT_CONVERT_OPTIONS, resolveParts } from "./exportPack.js";
+import type { DrumHit, DrumScore, PlayedBar } from "../../web/src/rhythmConverter/scoreDrumEvents.js";
+import type { PartPlan } from "../../web/src/rhythmConverter/sectionSuggest.js";
+import { DEFAULT_CONVERT_OPTIONS, resolveParts } from "../../web/src/rhythmConverter/exportPack.js";
+import { MAX_USER_PATTERNS, sanitizePatternName } from "../../web/src/rhythmConverter/rhythmRc0.js";
 import {
-  MAX_USER_PATTERNS,
   RECORD_SIZE,
   buildUserPattern,
   decodeUserPattern,
@@ -12,11 +12,11 @@ import {
   isSupportedMeter,
   patternNames,
   readRhythmRc0,
+  recordFromData,
   renameRecord,
-  sanitizePatternName,
-  upsertRecord,
+  slotFromRecord,
   writeRhythmRc0,
-} from "./rhythmRc0.js";
+} from "./rc0.js";
 
 const PPQ = 960;
 
@@ -102,11 +102,19 @@ describe("rhythmRc0", () => {
 
     const records = readRhythmRc0(file);
     assert.deepEqual(patternNames(records), ["One"]);
-    const appended = upsertRecord(records, b, null);
-    assert.equal(appended.index, 1);
-    const replaced = upsertRecord(appended.records, b, 0);
-    assert.deepEqual(patternNames(replaced.records), ["Two", "Two"]);
-    assert.deepEqual(readRhythmRc0(writeRhythmRc0(appended.records))[0], a);
+    assert.deepEqual(readRhythmRc0(writeRhythmRc0([...records, b])).map((r) => r.length), [RECORD_SIZE, RECORD_SIZE]);
+    assert.deepEqual(readRhythmRc0(writeRhythmRc0(records))[0], a);
+  });
+
+  it("round-trips slot data without the zero padding", () => {
+    const a = encodeUserPattern(buildUserPattern(resolveParts(SCORE, PLAN, DEFAULT_CONVERT_OPTIONS), { name: "One", kit: 3 }));
+    const slot = slotFromRecord(a);
+    assert.equal(slot.name, "One");
+    assert.equal(slot.kit, 3);
+    assert.ok(slot.parts.length > 0);
+    assert.ok(Buffer.from(slot.data, "base64").length < RECORD_SIZE);
+    assert.deepEqual(recordFromData(slot.data), a);
+    assert.throws(() => recordFromData(Buffer.alloc(RECORD_SIZE + 1).toString("base64")), /too long/);
   });
 
   it("renames a record without touching the rest", () => {

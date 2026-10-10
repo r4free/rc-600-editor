@@ -2,18 +2,27 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PartEvents } from "./exportPack.js";
 import {
+  encodeSlot,
+  readRhythmRc0,
+  recordFromData,
+  slotFromRecord,
+  writeRhythmRc0,
+} from "../../../server/rhythm/rc0.js";
+import {
   PEDAL_IMPORT_TAG,
-  addRhythmsToRecords,
   libraryPartsFromRhythm,
   parseRhythmLibrary,
   partsFromRhythm,
   rhythmFromParts,
   rhythmLibraryToJson,
-  rhythmsFromRc0,
+  rhythmsFromSlots,
   upsertRhythm,
+  type LibraryRhythm,
 } from "./rhythmLibrary.js";
 import { createRhythmLibraryRepository } from "./rhythmLibraryRepository.js";
-import { patternNames, writeRhythmRc0 } from "./rhythmRc0.js";
+import { mergeRecordsByName } from "./rhythmRc0.js";
+
+const slot = (r: LibraryRhythm) => encodeSlot(partsFromRhythm(r), r.name, r.kit);
 
 function part(role: PartEvents["role"], note = 36): PartEvents {
   return {
@@ -80,10 +89,10 @@ describe("rhythmLibrary", () => {
 
   it("writes several rhythms into one file, reusing slots with the same name", () => {
     const funk = { ...ROCK, id: "funk", name: "Funk" };
-    const first = addRhythmsToRecords([], [ROCK, funk]);
-    assert.deepEqual(patternNames(first.records), ["Rock Basic", "Funk"]);
-    const again = addRhythmsToRecords(first.records, [funk, { ...ROCK, id: "new", name: "Samba" }]);
-    assert.deepEqual(patternNames(again.records), ["Rock Basic", "Funk", "Samba"]);
+    const first = mergeRecordsByName([], [slot(ROCK), slot(funk)]);
+    assert.deepEqual(first.records.map((r) => r.name), ["Rock Basic", "Funk"]);
+    const again = mergeRecordsByName(first.records, [slot(funk), slot({ ...ROCK, id: "new", name: "Samba" })]);
+    assert.deepEqual(again.records.map((r) => r.name), ["Rock Basic", "Funk", "Samba"]);
     assert.deepEqual(
       again.slots.map((s) => [s.index, s.replaced]),
       [
@@ -96,11 +105,15 @@ describe("rhythmLibrary", () => {
   it("reads pedal rhythms back with only their own parts", () => {
     const groove = { ...part("varA"), bars: 2, lengthTicks: 3840 };
     groove.notes = [...groove.notes, { tick: 1920, note: 42, velocity: 80, duration: 60 }];
-    const file = writeRhythmRc0(
-      addRhythmsToRecords([], [rhythmFromParts([part("intro", 49), groove, part("fillA", 45)], { name: "Pedal Rock", kit: 2, tags: [], source: "user" })])
-        .records,
-    );
-    const [found] = rhythmsFromRc0(file);
+    const slots = readRhythmRc0(
+      writeRhythmRc0([
+        recordFromData(
+          slot(rhythmFromParts([part("intro", 49), groove, part("fillA", 45)], { name: "Pedal Rock", kit: 2, tags: [], source: "user" }))
+            .data,
+        ),
+      ]),
+    ).map(slotFromRecord);
+    const [found] = rhythmsFromSlots(slots);
     assert.equal(found!.slot, 0);
     assert.equal(found!.rhythm.name, "Pedal Rock");
     assert.equal(found!.rhythm.kit, 2);

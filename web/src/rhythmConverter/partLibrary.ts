@@ -1,7 +1,7 @@
 /** Reusable rhythm parts (a converted Variation, Fill, Intro or Ending) shared across rhythms. */
 import type { PartEvents } from "./exportPack";
 import { PART_ROLES, type PartRole } from "./sectionSuggest";
-import { SMF_PPQ } from "./smfWriter";
+import { SMF_PPQ } from "./smf";
 
 export const PART_LIBRARY_VERSION = 1;
 export const NATIVE_PARTS_URL = "/rhythm-converter/parts.json";

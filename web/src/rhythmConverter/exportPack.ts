@@ -1,10 +1,8 @@
-/** Normalizes suggested parts into RC Rhythm Converter–ready SMF files and a ZIP pack. */
-import { strToU8, zipSync } from "fflate";
+/** Normalizes suggested parts into RC-600 part events (480 PPQ, kit notes only). */
 import { DRUM_INSTRUMENTS } from "../drumMap";
 import type { DrumScore, PlayedBar } from "./scoreDrumEvents";
 import { meterLabel } from "./scoreDrumEvents";
 import {
-  PART_LABELS,
   PART_ROLES,
   partLength,
   variationRoleFor,
@@ -12,7 +10,7 @@ import {
   type PartPlan,
   type PartRole,
 } from "./sectionSuggest";
-import { SMF_PPQ, writeSmf0, type SmfNote } from "./smfWriter";
+import { SMF_PPQ, type SmfNote } from "./smf";
 
 export type QuantizeGrid = "off" | "1/16" | "1/32" | "1/8T" | "1/16T";
 export type FillLength = "half" | "bar";
@@ -240,53 +238,4 @@ export function songSlug(score: Pick<DrumScore, "title">, fileName: string): str
       .replace(/^_+|_+$/g, "")
       .slice(0, 40) || "rhythm"
   );
-}
-
-export function readmeText(songName: string, parts: readonly PartEvents[]): string {
-  const lines = [
-    `RC-600 rhythm pack: ${songName}`,
-    "",
-    "Files",
-    ...parts.map((p) => {
-      const origin = p.origin ? ` (${p.origin})` : "";
-      return `  ${PART_FILE_NAMES[p.role].padEnd(16)} ${PART_LABELS[p.role].padEnd(12)} ${p.bars} bar(s), ${p.numerator}/${p.denominator}, ${p.tempoBpm} BPM${origin}`;
-    }),
-    "",
-    "Import with BOSS RC Rhythm Converter",
-    "  1. Download RC Rhythm Converter from boss.info (RC-600 support page) and install it.",
-    "  2. Connect the RC-600 over USB and open RC Rhythm Converter.",
-    "  3. File > Open MIDI File, and open each .mid file from this folder.",
-    "  4. Place each file in the slot named in the list above (Intro, Variation A-D, Fill, Ending).",
-    "     If the converter builds fills by itself, the Fill files can be skipped.",
-    "  5. Set the tempo, time signature and kit, then transfer the pattern to the RC-600.",
-    "  6. On the RC-600, pick it under Rhythm > Genre: USER.",
-    "",
-    "All files are Standard MIDI File format 0, channel 10, 480 ticks per quarter note,",
-    "General MIDI drum notes, and whole bars only.",
-    "",
-  ];
-  return lines.join("\r\n");
-}
-
-export interface RhythmPack {
-  fileName: string;
-  bytes: Uint8Array;
-  parts: PartEvents[];
-}
-
-export function buildRhythmPack(parts: readonly PartEvents[], songName: string): RhythmPack {
-  const slug = songSlug({ title: songName }, "");
-  const files: Record<string, Uint8Array> = {};
-  for (const p of parts) {
-    files[`${slug}/${PART_FILE_NAMES[p.role]}`] = writeSmf0({
-      name: `${slug} ${PART_LABELS[p.role]}`,
-      tempoBpm: p.tempoBpm,
-      numerator: p.numerator,
-      denominator: p.denominator,
-      lengthTicks: p.lengthTicks,
-      notes: p.notes,
-    });
-  }
-  files[`${slug}/README.txt`] = strToU8(readmeText(songName || slug, parts));
-  return { fileName: `${slug}_rc600_rhythm.zip`, bytes: zipSync(files), parts: [...parts] };
 }

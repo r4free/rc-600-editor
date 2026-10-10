@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { classifyBars, grooveFeatures, suggestKit } from "./grooveClassify.js";
-import type { DrumHit, PlayedBar } from "./scoreDrumEvents.js";
-import { barRepeats } from "./sectionSuggest.js";
+import type { DrumHit, PlayedBar } from "../../web/src/rhythmConverter/scoreDrumEvents.js";
+import { barRepeats } from "../../web/src/rhythmConverter/sectionSuggest.js";
 
 const PPQ = 480;
 const Q = PPQ;

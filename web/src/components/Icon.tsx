@@ -75,6 +75,8 @@ const ICONS = {
   folderOpen: "mdi:folder-open-outline",
   eject: "mdi:eject",
   keyRemove: "mdi:key-remove",
+  key: "mdi:key-variant",
+  emailSend: "mdi:email-send-outline",
   archive: "mdi:folder-zip-outline",
   restore: "mdi:restore",
   note: "mdi:music-note",

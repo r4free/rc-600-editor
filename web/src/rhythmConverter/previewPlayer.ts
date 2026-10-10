@@ -1,7 +1,7 @@
 /** Plays converted parts (looped) or the whole drum track, in the browser or on the RC-600 over MIDI. */
 import { drumClass, type PartRole } from "./sectionSuggest";
 import { lastBarOnly } from "./rhythmRc0";
-import { SMF_PPQ } from "./smfWriter";
+import { SMF_PPQ } from "./smf";
 import { mapToKit, type PartEvents } from "./exportPack";
 import type { DrumScore } from "./scoreDrumEvents";
 import { parseSf2, type Sf2Bank, type Sf2Zone } from "./sf2";

@@ -1,12 +1,18 @@
-/** Offline working copy of RHYTHM.RC0 (about 2 MB, too big for localStorage), kept in IndexedDB. */
+/** Offline working copy of the user rhythm slots (too big for localStorage), kept in IndexedDB. */
+import type { SlotRecord } from "./rhythmRc0";
 
 export interface OfflineSlots {
-  /** Full RHYTHM.RC0 bytes. */
-  bytes: Uint8Array;
+  records: SlotRecord[];
   /** Where the list came from: a file name, or null for a list started empty. */
   origin: string | null;
   /** Changed since it was opened or last downloaded. */
   dirty: boolean;
+}
+
+/** Older saves kept the whole RHYTHM.RC0 file instead of decoded slots. */
+export interface StoredOfflineSlots extends Omit<OfflineSlots, "records"> {
+  records?: SlotRecord[];
+  bytes?: Uint8Array;
 }
 
 const DB_NAME = "rc600-rhythm-slots";
@@ -35,10 +41,12 @@ async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => I
   }
 }
 
-export async function loadOfflineSlots(): Promise<OfflineSlots | null> {
+export async function loadOfflineSlots(): Promise<StoredOfflineSlots | null> {
   if (typeof indexedDB === "undefined") return null;
-  const value = (await run("readonly", (s) => s.get(KEY))) as OfflineSlots | undefined;
-  return value?.bytes ? { ...value, bytes: new Uint8Array(value.bytes) } : null;
+  const value = (await run("readonly", (s) => s.get(KEY))) as StoredOfflineSlots | undefined;
+  if (!value) return null;
+  if (Array.isArray(value.records)) return value;
+  return value.bytes ? { ...value, bytes: new Uint8Array(value.bytes) } : null;
 }
 
 export async function saveOfflineSlots(value: OfflineSlots | null): Promise<void> {

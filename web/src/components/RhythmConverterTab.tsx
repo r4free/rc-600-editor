@@ -4,7 +4,6 @@ import {
   PART_FILE_NAMES,
   QUANTIZE_OPTIONS,
   buildPartEvents,
-  buildRhythmPack,
   meterMismatches,
   resolveParts,
   songSlug,
@@ -18,17 +17,26 @@ import {
   MAX_USER_PATTERNS,
   PATTERN_NAME_MAX,
   RHYTHM_RC0_PATH,
-  buildUserPattern,
-  decodeUserPattern,
-  encodeUserPattern,
+  mergeRecordsByName,
   patternMeter,
-  patternNames,
-  readRhythmRc0,
-  renameRecord,
   sanitizePatternName,
   upsertRecord,
-  writeRhythmRc0,
+  type SlotRecord,
 } from "../rhythmConverter/rhythmRc0";
+import {
+  autoMapPlans,
+  buildMidiPack,
+  classifySelection,
+  encodeRhythms,
+  guessKit,
+  readRhythmFile,
+  renameSlot as renameSlotRecord,
+  suggestPlan,
+  writeRhythmFile,
+  type AutoMapOption,
+  type GrooveGuess,
+  type KitSuggestion,
+} from "../rhythmConverter/rhythmApi";
 import {
   PART_KIND_LABELS,
   defaultRoleForKind,
@@ -45,10 +53,9 @@ import { Modal } from "./Modal";
 import { browserPartLibrary } from "../rhythmConverter/partLibraryRepository";
 import { browserRhythmLibrary } from "../rhythmConverter/rhythmLibraryRepository";
 import {
-  addRhythmsToRecords,
   libraryPartsFromRhythm,
   partsFromRhythm,
-  rhythmsFromRc0,
+  rhythmsFromSlots,
   rhythmFromParts,
   type LibraryRhythm,
 } from "../rhythmConverter/rhythmLibrary";
@@ -61,8 +68,7 @@ import {
 } from "./RhythmPresetLibrary";
 import { RhythmPartPicker } from "./RhythmPartPicker";
 import { RhythmSlotManager, type SlotInfo } from "./RhythmSlotManager";
-import { loadOfflineSlots, saveOfflineSlots } from "../rhythmConverter/slotStore";
-import { classifyBars, grooveFeatures, suggestKit } from "../rhythmConverter/grooveClassify";
+import { loadOfflineSlots, saveOfflineSlots, type OfflineSlots } from "../rhythmConverter/slotStore";
 import {
   DEFAULT_PLAYER_PREFS,
   PLAYER_TEMPO_MAX,
@@ -105,12 +111,10 @@ import {
   roleAtBar,
   barRepeats,
   sectionSegments,
-  suggestParts,
   type Confidence,
   type PartPlan,
   type PartRole,
 } from "../rhythmConverter/sectionSuggest";
-import { autoMapOptions, type AutoMapOption } from "../rhythmConverter/autoMap";
 import { emptyPart, type EditGrid } from "../rhythmConverter/partEdit";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
@@ -366,6 +370,7 @@ export function RhythmConverterTab({
   const [startBar, setStartBar] = useState(0);
   const [overrides, setOverrides] = useState<Overrides>({});
   const [wandOptions, setWandOptions] = useState<AutoMapOption[] | null>(null);
+  const [wandBusy, setWandBusy] = useState(false);
   const wandIndex = useMemo(() => {
     const i = wandOptions?.findIndex((o) => o.plan === plan) ?? -1;
     return i >= 0 && !Object.keys(overrides).length ? i : null;
@@ -435,16 +440,8 @@ export function RhythmConverterTab({
   const [slot, setSlot] = useState(NEW_SLOT);
   /** Working copy of RHYTHM.RC0: read from the open drive, or an offline list kept in the browser. */
   /** With the drive open: the offline list kept in this browser, ready to send to the pedal. */
-  const [offlineCopy, setOfflineCopy] = useState<{
-    records: Uint8Array[];
-    origin: string | null;
-    dirty: boolean;
-  } | null>(null);
-  const [slotList, setSlotList] = useState<{
-    records: Uint8Array[];
-    origin: string | null;
-    dirty: boolean;
-  } | null>(null);
+  const [offlineCopy, setOfflineCopy] = useState<OfflineSlots | null>(null);
+  const [slotList, setSlotList] = useState<OfflineSlots | null>(null);
   const [saving, setSaving] = useState(false);
   const slotFileRef = useRef<HTMLInputElement>(null);
 
@@ -564,17 +561,38 @@ export function RhythmConverterTab({
   }, [resolved, overrides]);
   const libraryAll = useMemo(() => [...library.native, ...library.user], [library]);
   const knownTags = useMemo(() => libraryTags(libraryAll), [libraryAll]);
-  const selectionGuess = useMemo(
-    () => (score && selection ? classifyBars(score.bars, selection[0], selection[1], score.ppq) : null),
-    [score, selection],
-  );
-  const kitGuess = useMemo(() => {
-    if (!score) return null;
-    const ranges = VARIATION_ROLES.map((r) => plan[r]).filter((p): p is NonNullable<typeof p> => !!p);
-    const bars = ranges.length ? ranges.flatMap((p) => score.bars.slice(p.start, p.end)) : score.bars;
-    const features = grooveFeatures(bars, score.ppq);
-    return features.hits ? suggestKit(features) : null;
-  }, [score, plan]);
+  const [selectionGuess, setSelectionGuess] = useState<GrooveGuess | null>(null);
+  useEffect(() => {
+    setSelectionGuess(null);
+    if (!score || !selection) return;
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => {
+      classifySelection(score.bars, selection[0], selection[1], score.ppq, ctrl.signal).then(
+        setSelectionGuess,
+        () => undefined,
+      );
+    }, 150);
+    return () => {
+      window.clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [score, selection]);
+  const kitRangesKey = VARIATION_ROLES.map((r) => (plan[r] ? `${plan[r].start}-${plan[r].end}` : "")).join(",");
+  const [kitGuess, setKitGuess] = useState<KitSuggestion | null>(null);
+  useEffect(() => {
+    if (!score) {
+      setKitGuess(null);
+      return;
+    }
+    const ranges = kitRangesKey
+      .split(",")
+      .filter(Boolean)
+      .map((r) => r.split("-").map(Number) as [number, number]);
+    const bars = ranges.length ? ranges.flatMap(([s, e]) => score.bars.slice(s, e)) : score.bars;
+    const ctrl = new AbortController();
+    guessKit(bars, score.ppq, ctrl.signal).then(setKitGuess, () => undefined);
+    return () => ctrl.abort();
+  }, [score, kitRangesKey]);
   useEffect(() => {
     if (kitAuto && kitGuess) setKit(kitGuess.kit);
   }, [kitAuto, kitGuess]);
@@ -618,11 +636,11 @@ export function RhythmConverterTab({
     return part && part.notes.length ? partPlayback(eventsFromLibraryPart(part, "varA")) : null;
   }, [libraryAll, libraryPreviewId]);
   const rhythmAll = useMemo(() => [...rhythms.native, ...rhythms.user], [rhythms]);
-  const pedalNames = useMemo(() => (slotList ? patternNames(slotList.records) : null), [slotList]);
+  const pedalNames = useMemo(() => (slotList ? slotList.records.map((r) => r.name) : null), [slotList]);
   const slotRhythms = useMemo(() => {
     const out = new Map<number, LibraryRhythm>();
     if (slotList?.records.length) {
-      for (const p of rhythmsFromRc0(writeRhythmRc0(slotList.records))) {
+      for (const p of rhythmsFromSlots(slotList.records)) {
         out.set(p.slot, { ...p.rhythm, id: `slot:${p.slot}:${p.rhythm.name}` });
       }
     }
@@ -631,17 +649,14 @@ export function RhythmConverterTab({
   const slotInfos = useMemo(
     (): SlotInfo[] | null =>
       slotList
-        ? slotList.records.map((record, i) => {
-            const p = decodeUserPattern(record);
-            return {
-              name: p.name,
-              kit: p.kit,
-              tempo: p.tempo,
-              meter: `${p.numerator}/${p.denominator}`,
-              bars: p.totalBars,
-              previewId: slotRhythms.get(i)?.id ?? null,
-            };
-          })
+        ? slotList.records.map((p, i) => ({
+            name: p.name,
+            kit: p.kit,
+            tempo: p.tempo,
+            meter: `${p.numerator}/${p.denominator}`,
+            bars: p.totalBars,
+            previewId: slotRhythms.get(i)?.id ?? null,
+          }))
         : null,
     [slotList, slotRhythms],
   );
@@ -955,15 +970,22 @@ export function RhythmConverterTab({
     setStatus(null);
   }
 
-  function runMagicWand() {
-    if (!score) return;
-    const options = autoMapOptions(score.bars, score.ppq);
-    if (!options.length) {
-      setStatus("The Magic Wand found no drum bars to map in this song.");
-      return;
+  async function runMagicWand() {
+    if (!score || wandBusy) return;
+    setWandBusy(true);
+    try {
+      const options = await autoMapPlans(score.bars, score.ppq);
+      if (!options.length) {
+        setStatus("The Magic Wand found no drum bars to map in this song.");
+        return;
+      }
+      setWandOptions(options);
+      applyWandOption(0, options);
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "The Magic Wand could not map this song.");
+    } finally {
+      setWandBusy(false);
     }
-    setWandOptions(options);
-    applyWandOption(0, options);
   }
 
   function resetParts() {
@@ -1250,11 +1272,10 @@ export function RhythmConverterTab({
   }
 
   /** Writes the slot list: straight to the open drive, or to the offline copy in this browser. */
-  async function commitSlots(records: Uint8Array[], origin?: string | null): Promise<void> {
-    const bytes = writeRhythmRc0(records);
+  async function commitSlots(records: SlotRecord[], origin?: string | null): Promise<void> {
     if (dirHandle) {
       if (writeBlockedReason) throw new Error(writeBlockedReason);
-      await writeFileToDirectory(dirHandle, RHYTHM_RC0_PATH, bytes);
+      await writeFileToDirectory(dirHandle, RHYTHM_RC0_PATH, await writeRhythmFile(records));
       setSlotList({ records, origin: DRIVE_ORIGIN, dirty: false });
       return;
     }
@@ -1264,11 +1285,19 @@ export function RhythmConverterTab({
       dirty: true,
     };
     setSlotList(next);
-    await saveOfflineSlots({ bytes, origin: next.origin, dirty: true });
+    await saveOfflineSlots(next);
+  }
+
+  /** Pedal slots for library rhythms, placed by name into `base`. */
+  async function rhythmsToRecords(base: readonly SlotRecord[], list: readonly LibraryRhythm[]) {
+    const encoded = await encodeRhythms(
+      list.map((r) => ({ parts: partsFromRhythm(r), name: sanitizePatternName(r.name), kit: r.kit })),
+    );
+    return mergeRecordsByName(base, encoded);
   }
 
   /** Records to save into; offline without a list, asks before starting an empty one (null = cancelled). */
-  function slotBase(): Uint8Array[] | null {
+  function slotBase(): SlotRecord[] | null {
     if (slotList) return slotList.records;
     if (dirHandle) return [];
     return window.confirm(
@@ -1288,7 +1317,7 @@ export function RhythmConverterTab({
     setLibraryBusy(true);
     setRhythmError(null);
     try {
-      const res = addRhythmsToRecords(base, list);
+      const res = await rhythmsToRecords(base, list);
       await commitSlots(res.records);
       const count = `${res.slots.length} rhythm${res.slots.length === 1 ? "" : "s"}`;
       setStatus(
@@ -1315,16 +1344,16 @@ export function RhythmConverterTab({
     }
     setRhythmError(null);
     try {
-      const { records, slots } = addRhythmsToRecords(slotList?.records ?? [], list);
-      downloadBytes(writeRhythmRc0(records), "RHYTHM.RC0", "application/octet-stream");
+      const { records, slots } = await rhythmsToRecords(slotList?.records ?? [], list);
+      downloadBytes(await writeRhythmFile(records), "RHYTHM.RC0", "application/octet-stream");
       setStatus(`Downloaded RHYTHM.RC0 (${slotsText(slots)}). Copy it to ROLAND/DATA on the RC-600.`);
     } catch (cause) {
       setRhythmError(cause instanceof Error ? cause.message : "Could not build RHYTHM.RC0.");
     }
   }
 
-  function openPedalImport(bytes: Uint8Array, source: string) {
-    const items = rhythmsFromRc0(bytes);
+  async function openPedalImport(bytes: Uint8Array, source: string) {
+    const items = rhythmsFromSlots(await readRhythmFile(bytes));
     setPedalImport({
       source,
       items,
@@ -1342,7 +1371,7 @@ export function RhythmConverterTab({
     try {
       const bytes = await readBinaryFromDirectory(dirHandle, RHYTHM_RC0_PATH);
       if (!bytes) throw new Error("The RC-600 drive has no ROLAND/DATA/RHYTHM.RC0 yet (no user rhythms).");
-      openPedalImport(bytes, "Open RC-600 drive");
+      await openPedalImport(bytes, "Open RC-600 drive");
     } catch (cause) {
       setRhythmError(cause instanceof Error ? cause.message : "Could not read RHYTHM.RC0.");
     }
@@ -1351,7 +1380,7 @@ export function RhythmConverterTab({
   async function importPedalFile(file: File) {
     setRhythmError(null);
     try {
-      openPedalImport(new Uint8Array(await file.arrayBuffer()), file.name);
+      await openPedalImport(new Uint8Array(await file.arrayBuffer()), file.name);
     } catch (cause) {
       setRhythmError(cause instanceof Error ? cause.message : "Could not read this RHYTHM.RC0 file.");
     }
@@ -1405,9 +1434,21 @@ export function RhythmConverterTab({
     setSongFrom(Math.min(startBar, Math.max(0, (score?.bars.length ?? 1) - 1)));
   }
 
+  const scoreRef = useRef<DrumScore | null>(null);
   const applyScore = useCallback((next: DrumScore) => {
+    scoreRef.current = next;
     setScore(next);
-    setPlan(suggestParts(next.bars, next.ppq));
+    setPlan({});
+    suggestPlan(next.bars, next.ppq).then(
+      (suggested) => {
+        if (scoreRef.current === next) setPlan(suggested);
+      },
+      (e: unknown) => {
+        if (scoreRef.current === next) {
+          setStatus(e instanceof Error ? `Could not suggest parts: ${e.message}` : "Could not suggest parts.");
+        }
+      },
+    );
     setWandOptions(null);
     setKitAuto(true);
     setPreviewRole(null);
@@ -1535,21 +1576,25 @@ export function RhythmConverterTab({
     };
   });
 
-  function exportPack() {
+  async function exportPack() {
     if (!resolved.length) {
       setStatus("Nothing to export. Set at least one part.");
       return;
     }
-    const pack = buildRhythmPack(resolved, score?.title || patternName || fileName.replace(/\.[^.]+$/, ""));
-    downloadBytes(pack.bytes, pack.fileName);
-    setStatus(`Exported ${pack.parts.length} part${pack.parts.length === 1 ? "" : "s"} to ${pack.fileName}.`);
+    try {
+      const pack = await buildMidiPack(resolved, score?.title || patternName || fileName.replace(/\.[^.]+$/, ""));
+      downloadBytes(pack.bytes, pack.fileName);
+      setStatus(`Exported ${resolved.length} part${resolved.length === 1 ? "" : "s"} to ${pack.fileName}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not build the MIDI pack.");
+    }
   }
 
   const readDriveSlots = useCallback(async () => {
     if (!dirHandle) return;
     const bytes = await readBinaryFromDirectory(dirHandle, RHYTHM_RC0_PATH);
     setSlotList({
-      records: bytes ? readRhythmRc0(bytes) : [],
+      records: bytes ? await readRhythmFile(bytes) : [],
       origin: DRIVE_ORIGIN,
       dirty: false,
     });
@@ -1560,9 +1605,12 @@ export function RhythmConverterTab({
     setSlotList(null);
     setOfflineCopy(null);
     setSlot(NEW_SLOT);
-    const offline = loadOfflineSlots().then((saved) => {
+    const offline = loadOfflineSlots().then(async (saved) => {
       if (cancelled || !saved) return;
-      const list = { records: readRhythmRc0(saved.bytes), origin: saved.origin, dirty: saved.dirty };
+      const records = saved.records ?? (saved.bytes ? await readRhythmFile(saved.bytes) : []);
+      const list = { records, origin: saved.origin, dirty: saved.dirty };
+      if (!saved.records) await saveOfflineSlots(list);
+      if (cancelled) return;
       if (dirHandle) setOfflineCopy(list);
       else setSlotList(list);
     });
@@ -1585,19 +1633,14 @@ export function RhythmConverterTab({
         : `Add the ${count} rhythms of the offline list to the RC-600? A rhythm whose name is already on the pedal replaces that slot; the others take the next free slots.`;
     if (!window.confirm(question)) return;
     await runSlotChange(async () => {
-      let records = [...slotList.records];
-      if (mode === "replace") records = [...offlineCopy.records];
-      else {
-        for (const record of offlineCopy.records) {
-          const name = decodeUserPattern(record).name.toLowerCase();
-          const same = patternNames(records).findIndex((n) => n.toLowerCase() === name);
-          records = upsertRecord(records, record, same >= 0 ? same : null).records;
-        }
-      }
+      const records =
+        mode === "replace"
+          ? [...offlineCopy.records]
+          : mergeRecordsByName(slotList.records, offlineCopy.records).records;
       await commitSlots(records);
       const sent = { ...offlineCopy, dirty: false };
       setOfflineCopy(sent);
-      await saveOfflineSlots({ bytes: writeRhythmRc0(sent.records), origin: sent.origin, dirty: false });
+      await saveOfflineSlots(sent);
       setStatus(
         mode === "replace"
           ? `The RC-600 now has the ${count} rhythms of the offline list.`
@@ -1619,7 +1662,7 @@ export function RhythmConverterTab({
     await runSlotChange(async () => {
       const origin = `RC-600 on ${new Date().toLocaleDateString()}`;
       const copy = { records: [...slotList.records], origin, dirty: false };
-      await saveOfflineSlots({ bytes: writeRhythmRc0(copy.records), origin, dirty: false });
+      await saveOfflineSlots(copy);
       setOfflineCopy(copy);
       setStatus(`Copied the ${copy.records.length} RC-600 rhythms to the offline list in this browser.`);
     });
@@ -1632,12 +1675,12 @@ export function RhythmConverterTab({
     setSaving(true);
     setError(null);
     try {
-      const record = encodeUserPattern(buildUserPattern(resolved, { name: patternName, kit }));
-      const next = upsertRecord(base, record, slot === NEW_SLOT ? null : slot);
+      const [record] = await encodeRhythms([{ parts: resolved, name: patternName, kit }]);
+      const next = upsertRecord(base, record!, slot === NEW_SLOT ? null : slot);
       await commitSlots(next.records);
       setSavedParts({ plan, overrides });
       setSlot(next.index);
-      const name = patternNames(next.records)[next.index];
+      const name = next.records[next.index]!.name;
       setStatus(
         dirHandle
           ? `Saved "${name}" to user rhythm ${next.index + 1}. Eject the drive to load it on the RC-600.`
@@ -1669,11 +1712,11 @@ export function RhythmConverterTab({
     )
       return;
     await runSlotChange(async () => {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const records = readRhythmRc0(bytes);
-      setSlotList({ records, origin: file.name, dirty: false });
+      const records = await readRhythmFile(new Uint8Array(await file.arrayBuffer()));
+      const list = { records, origin: file.name, dirty: false };
+      setSlotList(list);
       setSlot(NEW_SLOT);
-      await saveOfflineSlots({ bytes, origin: file.name, dirty: false });
+      await saveOfflineSlots(list);
       setStatus(`Opened ${file.name}: ${records.length} user rhythm${records.length === 1 ? "" : "s"}.`);
     });
   }
@@ -1686,12 +1729,9 @@ export function RhythmConverterTab({
       return;
     await runSlotChange(async () => {
       setSlot(NEW_SLOT);
-      setSlotList({ records: [], origin: null, dirty: false });
-      await saveOfflineSlots({
-        bytes: writeRhythmRc0([]),
-        origin: null,
-        dirty: false,
-      });
+      const list = { records: [], origin: null, dirty: false };
+      setSlotList(list);
+      await saveOfflineSlots(list);
     });
   }
 
@@ -1705,18 +1745,21 @@ export function RhythmConverterTab({
 
   async function downloadSlots() {
     if (!slotList) return;
-    const bytes = writeRhythmRc0(slotList.records);
+    let bytes: Uint8Array;
+    try {
+      bytes = await writeRhythmFile(slotList.records);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not build RHYTHM.RC0.");
+      return;
+    }
     downloadBytes(bytes, "RHYTHM.RC0", "application/octet-stream");
     if (dirHandle) {
       setStatus("Downloaded a backup of the pedal's RHYTHM.RC0.");
       return;
     }
-    setSlotList({ ...slotList, dirty: false });
-    await saveOfflineSlots({
-      bytes,
-      origin: slotList.origin,
-      dirty: false,
-    }).catch(() => undefined);
+    const saved = { ...slotList, dirty: false };
+    setSlotList(saved);
+    await saveOfflineSlots(saved).catch(() => undefined);
     setStatus(
       "Downloaded RHYTHM.RC0. Copy it to ROLAND/DATA on the RC-600 (USB storage mode), replacing the file there, then eject.",
     );
@@ -1724,8 +1767,8 @@ export function RhythmConverterTab({
 
   function loadSlot(index: number) {
     const r = slotRhythms.get(index);
-    if (!r || !slotList) return;
-    const p = decodeUserPattern(slotList.records[index]!);
+    const p = slotList?.records[index];
+    if (!r || !p) return;
     loadRhythm(r);
     setPatternName(p.name);
     setKit(p.kit);
@@ -1736,8 +1779,13 @@ export function RhythmConverterTab({
   }
 
   function renameSlot(index: number, name: string) {
-    if (!slotList) return;
-    void runSlotChange(() => commitSlots(slotList.records.map((r, i) => (i === index ? renameRecord(r, name) : r))));
+    const list = slotList;
+    const record = list?.records[index];
+    if (!list || !record) return;
+    void runSlotChange(async () => {
+      const renamed = await renameSlotRecord(record, name);
+      await commitSlots(list.records.map((r, i) => (i === index ? renamed : r)));
+    });
   }
 
   function moveSlot(index: number, delta: -1 | 1) {
@@ -1751,7 +1799,7 @@ export function RhythmConverterTab({
 
   function deleteSlot(index: number) {
     if (!slotList) return;
-    const name = patternNames(slotList.records)[index] || "(no name)";
+    const name = slotList.records[index]?.name || "(no name)";
     if (!window.confirm(`Delete slot ${index + 1} "${name}"? The slots after it move up by one.`)) return;
     setSlot((s) => (s === index ? NEW_SLOT : s > index ? s - 1 : s));
     void runSlotChange(() => commitSlots(slotList.records.filter((_, i) => i !== index)));
@@ -1825,10 +1873,11 @@ export function RhythmConverterTab({
               type="button"
               className="btn primary rhythm-wand-btn"
               title="Magic Wand: fill Intro, Variations, Fills and Ending from the song, with up to 8 alternatives"
-              onClick={runMagicWand}
+              disabled={wandBusy}
+              onClick={() => void runMagicWand()}
             >
               <Icon name="autoFix" size={16} />
-              Magic Wand
+              {wandBusy ? "Mapping…" : "Magic Wand"}
             </button>
           </>
         ) : null}
@@ -2967,7 +3016,7 @@ export function RhythmConverterTab({
           <Icon name="save" size={14} />
           Save to Rhythm Library…
         </button>
-        <button type="button" className="btn" onClick={exportPack}>
+        <button type="button" className="btn" onClick={() => void exportPack()}>
           <Icon name="download" size={14} />
           Export ZIP
         </button>

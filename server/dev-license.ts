@@ -3,8 +3,15 @@
  * Production (NODE_ENV or Render) and any non-local host are refused.
  * There is no flag that turns this on.
  */
-import { createLicense } from "./licenses.js";
-import { recordIssuedLicense } from "./issued-licenses.js";
+import { createLicense, loadLicenses, saveLicenses, type LicenseRecord } from "./licenses.js";
+import {
+  appendLicenseLog,
+  listIssuedLicenses,
+  recordIssuedLicense,
+  removeIssuedLicense,
+  replaceIssuedLicense,
+  type IssuedLicense,
+} from "./issued-licenses.js";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,33 +46,26 @@ export function issueLocalLicense(input: {
   startsAt?: unknown;
   expiresAt?: unknown;
 }): { key: string; id: string; note: string; startsAt?: string; expiresAt?: string } {
-  const name = typeof input.name === "string" ? input.name.trim() : "";
-  const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
-  const location = typeof input.location === "string" ? input.location.trim() : "";
-  if (!name) throw new Error("Name is required");
-  if (name.length > 120) throw new Error("Name is too long");
-  if (!EMAIL.test(email) || email.length > 200) throw new Error("Email is required");
-  if (location.length > 200) throw new Error("Location is too long");
-
-  const startsAt = optionalIso(input.startsAt, "Start date");
-  const expiresAt = optionalIso(input.expiresAt, "End date");
-  if (startsAt && expiresAt && Date.parse(expiresAt) < Date.parse(startsAt)) {
-    throw new Error("End date is before the start date");
-  }
+  const { name, email, location, startsAt, expiresAt } = readLicenseFields(input);
   if (expiresAt && Date.parse(expiresAt) < Date.now()) {
     throw new Error("End date is already past");
   }
 
-  const note = location ? `${email}-${name} (${location})` : `${email}-${name}`;
+  const note = licenseNote(name, email, location);
   const { record, key } = createLicense({ note, startsAt, expiresAt });
-  recordIssuedLicense({
+  const local: IssuedLicense = {
     id: record.id,
     key,
+    name,
+    email,
+    ...(location ? { location } : {}),
     note: record.note,
     startsAt: record.startsAt,
     expiresAt: record.expiresAt,
     createdAt: record.createdAt,
-  });
+  };
+  recordIssuedLicense(local);
+  appendLicenseLog({ action: "create", id: record.id, after: { public: record, local } });
   return {
     key,
     id: record.id,
@@ -73,6 +73,152 @@ export function issueLocalLicense(input: {
     startsAt: record.startsAt,
     expiresAt: record.expiresAt,
   };
+}
+
+export type ManagedLicense = {
+  id: string;
+  /** Absent when the key was not issued from this computer (only its hash is known). */
+  key?: string;
+  name: string;
+  email: string;
+  location: string;
+  note?: string;
+  startsAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  revoked?: boolean;
+  /** In data/licenses.json, so the public site accepts it once deployed. */
+  inPublicFile: boolean;
+  /** In data/issued-licenses.json, so the key can be emailed again. */
+  inLocalFile: boolean;
+};
+
+/** Both files merged, newest first. */
+export function listLocalLicenses(): ManagedLicense[] {
+  const publicById = new Map(loadLicenses().licenses.map((l) => [l.id, l]));
+  const localById = new Map(listIssuedLicenses().map((l) => [l.id, l]));
+  const ids = new Set([...publicById.keys(), ...localById.keys()]);
+  const list: ManagedLicense[] = [];
+  for (const id of ids) {
+    const pub = publicById.get(id);
+    const local = localById.get(id);
+    const note = local?.note ?? pub?.note;
+    const parsed = parseLicenseNote(note);
+    list.push({
+      id,
+      key: local?.key,
+      name: local?.name ?? parsed.name,
+      email: local?.email ?? parsed.email,
+      location: local?.location ?? parsed.location,
+      note,
+      startsAt: pub ? pub.startsAt : local?.startsAt,
+      expiresAt: pub ? pub.expiresAt : local?.expiresAt,
+      createdAt: pub?.createdAt ?? local?.createdAt ?? "",
+      updatedAt: local?.updatedAt,
+      revoked: pub?.revoked,
+      inPublicFile: Boolean(pub),
+      inLocalFile: Boolean(local),
+    });
+  }
+  return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function updateLocalLicense(
+  id: string,
+  input: { name?: unknown; email?: unknown; location?: unknown; startsAt?: unknown; expiresAt?: unknown },
+): ManagedLicense {
+  const before = snapshot(id);
+  if (!before.public && !before.local) throw new Error("License not found");
+  const { name, email, location, startsAt, expiresAt } = readLicenseFields(input);
+  const note = licenseNote(name, email, location);
+  const updatedAt = new Date().toISOString();
+
+  let nextPublic: LicenseRecord | null = null;
+  if (before.public) {
+    const file = loadLicenses();
+    file.licenses = file.licenses.map((l) => {
+      if (l.id !== id) return l;
+      const next: LicenseRecord = { ...l, note };
+      setOptional(next, "startsAt", startsAt);
+      setOptional(next, "expiresAt", expiresAt);
+      nextPublic = next;
+      return next;
+    });
+    saveLicenses(file);
+  }
+
+  let nextLocal: IssuedLicense | null = null;
+  if (before.local) {
+    nextLocal = { ...before.local, name, email, note, updatedAt };
+    setOptional(nextLocal, "location", location || undefined);
+    setOptional(nextLocal, "startsAt", startsAt);
+    setOptional(nextLocal, "expiresAt", expiresAt);
+    replaceIssuedLicense(nextLocal);
+  }
+
+  appendLicenseLog({ action: "update", id, before, after: { public: nextPublic, local: nextLocal } });
+  const updated = listLocalLicenses().find((l) => l.id === id);
+  if (!updated) throw new Error("License not found");
+  return updated;
+}
+
+export function deleteLocalLicense(id: string): void {
+  const before = snapshot(id);
+  if (!before.public && !before.local) throw new Error("License not found");
+  if (before.public) {
+    const file = loadLicenses();
+    file.licenses = file.licenses.filter((l) => l.id !== id);
+    saveLicenses(file);
+  }
+  if (before.local) removeIssuedLicense(id);
+  appendLicenseLog({ action: "delete", id, before });
+}
+
+function snapshot(id: string): { public: LicenseRecord | null; local: IssuedLicense | null } {
+  return {
+    public: loadLicenses().licenses.find((l) => l.id === id) ?? null,
+    local: listIssuedLicenses().find((l) => l.id === id) ?? null,
+  };
+}
+
+function setOptional<T extends object, K extends keyof T>(target: T, field: K, value: T[K] | undefined): void {
+  if (value === undefined) delete target[field];
+  else target[field] = value;
+}
+
+function readLicenseFields(input: {
+  name?: unknown;
+  email?: unknown;
+  location?: unknown;
+  startsAt?: unknown;
+  expiresAt?: unknown;
+}): { name: string; email: string; location: string; startsAt?: string; expiresAt?: string } {
+  const name = typeof input.name === "string" ? input.name.trim() : "";
+  const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+  const location = typeof input.location === "string" ? input.location.trim() : "";
+  if (!name) throw new Error("Name is required");
+  if (name.length > 120) throw new Error("Name is too long");
+  if (!EMAIL.test(email) || email.length > 200) throw new Error("Email is required");
+  if (location.length > 200) throw new Error("Location is too long");
+  const startsAt = optionalIso(input.startsAt, "Start date");
+  const expiresAt = optionalIso(input.expiresAt, "End date");
+  if (startsAt && expiresAt && Date.parse(expiresAt) < Date.parse(startsAt)) {
+    throw new Error("End date is before the start date");
+  }
+  return { name, email, location, startsAt, expiresAt };
+}
+
+function licenseNote(name: string, email: string, location: string): string {
+  return location ? `${email}-${name} (${location})` : `${email}-${name}`;
+}
+
+/** Reads `email-Name (Location)` notes written before name and email were stored separately. */
+export function parseLicenseNote(note: string | undefined): { name: string; email: string; location: string } {
+  const text = (note ?? "").trim();
+  const match = /^([^\s@]+@[^\s@]+?\.[a-z]{2,})-(.+?)(?: \(([^)]*)\))?$/i.exec(text);
+  if (!match) return { name: text, email: "", location: "" };
+  return { email: match[1]!.toLowerCase(), name: match[2]!.trim(), location: (match[3] ?? "").trim() };
 }
 
 function optionalIso(value: unknown, label: string): string | undefined {

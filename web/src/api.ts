@@ -1,4 +1,5 @@
 import type { AssembleRequest, AssembleResponse } from "@rc600/rc0/ops";
+import { assemble } from "@rc600/rc0/writer";
 import { planKeyHeaders } from "./entitlements";
 
 const viteEnv =
@@ -343,6 +344,11 @@ export async function fetchTrackWaveFile(
   } catch {
     return null;
   }
+}
+
+/** Builds RC0 XML in the browser so Save / Export work without the API or the pedal. */
+export async function assembleLocal(req: AssembleRequest): Promise<AssembleResponse> {
+  return assemble(req);
 }
 
 export async function assembleRemote(req: AssembleRequest): Promise<AssembleResponse> {

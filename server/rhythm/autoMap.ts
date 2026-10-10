@@ -2,21 +2,19 @@
  * Magic Wand: classifies the song's bars into grooves, fills, intro and ending, then builds up to
  * eight ways to fill the RC-600 parts (Intro, Variation A–D, Fill A–D, Ending), best first.
  */
-import type { PlayedBar } from "./scoreDrumEvents";
+import type { PlayedBar } from "../../web/src/rhythmConverter/scoreDrumEvents.js";
 import {
   FILL_ROLES,
   PART_ROLES,
   VARIATION_ROLES,
   barFingerprint,
-  classifySection,
   drumClass,
   fillRoleFor,
-  loopLength,
   similarity,
-  suggestParts,
   type PartPlan,
   type PartRange,
-} from "./sectionSuggest";
+} from "../../web/src/rhythmConverter/sectionSuggest.js";
+import { classifySection, loopLength, suggestParts } from "./suggest.js";
 
 export const AUTO_MAP_MAX = 8;
 const SAME_GROOVE = 0.8;

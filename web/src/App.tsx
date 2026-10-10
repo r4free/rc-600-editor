@@ -29,7 +29,7 @@ import {
 import { copyTrackWavFolder } from "@rc600/files/wave";
 import type { CaptureMemory } from "./presets/inputFxCapture";
 import {
-  assembleRemote,
+  assembleLocal,
   ejectUsbStorage,
   fetchSession,
   fetchUsbStatus,
@@ -68,6 +68,7 @@ import {
 } from "./presets/memoryClipboard";
 import { Icon } from "./components/Icon";
 import { InfoTip } from "./components/InfoTip";
+import { HoverTip } from "./components/HoverTip";
 import { DevLicenseSlot } from "./dev/DevLicenseSlot";
 import {
   Rc600Midi,
@@ -107,6 +108,28 @@ import {
   dirtySlotNumbers,
   type DraftMap,
 } from "./presets/memoryDrafts";
+import {
+  fillMissingSlots,
+  loadOfflineTemplates,
+  normalizeMemoryIds,
+  OFFLINE_LABEL,
+  buildOfflineBaseline,
+  withPathMemoryId,
+} from "./files/offlineBaseline";
+import {
+  applyProject,
+  commitMemoryOps,
+  commitMemoryXml,
+  commitSystemOps,
+  describeProject,
+  emptyCommitted,
+  isProjectEmpty,
+  parseProject,
+  serializeProject,
+  type CommittedEdits,
+  type Rc600Project,
+} from "./presets/projectFile";
+import { clearAutosave, loadAutosave, saveAutosave } from "./presets/projectAutosave";
 import { usePersistedTab } from "./uiTabs";
 import { MemoryChainBar } from "./components/MemoryChainView";
 import { NavigationBreadcrumb } from "./components/NavigationBreadcrumb";
@@ -138,6 +161,11 @@ function num(tags: TagMap, tag: string, fallback = 0): number {
   if (v === undefined) return fallback;
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** RC-600 memory names are 12 printable ASCII characters. */
+function cleanMemoryName(value: string): string {
+  return value.replace(/[^\x20-\x7e]/g, "").slice(0, 12);
 }
 
 function sysSectionTag(
@@ -175,6 +203,13 @@ export function App() {
   const [activeSide, setActiveSide] = useState<"a" | "b">("a");
   const [baseXml, setBaseXml] = useState("");
   const [drafts, setDrafts] = useState<DraftMap>(() => new Map());
+  const [committed, setCommitted] = useState<CommittedEdits>(() => emptyCommitted());
+  /** Files as loaded (before any Save this session); project import resets slots to this. */
+  const baselineRef = useRef<Map<string, string>>(new Map());
+  /** False until a freshly loaded session has checked for an autosave to restore. */
+  const autosaveReadyRef = useRef(false);
+  const [pendingImport, setPendingImport] = useState<Rc600Project | null>(null);
+  const [discardOfflineOpen, setDiscardOfflineOpen] = useState(false);
   const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS, {
     persist: !demoMode,
   });
@@ -319,6 +354,10 @@ export function App() {
   filesRef.current = files;
   const draftsRef = useRef(drafts);
   draftsRef.current = drafts;
+  const committedRef = useRef(committed);
+  committedRef.current = committed;
+  const sysOpsRef = useRef(sysOps);
+  sysOpsRef.current = sysOps;
   const baseXmlRef = useRef(baseXml);
   baseXmlRef.current = baseXml;
   const slotRef = useRef(slot);
@@ -453,22 +492,79 @@ export function App() {
     (
       map: Map<string, string>,
       label: string,
-      opts?: { backupAck?: boolean; preferredSlot?: number | null },
+      opts?: { backupAck?: boolean; preferredSlot?: number | null; restoreAutosave?: boolean },
     ) => {
       setFiles(map);
+      filesRef.current = map;
+      baselineRef.current = map;
+      autosaveReadyRef.current = false;
       setRootLabel(label);
       setBackupAck(opts?.backupAck ?? false);
       setPendingHandle(null);
       setDrafts(new Map());
-      setStatus(demoMode ? "" : `${map.size} files · ${label}`);
+      draftsRef.current = new Map();
+      setCommitted(emptyCommitted());
+      committedRef.current = emptyCommitted();
+      setStatus(demoMode ? "" : label === OFFLINE_LABEL ? "Editing offline · 99 memories" : `${map.size} files · ${label}`);
       const slotsNow = listMemorySlots(map);
       const preferred = opts?.preferredSlot;
       const first = preferred && slotsNow.includes(preferred) ? preferred : slotsNow[0];
       if (first) loadSlot(first, map);
       if (hasSystem(map)) loadSystem(map);
+      sysOpsRef.current = [];
+      if (demoMode) return;
+      if (opts?.restoreAutosave === false) autosaveReadyRef.current = true;
+      else void restoreAutosaveRef.current(label, first ?? null);
     },
     [demoMode, loadSlot, loadSystem],
   );
+
+  /** Writes a project into its own slots: each slot resets to the loaded file (or embedded data), then its changes become pending. */
+  function applyProjectNow(project: Rc600Project, currentSlot: number | null) {
+    const next = applyProject(project, {
+      files: filesRef.current,
+      baseline: baselineRef.current,
+      drafts: draftsRef.current,
+      committed: committedRef.current,
+      sysOps: sysOpsRef.current,
+    });
+    filesRef.current = next.files;
+    draftsRef.current = next.drafts;
+    committedRef.current = next.committed;
+    setFiles(next.files);
+    setDrafts(next.drafts);
+    setCommitted(next.committed);
+    if (project.system) {
+      const picked = pickActiveSystem(
+        next.files.get(systemFileName("1")),
+        next.files.get(systemFileName("2")),
+      );
+      if (picked) {
+        setSysSide(picked.side);
+        setSysBaseXml(picked.xml);
+      }
+      sysOpsRef.current = next.sysOps;
+      setSysOps(next.sysOps);
+      setSysDirty(next.sysOps.length > 0);
+    }
+    if (currentSlot != null && project.memories.some((m) => m.slot === currentSlot)) {
+      loadSlot(currentSlot, next.files);
+    }
+  }
+
+  async function restoreAutosave(label: string, currentSlot: number | null) {
+    try {
+      const saved = await loadAutosave(label);
+      if (saved && !isProjectEmpty(saved)) {
+        applyProjectNow(saved, currentSlot);
+        setStatus(`Restored unsaved edits: ${describeProject(saved)}`);
+      }
+    } finally {
+      autosaveReadyRef.current = true;
+    }
+  }
+  const restoreAutosaveRef = useRef(restoreAutosave);
+  restoreAutosaveRef.current = restoreAutosave;
   const applyRolandFilesRef = useRef(applyRolandFiles);
   applyRolandFilesRef.current = applyRolandFiles;
 
@@ -483,6 +579,9 @@ export function App() {
         const handle = await loadRolandHandle();
         if (cancelled) return;
         if (!handle) {
+          const saved = await loadAutosave(OFFLINE_LABEL);
+          if (cancelled) return;
+          if (saved && !isProjectEmpty(saved)) await startOfflineRef.current();
           setFolderReady(true);
           return;
         }
@@ -502,11 +601,12 @@ export function App() {
         }
         try {
           const result = await filesFromDirectoryHandle(handle);
+          const filled = await withAllSlots(result.files.files);
           if (cancelled) return;
           const meta = loadFolderMeta();
           dirHandleRef.current = result.handle;
           setHasDirHandle(true);
-          applyRolandFilesRef.current(result.files.files, result.files.rootLabel, {
+          applyRolandFilesRef.current(filled, result.files.rootLabel, {
             backupAck: meta.backupAck,
             preferredSlot: meta.lastSlot,
           });
@@ -559,7 +659,9 @@ export function App() {
       }
       await attachDirectoryHandle(result.handle, result.files.rootLabel);
       saveFolderMeta({ backupAck: false });
-      applyRolandFiles(result.files.files, result.files.rootLabel, { backupAck: false });
+      applyRolandFiles(await withAllSlots(result.files.files), result.files.rootLabel, {
+        backupAck: false,
+      });
       return true;
     } catch (e) {
       if ((e as Error).name === "AbortError") return false;
@@ -579,14 +681,165 @@ export function App() {
     if (!list?.length) return;
     dropLiveHandle();
     const rolled = await filesFromFileList(list);
-    applyRolandFiles(rolled.files, rolled.rootLabel, { backupAck: false });
+    applyRolandFiles(await withAllSlots(rolled.files), rolled.rootLabel, { backupAck: false });
   }
 
   async function openZip(file: File | null) {
     if (!file) return;
     dropLiveHandle();
     const rolled = await filesFromZip(await file.arrayBuffer());
-    applyRolandFiles(rolled.files, rolled.rootLabel, { backupAck: false });
+    applyRolandFiles(await withAllSlots(rolled.files), rolled.rootLabel, { backupAck: false });
+  }
+
+  /** Shows all 99 memories even when the folder/ZIP lacks some; missing ones start from the template. */
+  async function withAllSlots(map: Map<string, string>): Promise<Map<string, string>> {
+    try {
+      return fillMissingSlots(map, await loadOfflineTemplates()).files;
+    } catch {
+      return map;
+    }
+  }
+
+  async function startOffline(opts?: { restoreAutosave?: boolean }): Promise<boolean> {
+    setError(null);
+    try {
+      const templates = await loadOfflineTemplates();
+      dropLiveHandle();
+      applyRolandFilesRef.current(buildOfflineBaseline(templates), OFFLINE_LABEL, {
+        backupAck: true,
+        preferredSlot: 1,
+        restoreAutosave: opts?.restoreAutosave,
+      });
+      setWorkspace("memory");
+      return true;
+    } catch (e) {
+      setError(String(e));
+      return false;
+    }
+  }
+  /** Top-bar entry: leaves the open folder/ZIP (its pending edits stay autosaved) and opens the offline session. */
+  async function switchToOffline() {
+    if (
+      files.size > 0 &&
+      (anyMemoryDirty || sysDirty) &&
+      !window.confirm(
+        "Switch to offline editing? Unsaved edits in the current folder stay in this browser and come back when you open it again.",
+      )
+    ) {
+      return;
+    }
+    await startOffline();
+  }
+  const startOfflineRef = useRef(startOffline);
+  startOfflineRef.current = startOffline;
+
+  const offline = rootLabel === OFFLINE_LABEL && files.size > 0;
+  const hasSessionEdits =
+    anyMemoryDirty || sysDirty || committed.memories.size > 0 || committed.system.length > 0;
+
+  const [renaming, setRenamingState] = useState<{ slot: number; value: string } | null>(null);
+  /** Enter, Escape and blur can all end a rename; only the first one counts. */
+  const renameDoneRef = useRef(true);
+
+  function setRenaming(next: { slot: number; value: string } | null) {
+    if (next && renaming?.slot !== next.slot) renameDoneRef.current = false;
+    if (!next) renameDoneRef.current = true;
+    setRenamingState(next);
+  }
+
+  /** Latest unsaved name for a slot, so the list shows a rename before Save. */
+  function pendingName(s: number): string | undefined {
+    const ops = drafts.get(s);
+    if (!ops) return undefined;
+    for (let i = ops.length - 1; i >= 0; i--) {
+      const op = ops[i];
+      if (op.type === "name") return op.name;
+    }
+    return undefined;
+  }
+
+  function commitRename() {
+    const r = renaming;
+    if (!r || renameDoneRef.current) return;
+    setRenaming(null);
+    const current = (pendingName(r.slot) ?? summaries.find((m) => m.slot === r.slot)?.name ?? "").trimEnd();
+    if (r.value.trimEnd() === current) return;
+    setDrafts((prev) => appendSlotDraft(prev, r.slot, [{ type: "name", name: r.value }]));
+  }
+
+  useEffect(() => {
+    if (demoMode || files.size === 0 || !rootLabel || !autosaveReadyRef.current) return;
+    const label = rootLabel;
+    const timer = window.setTimeout(() => {
+      // A live folder already holds saved edits on disk; only pending ones need restoring.
+      const project = serializeProject({
+        committed: dirHandleRef.current ? emptyCommitted() : committed,
+        drafts,
+        sysOps: sysDirty ? sysOps : [],
+        source: label,
+      });
+      void (isProjectEmpty(project) ? clearAutosave(label) : saveAutosave(label, project));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [demoMode, files, rootLabel, drafts, committed, sysOps, sysDirty]);
+
+  function exportProject() {
+    const project = serializeProject({
+      committed,
+      drafts,
+      sysOps,
+      nameOf: (s) => {
+        const named = [...(drafts.get(s) ?? [])].reverse().find((o) => o.type === "name");
+        if (named && named.type === "name") return named.name.trim();
+        return summaries.find((m) => m.slot === s)?.name?.trim() || undefined;
+      },
+      source: rootLabel ?? undefined,
+    });
+    if (isProjectEmpty(project)) {
+      setError("Nothing to export yet: edit a memory or a system setting first.");
+      return;
+    }
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `rc600-edits-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus(`Exported edits: ${describeProject(project)} · open the file with Import edits on the other device`);
+  }
+
+  async function pickProjectFile(file: File | null) {
+    if (!file) return;
+    setError(null);
+    try {
+      const project = parseProject(await file.text());
+      if (isProjectEmpty(project)) {
+        setError("This file has no edits to import.");
+        return;
+      }
+      setPendingImport(project);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function confirmImportProject() {
+    const project = pendingImport;
+    if (!project) return;
+    setPendingImport(null);
+    if (filesRef.current.size === 0 && !(await startOffline({ restoreAutosave: false }))) return;
+    applyProjectNow(project, slotRef.current);
+    const first = project.memories[0]?.slot;
+    if (first != null && slotRef.current == null) loadSlot(first, filesRef.current);
+    setWorkspace(project.memories.length ? "memory" : "system");
+    setStatus(`Imported ${describeProject(project)} · changes are pending (Save or Export ZIP)`);
+  }
+
+  async function discardOfflineEdits() {
+    setDiscardOfflineOpen(false);
+    await clearAutosave(OFFLINE_LABEL);
+    await startOffline({ restoreAutosave: false });
+    setStatus("Offline edits discarded · all memories back to the template");
   }
 
   async function loadDemoFixtures() {
@@ -628,7 +881,7 @@ export function App() {
       const result = await filesFromDirectoryHandle(handle);
       const meta = loadFolderMeta();
       await attachDirectoryHandle(result.handle, result.files.rootLabel);
-      applyRolandFiles(result.files.files, result.files.rootLabel, {
+      applyRolandFiles(await withAllSlots(result.files.files), result.files.rootLabel, {
         backupAck: meta.backupAck,
         preferredSlot: meta.lastSlot,
       });
@@ -660,6 +913,8 @@ export function App() {
     setSlot(null);
     setBaseXml("");
     setDrafts(new Map());
+    setCommitted(emptyCommitted());
+    baselineRef.current = new Map();
     setSysBaseXml("");
     setSysOps([]);
     setSysDirty(false);
@@ -701,7 +956,7 @@ export function App() {
           ? pickActiveXml(a, b)
           : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
     const base = targetSlot === slotRef.current ? xml : picked.xml;
-    const { xml: saved } = await assembleRemote({ kind: "patch", xml: base, ops: slotOps });
+    const { xml: saved } = await assembleLocal({ kind: "patch", xml: base, ops: slotOps });
     const pair = memoryFilesAfterSave(saved);
     return {
       saved,
@@ -718,6 +973,7 @@ export function App() {
     map: Map<string, string>,
   ): Promise<Map<string, string>> {
     const next = new Map(map);
+    written = written.map((f) => ({ path: f.path, xml: withPathMemoryId(f.path, f.xml) }));
     for (const file of written) next.set(file.path, file.xml);
     const handle = dirHandleRef.current;
     if (handle) {
@@ -747,6 +1003,7 @@ export function App() {
       setFiles(next);
       setBaseXml(saved);
       setDrafts((prev) => clearSlotDraft(prev, slot));
+      setCommitted((prev) => commitMemoryOps(prev, slot, ops));
 
       if (dirHandleRef.current) {
         pendingMemoryReloadRef.current = {
@@ -785,16 +1042,19 @@ export function App() {
     try {
       let next = new Map(files);
       let savedCount = 0;
+      let nextCommitted = committed;
       for (const s of dirtySlots) {
         const slotOps = drafts.get(s) ?? [];
         if (slotOps.length === 0) continue;
         const { written, saved } = await saveSlotXml(s, s === slot ? baseXml : "", slotOps, next);
         next = await commitSlotFiles(written, next);
         if (s === slot) setBaseXml(saved);
+        nextCommitted = commitMemoryOps(nextCommitted, s, slotOps);
         savedCount += 1;
       }
       setFiles(next);
       setDrafts(new Map());
+      setCommitted(nextCommitted);
       if (dirHandleRef.current && slot != null && dirtySlots.includes(slot)) {
         pendingMemoryReloadRef.current = {
           slot,
@@ -832,7 +1092,7 @@ export function App() {
 
   async function writeSystemXml(opsToApply: PatchOp[]): Promise<string> {
     if (!sysBaseXml) throw new Error("SYSTEM1/2.RC0 not loaded");
-    const { xml: saved } = await assembleRemote({
+    const { xml: saved } = await assembleLocal({
       kind: "patch",
       xml: sysBaseXml,
       ops: opsToApply,
@@ -864,7 +1124,9 @@ export function App() {
     setSaving(true);
     setError(null);
     try {
-      await writeSystemXml(sysOps);
+      const applied = sysOps;
+      await writeSystemXml(applied);
+      setCommitted((prev) => commitSystemOps(prev, applied));
       setStatus(
         dirHandleRef.current
           ? "Saved SYSTEM1.RC0 and SYSTEM2.RC0"
@@ -880,14 +1142,40 @@ export function App() {
     }
   }
 
-  function downloadZip() {
-    if (anyMemoryDirty || sysDirty) {
-      setError(
-        "Unsaved edits are not in the ZIP yet. Save memory/system first (needs the server), then Export ZIP.",
-      );
+  /** Current files with every pending memory/system edit built in (nothing is written to disk). */
+  async function filesWithPendingEdits(): Promise<Map<string, string>> {
+    const next = new Map(files);
+    for (const s of dirtySlotNumbers(drafts)) {
+      const slotOps = drafts.get(s) ?? [];
+      if (slotOps.length === 0) continue;
+      const a = next.get(slotFileName(s, "A"));
+      const b = next.get(slotFileName(s, "B"));
+      if (!a && !b) continue;
+      const base = s === slot && baseXml ? baseXml : a && b ? pickActiveXml(a, b).xml : (a || b)!;
+      const { xml } = await assembleLocal({ kind: "patch", xml: base, ops: slotOps });
+      const pair = memoryFilesAfterSave(xml);
+      next.set(slotFileName(s, "A"), pair.xmlA);
+      next.set(slotFileName(s, "B"), pair.xmlB);
+    }
+    if (sysDirty && sysBaseXml && sysOps.length) {
+      const { xml } = await assembleLocal({ kind: "patch", xml: sysBaseXml, ops: sysOps });
+      const pair = memoryFilesAfterSave(xml);
+      next.set(systemFileName("1"), pair.xmlA);
+      next.set(systemFileName("2"), pair.xmlB);
+    }
+    return next;
+  }
+
+  async function downloadZip() {
+    setError(null);
+    let zipFiles: Map<string, string>;
+    try {
+      zipFiles = normalizeMemoryIds(await filesWithPendingEdits());
+    } catch (e) {
+      setError(String(e));
       return;
     }
-    const zipped = zipRoland(files);
+    const zipped = zipRoland(zipFiles);
     const blob = new Blob(
       [zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer],
       { type: "application/zip" },
@@ -918,12 +1206,12 @@ export function App() {
       let sourceXml = clip.sourceXml;
       const sourceIsCurrentDirty = clip.sourceSlot === slot && dirty && Boolean(baseXml);
       if (sourceIsCurrentDirty && baseXml) {
-        sourceXml = (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml;
+        sourceXml = (await assembleLocal({ kind: "patch", xml: baseXml, ops })).xml;
       }
 
       const next = new Map(files);
       if (sourceIsCurrentDirty && slot != null) {
-        const pair = memoryFilesAfterSave(sourceXml);
+        const pair = memoryFilesAfterSave(withPathMemoryId(slotFileName(slot, "A"), sourceXml));
         next.set(slotFileName(slot, "A"), pair.xmlA);
         next.set(slotFileName(slot, "B"), pair.xmlB);
         if (dirHandleRef.current) {
@@ -934,6 +1222,7 @@ export function App() {
       }
 
       const clearedTargets: number[] = [];
+      const copiedTargets: [number, string][] = [];
       const wavTracks = wavTracksForSelection(clip.selection);
       for (const target of targetSet) {
         if (target === clip.sourceSlot) continue;
@@ -944,17 +1233,18 @@ export function App() {
         if (!a && !b) continue;
         const picked =
           a && b ? pickActiveXml(a, b) : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
-        const { xml: patched } = await assembleRemote({
+        const { xml: patched } = await assembleLocal({
           kind: "copy",
           sourceXml,
           targetXml: picked.xml,
           selection: clip.selection,
           mode: clip.selection.copyAll ? "all" : undefined,
         });
-        const pair = memoryFilesAfterSave(patched);
+        const pair = memoryFilesAfterSave(withPathMemoryId(aPath, patched));
         next.set(aPath, pair.xmlA);
         next.set(bPath, pair.xmlB);
         clearedTargets.push(target);
+        copiedTargets.push([target, pair.xmlA]);
         if (dirHandleRef.current) {
           await writeFileToDirectory(dirHandleRef.current, aPath, pair.xmlA);
           await writeFileToDirectory(dirHandleRef.current, bPath, pair.xmlB);
@@ -968,6 +1258,11 @@ export function App() {
         setDrafts((prev) => {
           let out = sourceIsCurrentDirty && slot != null ? clearSlotDraft(prev, slot) : prev;
           for (const t of clearedTargets) out = clearSlotDraft(out, t);
+          return out;
+        });
+        setCommitted((prev) => {
+          let out = sourceIsCurrentDirty && slot != null ? commitMemoryOps(prev, slot, ops) : prev;
+          for (const [t, xml] of copiedTargets) out = commitMemoryXml(out, t, xml);
           return out;
         });
       }
@@ -998,7 +1293,7 @@ export function App() {
     if (!slot || !baseXml) return;
     try {
       const sourceXml = dirty
-        ? (await assembleRemote({ kind: "patch", xml: baseXml, ops })).xml
+        ? (await assembleLocal({ kind: "patch", xml: baseXml, ops })).xml
         : baseXml;
       const name = model?.name ?? "";
       const clip = saveMemoryClipboard({
@@ -1445,6 +1740,17 @@ export function App() {
             Open folder
           </button>
           )}
+          {demoMode || offline ? null : (
+          <HoverTip
+            label="Edit offline"
+            text="Edit all 99 memories and the system settings without the RC-600 connected. Edits are kept in this browser. When you are done, use Export edits to take them to another device, or Export ZIP to copy them onto the pedal."
+          >
+            <button type="button" className="btn primary" onClick={() => void switchToOffline()}>
+              <Icon name="edit" size={14} />
+              Edit offline
+            </button>
+          </HoverTip>
+          )}
           {showDemoFixtures ? (
           <button type="button" className="btn" onClick={loadDemoFixtures}>
             Demo fixtures
@@ -1494,6 +1800,57 @@ export function App() {
             Export ZIP
           </button>
           )}
+          {offline ? (
+          <HoverTip
+            label="Export edits"
+            text={
+              hasSessionEdits
+                ? "Download a file with every memory and system setting you changed in this session. Open it with Import edits on another device (or later here) and each change goes back into the same memory slot."
+                : "Nothing to export yet. Change a memory or a system setting first; then this button downloads a file you can open with Import edits on another device."
+            }
+          >
+            <button
+              type="button"
+              className="btn warn edits-transfer"
+              disabled={!hasSessionEdits}
+              onClick={exportProject}
+            >
+              <Icon name="download" size={14} />
+              Export edits
+            </button>
+          </HoverTip>
+          ) : null}
+          {offline ? (
+          <HoverTip
+            label="Import edits"
+            text="Open a file made with Export edits on this or another device. You see which memories it contains before anything changes. Each memory goes back into its own slot (Memory 1 into Memory 1) and the other memories are not touched."
+          >
+            <label className="btn warn edits-transfer">
+              <Icon name="upload" size={14} />
+              Import edits
+              <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  void pickProjectFile(e.target.files?.[0] ?? null);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </HoverTip>
+          ) : null}
+          {offline ? (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => setDiscardOfflineOpen(true)}
+            title="Reset every memory and the system settings to the starting template and delete the autosaved offline edits"
+          >
+            <Icon name="restore" size={14} />
+            Discard offline edits
+          </button>
+          ) : null}
           {demoMode ? null : hasDirHandle || usbVolumePresent ? (
             <button
               type="button"
@@ -1605,11 +1962,21 @@ export function App() {
 
       {!demoMode && env.blockReason === "ios" ? <IosMidiNotice /> : null}
 
+      {offline ? (
+        <div className="warn-banner offline-banner">
+          <p>
+            Editing offline: no pedal needed. All 99 memories start from a template. Edits are kept
+            in this browser; use Export edits to save them to a file you can import on another device, or Export ZIP to copy them
+            onto the RC-600.
+          </p>
+        </div>
+      ) : null}
+
       {!demoMode && !backupAck && files.size > 0 && (
         <div className="warn-banner">
           <p>
             Back up the ROLAND folder before writing to the looper. Saves patch .RC0 files in place
-            (A/B pair + count). Needs this server online.
+            (A/B pair + count).
           </p>
           <button type="button" className="btn primary" onClick={() => setBackupAck(true)}>
             Backup done — unlock save
@@ -1747,7 +2114,20 @@ export function App() {
             ) : workspace === "system" ? (
               <div className="empty-state">
                 <h2>Open the ROLAND folder to edit System</h2>
-                <p>Play Drum works over MIDI without a folder. Memory and System need DATA/*.RC0 files.</p>
+                <p>
+                  Play Drum works over MIDI without a folder. To edit Memory and System without the
+                  pedal, start an offline session.
+                </p>
+                <div className="row-actions" style={{ justifyContent: "center" }}>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => void startOffline().then((ok) => ok && setWorkspace("system"))}
+                  >
+                    <Icon name="edit" size={14} />
+                    Edit offline
+                  </button>
+                </div>
               </div>
             ) : (
         <div className="empty-state">
@@ -1771,6 +2151,10 @@ export function App() {
                 <button type="button" className="btn" onClick={() => void openDirectory()}>
                   <Icon name="folderOpen" size={14} />
                   Choose a different folder
+                </button>
+                <button type="button" className="btn" onClick={() => void startOffline()}>
+                  <Icon name="edit" size={14} />
+                  Edit offline
                 </button>
                 <button type="button" className="btn ghost" onClick={() => void forgetSavedFolder()}>
                   Forget saved folder
@@ -1801,6 +2185,15 @@ export function App() {
                 <button type="button" className="btn primary" onClick={() => void openDirectory()}>
                   <Icon name="folderOpen" size={14} />
                   Open ROLAND folder
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => void startOffline()}
+                  title="Edit all 99 memories and the system settings without the pedal. Export a project file or a ZIP when you are done."
+                >
+                  <Icon name="edit" size={14} />
+                  Edit offline
                 </button>
                 {showDemoFixtures ? (
                 <button type="button" className="btn" onClick={() => void loadDemoFixtures()}>
@@ -1886,15 +2279,28 @@ export function App() {
                     SYSTEM{sysSide} · count {systemModel?.count ?? "—"}
                   </span>
                   {demoMode ? null : (
-                  <button
-                    type="button"
-                    className="btn warn"
-                    disabled={!sysDirty || saving}
-                    onClick={() => void saveSystem()}
+                  <HoverTip
+                    label="Save system"
+                    text={
+                      !sysDirty
+                        ? "No system changes to save yet. Change a setting under System (Setup, MIDI, USB, Ctl Func…) and this button writes it."
+                        : hasDirHandle
+                          ? "Writes your System changes (Setup, MIDI, USB, Ctl Func…) to SYSTEM1.RC0 and SYSTEM2.RC0 in the open ROLAND folder. These settings apply to the whole pedal, not to one memory."
+                          : offline
+                            ? "Applies your System changes in this offline session. They go into Export edits and Export ZIP; nothing is sent to a pedal. These settings apply to the whole pedal, not to one memory."
+                            : "Applies your System changes to the loaded files. Use Export ZIP to copy SYSTEM1.RC0 and SYSTEM2.RC0 onto the pedal. These settings apply to the whole pedal, not to one memory."
+                    }
                   >
-                    <Icon name="save" size={14} />
-                    Save system
-                  </button>
+                    <button
+                      type="button"
+                      className="btn warn"
+                      disabled={!sysDirty || saving}
+                      onClick={() => void saveSystem()}
+                    >
+                      <Icon name="save" size={14} />
+                      Save system
+                    </button>
+                  </HoverTip>
                   )}
                 </>
               ) : null}
@@ -2001,7 +2407,8 @@ export function App() {
                       return (
                         <option key={s.slot} value={s.slot}>
                           {unsaved ? "• " : ""}
-                          {String(s.slot).padStart(2, "0")} {s.name || "—"} {s.active.toUpperCase()}
+                          {String(s.slot).padStart(2, "0")} {(pendingName(s.slot) ?? s.name) || "—"}{" "}
+                          {s.active.toUpperCase()}
                         </option>
                       );
                     })}
@@ -2013,21 +2420,59 @@ export function App() {
                         Boolean(memoryClipboard) &&
                         memoryClipboard!.sourceSlot !== s.slot &&
                         !saving;
+                      const name = pendingName(s.slot) ?? s.name;
+                      if (renaming?.slot === s.slot) {
+                        return (
+                          <div key={s.slot} className="mem-row" data-slot={s.slot}>
+                            <div className={`mem-item renaming ${slot === s.slot ? "active" : ""}`}>
+                              <span className="slot">{String(s.slot).padStart(2, "0")}</span>
+                              <input
+                                className="mem-rename-input"
+                                aria-label={`Name of memory ${String(s.slot).padStart(2, "0")}`}
+                                autoFocus
+                                maxLength={12}
+                                value={renaming.value}
+                                onFocus={(e) => e.currentTarget.select()}
+                                onChange={(e) =>
+                                  setRenaming({ slot: s.slot, value: cleanMemoryName(e.target.value) })
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") commitRename();
+                                  if (e.key === "Escape") setRenaming(null);
+                                }}
+                                onBlur={commitRename}
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={s.slot} className="mem-row" data-slot={s.slot}>
                           <button
                             type="button"
                             className={`mem-item ${slot === s.slot ? "active" : ""} ${unsaved ? "dirty" : ""}`}
-                            title={unsaved ? "Unsaved changes" : undefined}
+                            title={
+                              offline
+                                ? `Double-click to rename${unsaved ? " · unsaved changes" : ""}`
+                                : unsaved
+                                  ? "Unsaved changes"
+                                  : undefined
+                            }
                             aria-label={
                               unsaved
-                                ? `Memory ${String(s.slot).padStart(2, "0")} ${s.name || ""}, unsaved changes`
+                                ? `Memory ${String(s.slot).padStart(2, "0")} ${name || ""}, unsaved changes`
                                 : undefined
                             }
                             onClick={() => loadSlot(s.slot, files, { syncPedal: !demoMode })}
+                            onDoubleClick={() => {
+                              if (offline) setRenaming({ slot: s.slot, value: name.trimEnd() });
+                            }}
+                            onKeyDown={(e) => {
+                              if (offline && e.key === "F2") setRenaming({ slot: s.slot, value: name.trimEnd() });
+                            }}
                           >
                             <span className="slot">{String(s.slot).padStart(2, "0")}</span>
-                            <span className="name">{s.name || "—"}</span>
+                            <span className="name">{name || "—"}</span>
                             <span className="meta">
                               {unsaved ? <Icon name="dirty" className="mem-dirty" size={10} /> : null}
                               {s.active.toUpperCase()}
@@ -2252,6 +2697,60 @@ export function App() {
               </button>
               <button type="button" className="btn warn" onClick={discardAll}>
                 Discard all
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingImport ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setPendingImport(null)}>
+          <div
+            className="modal-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="import-project-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="import-project-title">Import edits?</h2>
+            <p>
+              This puts the saved changes back into: <strong>{describeProject(pendingImport)}</strong>.
+              Each memory goes into its own slot. Unsaved edits in those slots are replaced; other
+              memories are not touched.
+            </p>
+            <p>The imported changes stay pending until you Save or Export ZIP.</p>
+            <div className="modal-foot">
+              <button type="button" className="btn ghost" onClick={() => setPendingImport(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn primary" onClick={() => void confirmImportProject()}>
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {discardOfflineOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setDiscardOfflineOpen(false)}>
+          <div
+            className="modal-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discard-offline-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="discard-offline-title">Discard all offline edits?</h2>
+            <p>
+              Every memory and the system settings go back to the starting template, and the edits
+              kept in this browser are deleted. Use Export edits first if you want to keep them.
+            </p>
+            <div className="modal-foot">
+              <button type="button" className="btn ghost" onClick={() => setDiscardOfflineOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="btn warn" onClick={() => void discardOfflineEdits()}>
+                Discard offline edits
               </button>
             </div>
           </div>

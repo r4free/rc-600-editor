@@ -12,16 +12,7 @@ import {
   type LibraryPart,
   type LibrarySource,
 } from "./partLibrary";
-import {
-  buildUserPattern,
-  decodeUserPattern,
-  encodeUserPattern,
-  patternNames,
-  readRhythmRc0,
-  sanitizePatternName,
-  upsertRecord,
-  userPatternParts,
-} from "./rhythmRc0";
+import type { SlotRecord } from "./rhythmRc0";
 import { PART_LABELS, PART_ROLES, type PartRole } from "./sectionSuggest";
 
 export const RHYTHM_LIBRARY_VERSION = 1;
@@ -148,27 +139,6 @@ export function partsFromRhythm(rhythm: LibraryRhythm): PartEvents[] {
   });
 }
 
-/**
- * Writes several rhythms into one set of RHYTHM.RC0 records. A rhythm whose pedal name already
- * exists replaces that slot; others take the next free slot.
- */
-export function addRhythmsToRecords(
-  records: readonly Uint8Array[],
-  rhythms: readonly LibraryRhythm[],
-): { records: Uint8Array[]; slots: { name: string; index: number; replaced: boolean }[] } {
-  let next = [...records];
-  const slots: { name: string; index: number; replaced: boolean }[] = [];
-  for (const r of rhythms) {
-    const name = sanitizePatternName(r.name);
-    const record = encodeUserPattern(buildUserPattern(partsFromRhythm(r), { name, kit: r.kit }));
-    const existing = patternNames(next).findIndex((n) => n.toLowerCase() === name.toLowerCase());
-    const res = upsertRecord(next, record, existing >= 0 ? existing : null);
-    next = res.records;
-    slots.push({ name, index: res.index, replaced: existing >= 0 });
-  }
-  return { records: next, slots };
-}
-
 export const PEDAL_IMPORT_TAG = "From RC-600";
 
 export interface PedalRhythm {
@@ -177,20 +147,18 @@ export interface PedalRhythm {
   rhythm: LibraryRhythm;
 }
 
-/** User rhythms in a RHYTHM.RC0 file, ready for the personal library (names made unique). */
-export function rhythmsFromRc0(bytes: Uint8Array): PedalRhythm[] {
+/** User rhythms in decoded RHYTHM.RC0 slots, ready for the personal library (names made unique). */
+export function rhythmsFromSlots(slots: readonly SlotRecord[]): PedalRhythm[] {
   const seen = new Set<string>();
   const out: PedalRhythm[] = [];
-  readRhythmRc0(bytes).forEach((record, slot) => {
-    const pattern = decodeUserPattern(record);
-    const parts = userPatternParts(pattern);
-    if (!parts.some((p) => p.notes.length)) return;
-    let name = pattern.name.trim() || `User ${slot + 1}`;
+  slots.forEach((record, slot) => {
+    if (!record.parts.some((p) => p.notes.length)) return;
+    let name = record.name.trim() || `User ${slot + 1}`;
     if (seen.has(name.toLowerCase())) name = `${name} (${slot + 1})`;
     seen.add(name.toLowerCase());
     out.push({
       slot,
-      rhythm: rhythmFromParts(parts, { name, kit: pattern.kit, tags: [PEDAL_IMPORT_TAG], source: "user" }),
+      rhythm: rhythmFromParts(record.parts, { name, kit: record.kit, tags: [PEDAL_IMPORT_TAG], source: "user" }),
     });
   });
   return out;

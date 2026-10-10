@@ -2,7 +2,7 @@
 
 Editor web para o Boss RC-600: abre a pasta `ROLAND` (USB Storage ou backup), edita memórias/system nos arquivos `.RC0`, e controla o pedal ao vivo via Web MIDI (Program Change + CC).
 
-Gravar `.RC0` (Save / Copy) passa por uma API no servidor que monta o XML. Sem o servidor online, a tela ainda edita; o arquivo da pedaleira não é materializado.
+Gravar `.RC0` (Save / Copy / Export ZIP) monta o XML no próprio navegador (`src/rc0/writer.ts`), sem depender da API. **Edit offline** abre as 99 memórias + System a partir de modelos (`web/public/templates/`) sem a pedaleira; **Export edits** / **Import edits** guardam as mudanças num JSON (`rc600-editor-project`, v1) e devolvem cada memória ao próprio slot.
 
 **Guidelines:** [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) · [docs/FEATURES.md](./docs/FEATURES.md) · shared: [boss-editor-guidelines](https://github.com/r4free/boss-editor-guidelines)
 
@@ -60,16 +60,17 @@ RC600_SESSION_SECRET=… npm start
 
 O processo escuta `0.0.0.0:$PORT` e serve `dist/web` + `/api`. Web MIDI precisa de HTTPS (ou localhost).
 
-Copiar só a pasta estática **não** basta: Save/Copy exigem a API.
+Copiar só a pasta estática **não** basta: licença, WAVE, presets e IA exigem a API (Save/Copy/Export já rodam no navegador).
 
 ## Fluxo
 
 1. No site hospedado, informar a license key na tela de ativação. No desenvolvimento local, abrir o editor direto.
 2. Backup da pasta `ROLAND` do looper
-3. **Abrir pasta** (ou ZIP) no editor
-4. Edite tracks / FX / ASSIGN / system (local, instantâneo)
-5. **Salvar** chama `/api/assemble` e grava o par A/B com `<count>` incrementado
-6. Opcional: MIDI USB para memória / transporte / CC
+3. **Abrir pasta** (ou ZIP) no editor — ou **Edit offline**, sem pedaleira
+4. Edite tracks / FX / ASSIGN / system (local, instantâneo; edições pendentes ficam no IndexedDB)
+5. **Salvar** monta o XML no navegador e grava o par A/B com `<count>` incrementado (`/api/assemble` segue disponível)
+6. **Export edits** / **Import edits** para levar as mudanças a outra sessão ou pedaleira
+7. Opcional: MIDI USB para memória / transporte / CC
 
 ## Testes
 
@@ -79,6 +80,6 @@ npm test
 
 ## Notas
 
-- Não regenera XML do zero — patch in-place **no servidor**
+- Não regenera XML do zero — patch in-place (no navegador; a mesma função atende `/api/assemble`)
 - WAVE/ e EDITOR.RCE não sobem na API
 - Sem SysEx de parâmetros (o RC-600 não expõe mapa público)

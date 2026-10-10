@@ -5,13 +5,17 @@
  * Each record holds one shared note list (delta ticks at 96 PPQ, ended by a note-0 marker) and
  * ten parts that are bar windows into it, in pedal order Intro, A, A Fill, B, B Fill, C, C Fill, D, D Fill, Ending.
  */
-import type { PartEvents } from "./exportPack";
-import { SMF_PPQ } from "./smfWriter";
-import { VARIATION_ROLES, type PartRole } from "./sectionSuggest";
+import type { PartEvents } from "../../web/src/rhythmConverter/exportPack.js";
+import {
+  MAX_USER_PATTERNS,
+  lastBarOnly,
+  patternMeter,
+  sanitizePatternName,
+  type SlotRecord,
+} from "../../web/src/rhythmConverter/rhythmRc0.js";
+import { VARIATION_ROLES, type PartRole } from "../../web/src/rhythmConverter/sectionSuggest.js";
+import { SMF_PPQ } from "../../web/src/rhythmConverter/smf.js";
 
-export const RHYTHM_RC0_PATH = "DATA/RHYTHM.RC0";
-export const MAX_USER_PATTERNS = 50;
-export const PATTERN_NAME_MAX = 12;
 export const SEQ_PPQ = 96;
 export const MAX_SEQ_ENTRIES = 10_000;
 
@@ -59,15 +63,6 @@ export interface UserPattern {
   totalBars: number;
   phrases: PhraseWindow[];
   seq: SeqEntry[];
-}
-
-export function sanitizePatternName(raw: string): string {
-  const ascii = raw
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^ -~]/g, "?")
-    .trim();
-  return ascii.slice(0, PATTERN_NAME_MAX) || "USER";
 }
 
 /** RC-600 Beat range: 2/4–7/4 and 5/8–15/8. */
@@ -229,51 +224,39 @@ export function renameRecord(record: Uint8Array, name: string): Uint8Array {
   return out;
 }
 
-/** Replace `index` (or append when null/out of range). Returns the new list and the slot used. */
-export function upsertRecord(
-  records: readonly Uint8Array[],
-  record: Uint8Array,
-  index: number | null,
-): { records: Uint8Array[]; index: number } {
-  const next = [...records];
-  if (index != null && index >= 0 && index < next.length) {
-    next[index] = record;
-    return { records: next, index };
-  }
-  if (next.length >= MAX_USER_PATTERNS) throw new Error(`All ${MAX_USER_PATTERNS} user rhythm slots are used. Pick one to replace.`);
-  next.push(record);
-  return { records: next, index: next.length - 1 };
+/** Record bytes as sent to the browser: base64 with the zero padding after the notes cut off. */
+export function recordToData(record: Uint8Array): string {
+  let end = Math.min(record.length, RECORD_SIZE);
+  while (end > 0 && record[end - 1] === 0) end--;
+  return Buffer.from(record.subarray(0, end)).toString("base64");
 }
 
-/** Fills are one bar on the RC-600: keep the last bar of a longer fill. */
-export function lastBarOnly(ev: PartEvents): PartEvents {
-  if (ev.bars <= 1) return ev;
-  const bar = Math.round((ev.numerator * SMF_PPQ * 4) / ev.denominator);
-  const start = Math.max(0, ev.lengthTicks - bar);
+export function recordFromData(data: unknown): Uint8Array {
+  if (typeof data !== "string") throw new Error("Invalid rhythm slot data.");
+  const bytes = Buffer.from(data, "base64");
+  if (bytes.length > RECORD_SIZE) throw new Error("Rhythm slot data is too long.");
+  const out = new Uint8Array(RECORD_SIZE);
+  out.set(bytes);
+  return out;
+}
+
+/** One pedal slot built from converter parts. */
+export function encodeSlot(parts: readonly PartEvents[], name: string, kit: number): SlotRecord {
+  return slotFromRecord(encodeUserPattern(buildUserPattern(parts, { name: sanitizePatternName(name), kit })));
+}
+
+export function slotFromRecord(record: Uint8Array): SlotRecord {
+  const p = decodeUserPattern(record);
   return {
-    ...ev,
-    notes: ev.notes.filter((n) => n.tick >= start).map((n) => ({ ...n, tick: n.tick - start })),
-    lengthTicks: ev.lengthTicks - start,
-    bars: 1,
+    data: recordToData(record),
+    name: p.name,
+    kit: p.kit,
+    tempo: p.tempo,
+    numerator: p.numerator,
+    denominator: p.denominator,
+    totalBars: p.totalBars,
+    parts: userPatternParts(p),
   };
-}
-
-/** Meter covering the most bars across `parts`. */
-export function patternMeter(parts: readonly PartEvents[]): [number, number] {
-  const weight = new Map<string, number>();
-  for (const p of parts) {
-    const key = `${p.numerator}/${p.denominator}`;
-    weight.set(key, (weight.get(key) ?? 0) + p.bars);
-  }
-  let best = "4/4";
-  let bestWeight = -1;
-  for (const [key, w] of weight) {
-    if (w > bestWeight) {
-      best = key;
-      bestWeight = w;
-    }
-  }
-  return best.split("/").map(Number) as [number, number];
 }
 
 export interface BuildPatternInput {

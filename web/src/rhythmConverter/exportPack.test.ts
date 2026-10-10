@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { strFromU8, unzipSync } from "fflate";
 import type { DrumHit, DrumScore, PlayedBar } from "./scoreDrumEvents.js";
 import type { PartPlan } from "./sectionSuggest.js";
 import {
   DEFAULT_CONVERT_OPTIONS,
   buildPartEvents,
-  buildRhythmPack,
   mapToKit,
   meterMismatches,
   resolveParts,
@@ -107,23 +105,7 @@ describe("meterMismatches", () => {
   });
 });
 
-describe("buildRhythmPack", () => {
-  it("zips one SMF per part plus a README", () => {
-    const s = score([bar(0, GROOVE), bar(1, GROOVE), bar(2, FILL)]);
-    const pack = buildRhythmPack(resolveParts(s, PLAN, DEFAULT_CONVERT_OPTIONS), s.title);
-    assert.equal(pack.fileName, "Cancao_Teste_rc600_rhythm.zip");
-    const files = unzipSync(pack.bytes);
-    assert.deepEqual(Object.keys(files).sort(), [
-      "Cancao_Teste/02_Var_A.mid",
-      "Cancao_Teste/06_Fill_A.mid",
-      "Cancao_Teste/README.txt",
-    ]);
-    assert.equal(strFromU8(files["Cancao_Teste/02_Var_A.mid"]!.slice(0, 4)), "MThd");
-    const readme = strFromU8(files["Cancao_Teste/README.txt"]!);
-    assert.match(readme, /RC Rhythm Converter/);
-    assert.match(readme, /song bars 1-2/);
-  });
-
+describe("resolveParts", () => {
   it("lets overrides replace or add parts without a score", () => {
     const s = score([bar(0, GROOVE), bar(1, GROOVE), bar(2, FILL)]);
     const fill = buildPartEvents(s, PLAN, "fillA", DEFAULT_CONVERT_OPTIONS)!;

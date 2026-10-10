@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { AUTO_MAP_MAX, autoMapOptions, summarizePlan } from "./autoMap.js";
-import type { DrumHit, PlayedBar } from "./scoreDrumEvents.js";
+import type { DrumHit, PlayedBar } from "../../web/src/rhythmConverter/scoreDrumEvents.js";
 
 const PPQ = 960;
 const S16 = PPQ / 4;

@@ -1,6 +1,6 @@
 # RC-600 Editor — Feature registry / Registro de funcionalidades
 
-**Version:** pre-release · **Updated:** 2026-10-06
+**Version:** pre-release · **Updated:** 2026-10-10
 
 Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature-registry.mdc`).
 
@@ -8,6 +8,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Shipped
 
+- **Offline editing (no pedal):** **Edit offline** in the top bar (always visible; also on the start and Reconnect screens) opens all 99 memories and the System settings without the RC-600 connected over USB or MIDI. Every tab works as usual: Loop, Play Drum/Rhythm, effects, assigns, mixer, System and the rest. The memories start from a template. You can edit as many memories as you like in one session (for example 1, 2, 3 and 5), and the list marks each changed one. Double-click a memory in the list (or press F2) to rename it right there: Enter keeps the name, Esc cancels, up to 12 characters. The new name shows in the list at once, is saved with the memory, and travels in Export edits, so importing on another device brings the name too. Edits are kept in this browser, so a reload brings them back. **Discard offline edits** resets everything to the template. Save and Export ZIP now build the RC-600 files in the browser, so they no longer need the server. When a folder or ZIP is missing some memories, those slots also appear, starting from the template, so all 99 are always listed.
+- **Move edits to another device:** in an offline session, **Export edits** and **Import edits** appear in the top bar, highlighted with a yellow glow like Save system. Export edits is enabled only once something has changed. **Export edits** downloads one file (`rc600-edits-<date>.json`) with every memory and System setting changed in this session, both saved and unsaved. **Import edits** lists what the file contains (for example "Memories 1, 2, 3, 5 and System") and asks before applying. Each memory goes back into the same slot it came from, so Memory 1 goes into Memory 1. Other memories are not touched, and the imported changes stay pending until you Save or Export ZIP. Results of Mass Apply are carried in the file too.
 - **Memory list:** selecting a memory scrolls the list so that memory sits at the top.
 - **Navigation breadcrumb:** the path above the workspace content follows the currently visible tabs, including nested tracks, routing and EQ channels. Earlier levels return focus to that level's tabs without resetting edits or changing the pedal.
 - **3D Model panel:** next to Chain, open a photo-textured RC-600 model with rotation, keyboard controls, zoom, panel and rear views. This first integration is visual only.
@@ -54,6 +56,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Known limitations
 
+- Offline editing: the starting template is a sample memory renamed "INIT MEMORY", not a verified factory-initialized memory, and the System template is a sample System file. Recorded audio (WAVE) and the Rhythm Converter's user rhythms (RHYTHM.RC0) are not part of the project file.
+
 - The 3D model uses approximate geometry and photographs; controls and sockets have no individual meshes, hotspots or editor navigation yet.
 
 - In the Audio tab, a track's waveform shows its real shape only after the WAV is loaded (the first Play or Play all). Until then, the bars are a dimmed stand-in and do not reflect the audio.
@@ -64,6 +68,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - Track FX Beat effects: the Beat Scatter patterns P1–P4 and the Vinyl Flick speeds in the preview are our interpretation (Boss does not describe them), and the order of the Length / Shift note values has not been confirmed on the pedal yet.
 - Safari and Chrome on iOS do not expose Web MIDI; live pedal control needs Web MIDI Browser (or a desktop Chrome/Edge session).
 - Rhythm Converter saves one rhythm with a single time signature (RC-600 Beats 2/4–7/4 and 5/8–15/8) and up to 9,999 notes; fills are saved as one bar. The RHYTHM.RC0 layout was worked out from BOSS RC Rhythm Converter and is not officially documented, so keep a backup of the drive. It does not set per-memory rhythm Tempo or Kit; set them on the pedal or in the Rhythm settings. The part suggestion is a starting point: songs without section markers, or with odd time signatures, usually need a few bars adjusted by hand. Browser playback (including RC-600 Kit Preview) uses General MIDI samples and synthesized drums, which only approximate the RC-600 kits; hearing the real RC-600 kit needs MIDI, and switching its kit needs a Rhythm Kit assign on the current memory.
+- Rhythm Converter needs the editor server: opening or saving RHYTHM.RC0, saving to a slot, the part suggestion, Magic Wand, kit suggestion and MIDI pack export stop with an error message when the server cannot be reached or the license session has ended.
 - On the hosted site, a license key is required before the editor loads. The same gate is on locally when `RC600_REQUIRE_LICENSE=1` is set, so the activation page can be tried before a key is entered.
 
 ### Internal
@@ -74,6 +79,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Entregue
 
+- **Edição offline (sem a pedaleira):** o botão **Edit offline** na barra superior (sempre visível; também nas telas inicial e de Reconnect) abre as 99 memórias e as configurações de System sem a RC-600 conectada por USB ou MIDI. Todas as abas funcionam normalmente: Loop, Play Drum/Rhythm, efeitos, assigns, mixer, System e as demais. As memórias começam de um modelo. Dá para editar quantas memórias quiser na mesma sessão (por exemplo 1, 2, 3 e 5), e a lista marca cada uma alterada. Clique duas vezes numa memória da lista (ou aperte F2) para renomear ali mesmo: Enter confirma, Esc cancela, até 12 caracteres. O nome novo aparece na lista na hora, é gravado com a memória e vai junto no Export edits, então importar em outro dispositivo traz o nome também. As edições ficam guardadas neste navegador, então recarregar a página as traz de volta. **Discard offline edits** volta tudo para o modelo. Save e Export ZIP agora montam os arquivos da RC-600 no navegador e não precisam mais do servidor. Quando uma pasta ou ZIP não tem algumas memórias, esses slots também aparecem, a partir do modelo, então as 99 estão sempre na lista.
+- **Levar as edições para outro dispositivo:** numa sessão offline, **Export edits** e **Import edits** aparecem na barra superior, destacados com um brilho amarelo igual ao Save system. Export edits só fica habilitado depois que algo foi alterado. **Export edits** baixa um arquivo (`rc600-edits-<data>.json`) com todas as memórias e configurações de System alteradas nesta sessão, salvas ou não. **Import edits** mostra o que o arquivo contém (por exemplo "Memories 1, 2, 3, 5 and System") e pede confirmação antes de aplicar. Cada memória volta para o mesmo slot de onde saiu, então a Memória 1 vai para a Memória 1. As outras memórias não são tocadas, e as mudanças importadas ficam pendentes até você usar Save ou Export ZIP. Resultados do Mass Apply também vão no arquivo.
 - **Lista de memórias:** ao selecionar uma memória, a lista rola para deixar essa memória no topo.
 - **Breadcrumb de navegação:** o caminho acima do conteúdo acompanha as abas visíveis, incluindo pistas, roteamento e canais EQ aninhados. Níveis anteriores devolvem o foco às abas daquele nível sem reiniciar a edição nem alterar a pedaleira.
 - **Painel 3D Model:** ao lado de Chain, abre um modelo da RC-600 com fotos como texturas, rotação, controles por teclado, zoom e vistas do painel e da traseira. Esta primeira integração é apenas visual.
@@ -120,6 +127,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Limitações conhecidas
 
+- Edição offline: o modelo inicial é uma memória de exemplo renomeada para "INIT MEMORY", não uma memória de fábrica confirmada, e o modelo de System é um arquivo System de exemplo. O áudio gravado (WAVE) e os ritmos de usuário do Rhythm Converter (RHYTHM.RC0) não entram no arquivo de projeto.
+
 - A prévia e o desenho de frase do Auto Riff usam 30 frases inventadas, uma por número de Phrase: a Boss não publica as frases da RC-600, então a pedaleira toca riffs diferentes.
 - O modelo 3D usa geometria aproximada e fotografias; controles e conectores ainda não possuem malhas individuais, hotspots ou navegação para o editor.
 
@@ -130,6 +139,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - Efeitos Beat do Track FX: os padrões P1–P4 do Beat Scatter e as velocidades do Vinyl Flick na prévia são uma interpretação nossa (a Boss não os descreve), e a ordem dos valores de nota de Length / Shift ainda não foi confirmada no pedal.
 - Safari e Chrome no iOS não expõem Web MIDI; o controle ao vivo do pedal exige o Web MIDI Browser (ou Chrome/Edge no computador).
 - O Rhythm Converter grava um ritmo com uma única fórmula de compasso (Beats da RC-600 de 2/4–7/4 e 5/8–15/8) e até 9.999 notas; as viradas são gravadas com um compasso. O formato do RHYTHM.RC0 foi deduzido do BOSS RC Rhythm Converter e não tem documentação oficial, então mantenha um backup do drive. Ele não define Tempo nem Kit do ritmo em cada memória; ajuste na pedaleira ou nas configurações de Rhythm. A sugestão de partes é um ponto de partida: músicas sem marcações de seção, ou com fórmulas de compasso incomuns, costumam precisar de alguns compassos ajustados à mão. A reprodução no navegador (inclusive o RC-600 Kit Preview) usa samples General MIDI e baterias sintetizadas, que só se aproximam dos kits da RC-600; ouvir o kit real da RC-600 exige MIDI, e trocar o kit exige um assign de Rhythm Kit na memória atual.
+- O Rhythm Converter precisa do servidor do editor: abrir ou salvar o RHYTHM.RC0, salvar num slot, a sugestão de partes, a Magic Wand, a sugestão de kit e a exportação do pacote MIDI param com uma mensagem de erro quando o servidor não responde ou a sessão de licença terminou.
 - No site hospedado, a chave de licença é exigida antes de o editor carregar. A mesma trava vale no local quando `RC600_REQUIRE_LICENSE=1` está ligado, para testar a tela de ativação antes de informar a chave.
 
 ### Interno
@@ -140,6 +150,16 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### 2026-10-10
 
+- **EN:** Offline editing: double-click a memory in the list (or F2) to rename it. The name is saved with the memory and goes along in Export edits / Import edits.
+- **PT:** Edição offline: clique duas vezes numa memória da lista (ou F2) para renomear. O nome é gravado com a memória e vai junto no Export edits / Import edits.
+- **EN:** (Local development only) The **Issue key** window is wider and has a **Keys** tab to manage every issued key: search, email a key again (opens your email app with the subject and message filled in), edit the name, email, location and dates, or delete a key. Edits and deletes update both license files, and every create, edit and delete is kept in a change log so no data is lost.
+- **PT:** (Somente desenvolvimento local) A janela **Issue key** ficou mais larga e ganhou a aba **Keys** para gerenciar todas as chaves emitidas: buscar, reenviar a chave por e-mail (abre o app de e-mail com assunto e mensagem preenchidos), editar nome, e-mail, local e datas, ou excluir a chave. Edições e exclusões atualizam os dois arquivos de licença, e toda criação, edição e exclusão fica num log de alterações para não perder dados.
+- **EN:** (Local development only) **Issue key** now also writes a ready-to-send email: a subject line and a message with the key, how long it is valid, the editor link and the user guide link. Copy buttons for the key, subject and message.
+- **PT:** (Somente desenvolvimento local) **Issue key** agora também escreve um e-mail pronto para enviar: assunto e mensagem com a chave, a validade, o link do editor e o link do guia. Botões para copiar a chave, o assunto e a mensagem.
+- **EN:** Rhythm Converter: the RC-600 rhythm format and the smart parts now run on the editor server instead of in the browser: reading and writing RHYTHM.RC0, building a slot from the parts, renaming slots, the first part suggestion, the **Magic Wand**, the kit suggestion, the "Looks like …" guess for a selection, and the MIDI pack ZIP. The converter works the same, but needs the server to be reachable (a short wait may show while it answers). Offline slot lists saved in the browser by an older version are converted the next time they open.
+- **PT:** Rhythm Converter: o formato de ritmo da RC-600 e as partes inteligentes agora rodam no servidor do editor, não mais no navegador: leitura e gravação do RHYTHM.RC0, montagem do slot a partir das partes, renomear slots, a primeira sugestão de partes, a **Magic Wand**, a sugestão de kit, o palpite "Looks like …" da seleção e o ZIP do pacote MIDI. O conversor funciona igual, mas precisa do servidor acessível (pode haver uma pequena espera enquanto ele responde). Listas offline de slots salvas no navegador por uma versão anterior são convertidas na próxima vez que abrirem.
+- **EN:** Offline editing: **Edit offline** (top bar, always visible) opens all 99 memories and System without the pedal. In an offline session, **Export edits** / **Import edits** (yellow glow; export enabled once something changed) move your changes to another device as one file, and each memory goes back into its own slot. Offline edits survive a reload. Save and Export ZIP no longer need the server, and Export ZIP now includes unsaved edits.
+- **PT:** Edição offline: **Edit offline** (barra superior, sempre visível) abre as 99 memórias e o System sem a pedaleira. Numa sessão offline, **Export edits** / **Import edits** (brilho amarelo; exportar só habilita com alterações) levam as mudanças para outro dispositivo num arquivo, e cada memória volta para o próprio slot. As edições offline sobrevivem a um reload. Save e Export ZIP não precisam mais do servidor, e o Export ZIP agora inclui as edições não salvas.
 - **EN:** The Rhythm Converter is marked **Beta**: a badge and info tip in its title say it should already work almost perfectly, but some tests are still being added, and recommend keeping a backup of RHYTHM.RC0.
 - **PT:** O Rhythm Converter está marcado como **Beta**: um selo e um info no título dizem que ele já deve funcionar quase perfeitamente, mas ainda faltam alguns testes, e recomendam guardar um backup do RHYTHM.RC0.
 

@@ -26,7 +26,7 @@ import {
   stepCount,
   type EditGrid,
 } from "../rhythmConverter/partEdit";
-import type { SmfNote } from "../rhythmConverter/smfWriter";
+import type { SmfNote } from "../rhythmConverter/smf";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 

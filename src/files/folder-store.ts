@@ -139,6 +139,40 @@ export async function loadRolandHandle(): Promise<DirectoryHandleLike | null> {
   }, null);
 }
 
+/** Generic IndexedDB key/value in the same store (structured-clone values). */
+export async function saveStoredValue(key: string, value: unknown): Promise<void> {
+  await withHandleDb(async (db) => {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("IndexedDB write failed"));
+      tx.objectStore(STORE).put(value, key);
+    });
+  }, undefined);
+}
+
+export async function loadStoredValue<T>(key: string): Promise<T | null> {
+  return withHandleDb(async (db) => {
+    return await new Promise<T | null>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = () => resolve((req.result as T | undefined) ?? null);
+      req.onerror = () => reject(req.error ?? new Error("IndexedDB read failed"));
+    });
+  }, null);
+}
+
+export async function deleteStoredValue(key: string): Promise<void> {
+  await withHandleDb(async (db) => {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("IndexedDB delete failed"));
+      tx.objectStore(STORE).delete(key);
+    });
+  }, undefined);
+}
+
 export async function clearRolandHandle(): Promise<void> {
   await withHandleDb(async (db) => {
     await new Promise<void>((resolve, reject) => {

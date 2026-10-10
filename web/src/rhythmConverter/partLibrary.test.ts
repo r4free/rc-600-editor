@@ -13,7 +13,8 @@ import {
   rolesForKind,
   upsertPart,
 } from "./partLibrary.js";
-import { buildUserPattern, lastBarOnly } from "./rhythmRc0.js";
+import { buildUserPattern } from "../../../server/rhythm/rc0.js";
+import { lastBarOnly } from "./rhythmRc0.js";
 
 const VAR_A: PartEvents = {
   role: "varA",

@@ -1,7 +1,8 @@
 /** Guesses what a run of drum bars is (Intro / Variation / Fill / Ending) and which style and feel tags fit. */
-import type { PartKind } from "./partLibrary";
-import type { PlayedBar } from "./scoreDrumEvents";
-import { classifySection, drumClass } from "./sectionSuggest";
+import type { PartKind } from "../../web/src/rhythmConverter/partLibrary.js";
+import type { PlayedBar } from "../../web/src/rhythmConverter/scoreDrumEvents.js";
+import { drumClass } from "../../web/src/rhythmConverter/sectionSuggest.js";
+import { classifySection } from "./suggest.js";
 
 /** Bongos, congas, timbales, agogo, guiro, claves, cuica (not shakers or cowbell). */
 const LATIN_NOTES = new Set([60, 61, 62, 63, 64, 65, 66, 67, 68, 73, 74, 75, 78, 79]);

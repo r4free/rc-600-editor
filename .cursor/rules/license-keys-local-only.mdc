@@ -1,0 +1,24 @@
+---
+description: License key issuing and management is local-only and must never reach production
+alwaysApply: true
+---
+
+# License keys: local only, never production
+
+Issuing, listing, emailing, editing and deleting license keys (the **Issue key** window) exists **only on the developer's computer**. It must never ship to or run on the public site.
+
+## Guards that must stay in place
+
+1. **UI:** `web/src/dev/DevLicenseSlot.tsx` loads `DevLicenseButton` only when `import.meta.env.DEV` is true, so `vite build` leaves it out. Never import `web/src/dev/DevLicenseButton.tsx` (or anything in `web/src/dev/`) directly from app code.
+2. **API:** every `/api/dev/licenses` route (POST, GET, PATCH, DELETE) checks `devLicenseIssuerAllowed` in `server/dev-license.ts`, and the `/api/*` middleware in `server/index.ts` returns 404 for `/api/dev/licenses` and `/api/dev/licenses/*` first. The check refuses `RENDER`, `NODE_ENV=production`, and any host other than localhost / 127.0.0.1 / [::1] / rc.test.
+3. **Data:** `data/issued-licenses.json` (full keys) and `data/license-log.jsonl` (change log with full keys) are git-ignored. Only `data/licenses.json` (hashes) is committed and deployed.
+4. **Tests:** `server/dev-license.test.ts` and `server/dev-license-guard.test.ts` must keep passing.
+
+## Never
+
+- Add an env flag, query param, header or role that turns these routes or the UI on in production.
+- Add a host to the local allow-list that is reachable from the internet.
+- Move key management into a non-`dev/` component, a production route, or the public bundle.
+- Commit `data/issued-licenses.json` or `data/license-log.jsonl`, or unignore them.
+
+If a task seems to need key management in production, stop and ask the user first.

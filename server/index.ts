@@ -27,6 +27,7 @@ import { createNativePresetFileStore, isNativePresetWriteAllowed } from "./drum-
 import { createNativeKitFileStore, isNativeKitWriteAllowed } from "./drum-kits.js";
 import { createNativePartFileStore, isNativePartWriteAllowed } from "./rhythm-parts.js";
 import { createNativeRhythmFileStore } from "./rhythm-library.js";
+import { rhythmRoutes } from "./rhythm/routes.js";
 import { AiRateLimiter, serializeAiLimit } from "./ai-rate-limit.js";
 import { generateChartWithAi } from "./chart-ai.js";
 import { resolveEntitlements, revokeDeviceForRequest } from "./entitlements.js";
@@ -40,7 +41,13 @@ import {
   isPublicApiPath,
 } from "./shell-gate.js";
 import { fulfillStripeCheckout, paidLicensePageHtml } from "./stripe-license.js";
-import { devLicenseIssuerAllowed, issueLocalLicense } from "./dev-license.js";
+import {
+  deleteLocalLicense,
+  devLicenseIssuerAllowed,
+  issueLocalLicense,
+  listLocalLicenses,
+  updateLocalLicense,
+} from "./dev-license.js";
 
 try {
   process.loadEnvFile?.();
@@ -50,7 +57,7 @@ try {
 const app = new Hono();
 
 app.use("/api/*", async (c, next) => {
-  if (c.req.path === "/api/dev/licenses") {
+  if (c.req.path === "/api/dev/licenses" || c.req.path.startsWith("/api/dev/licenses/")) {
     const allowed = devLicenseIssuerAllowed(
       process.env,
       c.req.header("host"),
@@ -146,6 +153,42 @@ app.post("/api/dev/licenses", async (c) => {
     return c.json({ ok: true, ...issueLocalLicense(body) });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not create the license";
+    return c.json({ error: message }, 400);
+  }
+});
+
+function devLicenseRequestAllowed(c: Context): boolean {
+  return devLicenseIssuerAllowed(process.env, c.req.header("host"), c.req.header("x-forwarded-host"));
+}
+
+app.get("/api/dev/licenses", (c) => {
+  if (!devLicenseRequestAllowed(c)) return c.json({ error: "Not found" }, 404);
+  return c.json({ ok: true, licenses: listLocalLicenses() });
+});
+
+app.patch("/api/dev/licenses/:id", async (c) => {
+  if (!devLicenseRequestAllowed(c)) return c.json({ error: "Not found" }, 404);
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  try {
+    return c.json({ ok: true, license: updateLocalLicense(c.req.param("id"), body) });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not update the license";
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.delete("/api/dev/licenses/:id", (c) => {
+  if (!devLicenseRequestAllowed(c)) return c.json({ error: "Not found" }, 404);
+  try {
+    deleteLocalLicense(c.req.param("id"));
+    return c.json({ ok: true });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not delete the license";
     return c.json({ error: message }, 400);
   }
 });
@@ -485,6 +528,9 @@ app.post("/api/setlists/chart/generate", async (c) => {
     );
   }
 });
+
+app.use("/api/rhythm/*", requireAccess);
+app.route("/api/rhythm", rhythmRoutes());
 
 app.post("/api/assemble", requireAccess, async (c) => {
   let body: AssembleRequest;

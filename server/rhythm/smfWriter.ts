@@ -1,14 +1,8 @@
 /** Minimal Standard MIDI File (Format 0) writer for drum parts. */
+import { SMF_PPQ, type SmfNote } from "../../web/src/rhythmConverter/smf.js";
 
-export const SMF_PPQ = 480;
+export { SMF_PPQ, type SmfNote };
 export const GM_DRUM_CHANNEL = 9;
-
-export interface SmfNote {
-  tick: number;
-  note: number;
-  velocity: number;
-  duration: number;
-}
 
 export interface SmfSpec {
   ppq?: number;

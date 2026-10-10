@@ -1,13 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { DrumHit, PlayedBar } from "./scoreDrumEvents.js";
-import {
-  classifySection,
-  loopLength,
-  barFingerprint,
-  roleAtBar,
-  suggestParts,
-} from "./sectionSuggest.js";
+import type { DrumHit, PlayedBar } from "../../web/src/rhythmConverter/scoreDrumEvents.js";
+import { barFingerprint, roleAtBar } from "../../web/src/rhythmConverter/sectionSuggest.js";
+import { classifySection, loopLength, suggestParts } from "./suggest.js";
 
 const PPQ = 960;
 const S16 = PPQ / 4;

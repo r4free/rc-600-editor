@@ -454,6 +454,24 @@ textarea {
   white-space: nowrap;
 }
 
+.mem-item.renaming {
+  grid-template-columns: 2.4rem 1fr;
+  cursor: default;
+  border-color: var(--warn);
+}
+
+.mem-rename-input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.15rem 0.35rem;
+  font: inherit;
+  font-family: var(--mono);
+  color: var(--text);
+  background: var(--bg-chain);
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, var(--line));
+  border-radius: var(--radius-sm);
+}
+
 .mem-item .meta {
   font-size: 0.68rem;
   color: var(--muted);
@@ -7517,6 +7535,35 @@ button[role="switch"]:focus-visible {
 .topbar-save-actions.has-pending .btn.warn:not(:disabled) {
   background: color-mix(in srgb, var(--warn) 13%, var(--bg-chain));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.hover-tip {
+  display: inline-flex;
+}
+
+.hover-tip-pop {
+  pointer-events: none;
+}
+
+.hover-tip .btn:disabled {
+  pointer-events: none;
+}
+
+.hover-tip-pop span {
+  display: block;
+}
+
+.btn.edits-transfer:not(:disabled) {
+  background: color-mix(in srgb, var(--warn) 13%, var(--bg-chain));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--warn) 24%, transparent),
+    0 0 10px color-mix(in srgb, var(--warn) 38%, transparent);
+}
+
+.btn.edits-transfer:not(:disabled):hover {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--warn) 34%, transparent),
+    0 0 14px color-mix(in srgb, var(--warn) 52%, transparent);
 }
 
 .topbar-save-actions .discard-action:not(:disabled) {

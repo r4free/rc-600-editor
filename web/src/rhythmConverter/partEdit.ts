@@ -2,7 +2,7 @@
 import { DRUM_INSTRUMENTS, drumLabelForNote } from "../drumMap";
 import type { PartEvents } from "./exportPack";
 import { drumClass } from "./sectionSuggest";
-import { SMF_PPQ, type SmfNote } from "./smfWriter";
+import { SMF_PPQ, type SmfNote } from "./smf";
 
 export type EditGrid = "1/8" | "1/16" | "1/32" | "1/8T" | "1/16T";
 
