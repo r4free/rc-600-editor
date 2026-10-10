@@ -1,0 +1,17 @@
+---
+description: Where data lives in the RC-600 editor (no database, ever)
+alwaysApply: true
+---
+
+# Storage: no database
+
+This project does **not** use a database and never will. Do not add SQLite, Postgres, MySQL, Redis, MongoDB, an ORM (Prisma, Drizzle, Knex…) or any hosted DB service. If a task seems to need one, stop and ask the user.
+
+## Where data lives
+
+- **User data and options** stay on the user's device: `localStorage` (preferences, user presets, kits, parts, rhythms, playlists) and IndexedDB (large items such as the offline RHYTHM.RC0 slot list and score assets). The server does not keep per-user copies.
+- **Factory / native content in development** is saved to JSON files in the repo, written by the local API: `web/public/play-drum/presets.json`, `web/public/play-drum/kits.json`, `web/public/rhythm-converter/parts.json`, `web/public/rhythm-converter/rhythms.json`. In production these are read-only.
+- **Licenses** are files under `data/` (`licenses.json` hashes are committed; `issued-licenses.json` and `license-log.jsonl` stay local and git-ignored).
+- **Server-side processing** (for example `/api/rhythm/*`, `/api/assemble`) is stateless: it takes the request, returns the result, and stores nothing.
+
+New features follow the same split: personal data in the browser, shared factory data in JSON files, computation on the server without persistence.
