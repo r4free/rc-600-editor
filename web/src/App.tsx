@@ -57,6 +57,7 @@ import { PlatformSelect } from "./components/PlatformSelect";
 import { MemoryCopyModal } from "./components/MemoryCopyModal";
 import { MemoryApplyTargetsModal } from "./components/MemoryApplyTargetsModal";
 import { UsbConnectModal } from "./components/UsbConnectModal";
+import { Modal } from "./components/Modal";
 import {
   loadMemoryClipboard,
   loadSkipApplyConfirm,
@@ -219,6 +220,9 @@ export function App() {
   const autosaveReadyRef = useRef(false);
   const [pendingImport, setPendingImport] = useState<Rc600Project | null>(null);
   const [discardOfflineOpen, setDiscardOfflineOpen] = useState(false);
+  /** Offline edits waiting for the user to decide whether they go onto the just-connected pedal. */
+  const [pedalSync, setPedalSync] = useState<Rc600Project | null>(null);
+  const [pedalSyncBackup, setPedalSyncBackup] = useState(false);
   const [tab, setTab] = usePersistedTab<TabId>("memory", "loop", MEMORY_TABS, {
     persist: !demoMode,
   });
@@ -670,6 +674,7 @@ export function App() {
 
   async function openDirectory(): Promise<boolean> {
     setError(null);
+    const carry = offline ? offlineProjectNow() : null;
     try {
       const result = await pickRolandDirectory();
       if (!result) {
@@ -681,6 +686,10 @@ export function App() {
       applyRolandFiles(await withAllSlots(result.files.files), result.files.rootLabel, {
         backupAck: false,
       });
+      if (carry && !isProjectEmpty(carry)) {
+        setPedalSyncBackup(false);
+        setPedalSync(carry);
+      }
       return true;
     } catch (e) {
       if ((e as Error).name === "AbortError") return false;
@@ -753,6 +762,31 @@ export function App() {
   startOfflineRef.current = startOffline;
 
   const offline = rootLabel === OFFLINE_LABEL && files.size > 0;
+  const pedalConnected = hasDirHandle || usbVolumePresent || Boolean(connected);
+  const connectionState = offline
+    ? {
+        kind: "offline" as const,
+        short: "Editing",
+        label: "Editing offline",
+        text: "You are editing without the RC-600. Changes stay in this browser. Use Connect RC-600 to send them to the pedal, or Export edits to take them to another device.",
+      }
+    : pedalConnected
+      ? {
+          kind: "online" as const,
+          short: "",
+          label: "RC-600 connected",
+          text: hasDirHandle
+            ? "The RC-600 ROLAND folder is open. Save writes straight to the pedal."
+            : connected
+              ? `The RC-600 is connected over MIDI (${connected}).`
+              : "The RC-600 drive is on this computer. Open its ROLAND folder to edit it.",
+        }
+      : {
+          kind: "idle" as const,
+          short: "",
+          label: "RC-600 not connected",
+          text: "The pedal is not connected and you are not editing offline. Use Connect to USB or Edit offline to start.",
+        };
   const hasSessionEdits =
     anyMemoryDirty || sysDirty || committed.memories.size > 0 || committed.system.length > 0;
 
@@ -852,6 +886,99 @@ export function App() {
     if (first != null && slotRef.current == null) loadSlot(first, filesRef.current);
     setWorkspace(project.memories.length ? "memory" : "system");
     setStatus(`Imported ${describeProject(project)} · changes are pending (Save or Export ZIP)`);
+  }
+
+  /** Every change made in the offline session (saved and pending), as an edits file. */
+  function offlineProjectNow(): Rc600Project {
+    return serializeProject({
+      committed: committedRef.current,
+      drafts: draftsRef.current,
+      sysOps: sysDirty ? sysOpsRef.current : [],
+      source: OFFLINE_LABEL,
+    });
+  }
+
+  /** Writes offline edits straight into the open RC-600 folder, each memory into its own slot. */
+  async function writeProjectToPedal(project: Rc600Project) {
+    if (!dirHandleRef.current) {
+      setError("Open the RC-600 ROLAND folder first.");
+      return;
+    }
+    if (requireLicense && !sessionOk) {
+      setError("Enter a valid license key before writing to the RC-600.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      let next = new Map(filesRef.current);
+      for (const m of project.memories) {
+        const a = next.get(slotFileName(m.slot, "A"));
+        const b = next.get(slotFileName(m.slot, "B"));
+        const base = m.xml ?? (a && b ? pickActiveXml(a, b).xml : a || b);
+        if (!base) continue;
+        const { xml } = await assembleLocal({ kind: "patch", xml: base, ops: m.ops });
+        const pair = memoryFilesAfterSave(xml);
+        next = await commitSlotFiles(
+          [
+            { path: slotFileName(m.slot, "A"), xml: pair.xmlA },
+            { path: slotFileName(m.slot, "B"), xml: pair.xmlB },
+          ],
+          next,
+        );
+      }
+      if (project.system?.ops.length) {
+        const picked = pickActiveSystem(next.get(systemFileName("1")), next.get(systemFileName("2")));
+        if (picked) {
+          const { xml } = await assembleLocal({ kind: "patch", xml: picked.xml, ops: project.system.ops });
+          const pair = memoryFilesAfterSave(xml);
+          next = await commitSlotFiles(
+            [
+              { path: systemFileName("1"), xml: pair.xmlA },
+              { path: systemFileName("2"), xml: pair.xmlB },
+            ],
+            next,
+          );
+          setSysSide("1");
+          setSysBaseXml(xml);
+          setSysOps([]);
+          setSysDirty(false);
+        }
+      }
+      filesRef.current = next;
+      setFiles(next);
+      const written = new Set(project.memories.map((m) => m.slot));
+      setDrafts((prev) => {
+        let out = prev;
+        for (const s of written) out = clearSlotDraft(out, s);
+        return out;
+      });
+      const current = slotRef.current;
+      if (current != null && written.has(current)) loadSlot(current, next);
+      setStatus(
+        `Wrote ${describeProject(project)} to the RC-600. On the pedal, switch to another memory and back so it loads the new settings.`,
+      );
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmPedalSync(mode: "write" | "review") {
+    const project = pedalSync;
+    if (!project) return;
+    setPedalSync(null);
+    if (mode === "review") {
+      applyProjectNow(project, slotRef.current);
+      setStatus(
+        `Loaded ${describeProject(project)} as unsaved edits. Check them, then Save all / Save system to write to the RC-600.`,
+      );
+      return;
+    }
+    setBackupAck(true);
+    saveFolderMeta({ backupAck: true });
+    await writeProjectToPedal(project);
   }
 
   async function discardOfflineEdits() {
@@ -1736,6 +1863,20 @@ export function App() {
               )}
             </div>
           </div>
+          {demoMode ? null : (
+            <div className="topbar-connection">
+              <HoverTip label={connectionState.label} text={connectionState.text}>
+                <span
+                  className={`connection-state is-${connectionState.kind}`}
+                  role="status"
+                  aria-label={connectionState.label}
+                >
+                  <span className="connection-dot" aria-hidden="true" />
+                  {connectionState.short}
+                </span>
+              </HoverTip>
+            </div>
+          )}
         </div>
         <div className="topbar-actions">
           <DevLicenseSlot />
@@ -1784,7 +1925,7 @@ export function App() {
             Open folder
           </button>
           )}
-          {demoMode || offline ? null : (
+          {demoMode || offline || pedalConnected ? null : (
           <HoverTip
             label="Edit offline"
             text="Edit all 99 memories and the system settings without the RC-600 connected. Edits are kept in this browser. When you are done, use Export edits to take them to another device, or Export ZIP to copy them onto the pedal."
@@ -1895,7 +2036,21 @@ export function App() {
             Discard offline edits
           </button>
           ) : null}
-          {demoMode ? null : hasDirHandle || usbVolumePresent ? (
+          {demoMode ? null : offline ? (
+            <HoverTip
+              label="Connect RC-600"
+              text="Shows how to put the RC-600 in USB Storage, then opens its ROLAND folder. Once it is connected you choose whether your offline edits are written to the pedal, loaded for review first, or kept in this browser for later."
+            >
+              <button
+                type="button"
+                className="btn primary connect-pedal-btn"
+                onClick={() => setUsbConnectOpen(true)}
+              >
+                <Icon name="usb" size={14} />
+                Connect RC-600
+              </button>
+            </HoverTip>
+          ) : hasDirHandle || usbVolumePresent ? (
             <button
               type="button"
               className="btn"
@@ -2007,16 +2162,6 @@ export function App() {
       ) : null}
 
       {!demoMode && env.blockReason === "ios" ? <IosMidiNotice /> : null}
-
-      {offline ? (
-        <div className="warn-banner offline-banner">
-          <p>
-            Editing offline: no pedal needed. All 99 memories start from a template. Edits are kept
-            in this browser; use Export edits to save them to a file you can import on another device, or Export ZIP to copy them
-            onto the RC-600.
-          </p>
-        </div>
-      ) : null}
 
       {!demoMode && !backupAck && files.size > 0 && (
         <div className="warn-banner">
@@ -2160,20 +2305,26 @@ export function App() {
             ) : workspace === "system" ? (
               <div className="empty-state">
                 <h2>Open the ROLAND folder to edit System</h2>
-                <p>
-                  Play Drum works over MIDI without a folder. To edit Memory and System without the
-                  pedal, start an offline session.
-                </p>
-                <div className="row-actions" style={{ justifyContent: "center" }}>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={() => void startOffline().then((ok) => ok && setWorkspace("system"))}
-                  >
-                    <Icon name="edit" size={14} />
-                    Edit offline
-                  </button>
-                </div>
+                {pedalConnected ? (
+                  <p>Play Drum works over MIDI without a folder. Memory and System need DATA/*.RC0 files.</p>
+                ) : (
+                  <>
+                    <p>
+                      Play Drum works over MIDI without a folder. To edit Memory and System without
+                      the pedal, start an offline session.
+                    </p>
+                    <div className="row-actions" style={{ justifyContent: "center" }}>
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => void startOffline().then((ok) => ok && setWorkspace("system"))}
+                      >
+                        <Icon name="edit" size={14} />
+                        Edit offline
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
         <div className="empty-state">
@@ -2198,10 +2349,12 @@ export function App() {
                   <Icon name="folderOpen" size={14} />
                   Choose a different folder
                 </button>
+                {pedalConnected ? null : (
                 <button type="button" className="btn" onClick={() => void startOffline()}>
                   <Icon name="edit" size={14} />
                   Edit offline
                 </button>
+                )}
                 <button type="button" className="btn ghost" onClick={() => void forgetSavedFolder()}>
                   Forget saved folder
                 </button>
@@ -2232,15 +2385,17 @@ export function App() {
                   <Icon name="folderOpen" size={14} />
                   Open ROLAND folder
                 </button>
+                {pedalConnected ? null : (
                 <button
                   type="button"
                   className="btn"
                   onClick={() => void startOffline()}
-                  title="Edit all 99 memories and the system settings without the pedal. Export a project file or a ZIP when you are done."
+                  title="Edit all 99 memories and the system settings without the pedal. Use Export edits or Export ZIP when you are done."
                 >
                   <Icon name="edit" size={14} />
                   Edit offline
                 </button>
+                )}
                 {showDemoFixtures ? (
                 <button type="button" className="btn" onClick={() => void loadDemoFixtures()}>
                   Load demo fixtures
@@ -2730,6 +2885,59 @@ export function App() {
 
       {usbConnectOpen ? (
         <UsbConnectModal onClose={() => setUsbConnectOpen(false)} onOpenFolder={confirmUsbConnect} />
+      ) : null}
+
+      {pedalSync ? (
+        <Modal
+          title="Send your offline edits to the RC-600?"
+          onClose={() => setPedalSync(null)}
+          foot={
+            <>
+              <button type="button" className="btn ghost" onClick={() => setPedalSync(null)}>
+                Not now
+              </button>
+              <button type="button" className="btn" onClick={() => void confirmPedalSync("review")}>
+                Review first
+              </button>
+              <button
+                type="button"
+                className="btn warn edits-transfer"
+                disabled={!pedalSyncBackup || saving}
+                onClick={() => void confirmPedalSync("write")}
+              >
+                <Icon name="save" size={14} />
+                Write to RC-600
+              </button>
+            </>
+          }
+        >
+          <p>
+            The RC-600 is connected. Your offline session has changes in:{" "}
+            <strong>{describeProject(pedalSync)}</strong>.
+          </p>
+          <ul className="pedal-sync-options">
+            <li>
+              <strong>Write to RC-600</strong> replaces those memories (and System) on the pedal
+              right now. Each memory goes into its own slot; the other memories are not touched.
+            </li>
+            <li>
+              <strong>Review first</strong> loads them as unsaved edits so you can check each one,
+              then use Save all / Save system.
+            </li>
+            <li>
+              <strong>Not now</strong> leaves the pedal as it is. Your offline edits stay in this
+              browser; Edit offline brings them back.
+            </li>
+          </ul>
+          <label className="pedal-sync-backup">
+            <input
+              type="checkbox"
+              checked={pedalSyncBackup}
+              onChange={(e) => setPedalSyncBackup(e.target.checked)}
+            />
+            I have a backup of the ROLAND folder (needed to write)
+          </label>
+        </Modal>
       ) : null}
 
       {discardAllOpen ? (
