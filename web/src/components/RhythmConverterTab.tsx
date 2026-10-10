@@ -327,7 +327,13 @@ export function RhythmConverterTab({
   dirHandle,
   writeBlockedReason,
   onUnsavedChange,
+  onConnectUsb,
+  onBackupDone,
 }: {
+  /** Opens the editor's USB Storage connect dialog. */
+  onConnectUsb?: () => void;
+  /** Set while saving is blocked only because the backup was not confirmed. */
+  onBackupDone?: () => void;
   /** Called with a sentence describing what is not saved yet, or null when everything is saved. */
   onUnsavedChange?: (pending: string | null) => void;
   /** False while the converter is hidden; playback stops. */
@@ -428,6 +434,12 @@ export function RhythmConverterTab({
   const [kitAuto, setKitAuto] = useState(false);
   const [slot, setSlot] = useState(NEW_SLOT);
   /** Working copy of RHYTHM.RC0: read from the open drive, or an offline list kept in the browser. */
+  /** With the drive open: the offline list kept in this browser, ready to send to the pedal. */
+  const [offlineCopy, setOfflineCopy] = useState<{
+    records: Uint8Array[];
+    origin: string | null;
+    dirty: boolean;
+  } | null>(null);
   const [slotList, setSlotList] = useState<{
     records: Uint8Array[];
     origin: string | null;
@@ -1546,17 +1558,15 @@ export function RhythmConverterTab({
   useEffect(() => {
     let cancelled = false;
     setSlotList(null);
+    setOfflineCopy(null);
     setSlot(NEW_SLOT);
-    const load = dirHandle
-      ? readDriveSlots()
-      : loadOfflineSlots().then((saved) => {
-          if (!cancelled && saved)
-            setSlotList({
-              records: readRhythmRc0(saved.bytes),
-              origin: saved.origin,
-              dirty: saved.dirty,
-            });
-        });
+    const offline = loadOfflineSlots().then((saved) => {
+      if (cancelled || !saved) return;
+      const list = { records: readRhythmRc0(saved.bytes), origin: saved.origin, dirty: saved.dirty };
+      if (dirHandle) setOfflineCopy(list);
+      else setSlotList(list);
+    });
+    const load = dirHandle ? Promise.all([readDriveSlots(), offline]) : offline;
     load.catch((cause) => {
       if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not read RHYTHM.RC0.");
     });
@@ -1564,6 +1574,56 @@ export function RhythmConverterTab({
       cancelled = true;
     };
   }, [dirHandle, readDriveSlots]);
+
+  /** Puts the offline list on the pedal: "merge" adds its rhythms (same name replaces), "replace" swaps the whole file. */
+  async function sendOfflineToPedal(mode: "merge" | "replace") {
+    if (!dirHandle || !offlineCopy || !slotList) return;
+    const count = offlineCopy.records.length;
+    const question =
+      mode === "replace"
+        ? `Replace all ${slotList.records.length} user rhythms on the RC-600 with the ${count} rhythms of the offline list? Download a backup first if you may want them back.`
+        : `Add the ${count} rhythms of the offline list to the RC-600? A rhythm whose name is already on the pedal replaces that slot; the others take the next free slots.`;
+    if (!window.confirm(question)) return;
+    await runSlotChange(async () => {
+      let records = [...slotList.records];
+      if (mode === "replace") records = [...offlineCopy.records];
+      else {
+        for (const record of offlineCopy.records) {
+          const name = decodeUserPattern(record).name.toLowerCase();
+          const same = patternNames(records).findIndex((n) => n.toLowerCase() === name);
+          records = upsertRecord(records, record, same >= 0 ? same : null).records;
+        }
+      }
+      await commitSlots(records);
+      const sent = { ...offlineCopy, dirty: false };
+      setOfflineCopy(sent);
+      await saveOfflineSlots({ bytes: writeRhythmRc0(sent.records), origin: sent.origin, dirty: false });
+      setStatus(
+        mode === "replace"
+          ? `The RC-600 now has the ${count} rhythms of the offline list.`
+          : `Added the offline list to the RC-600: ${records.length} user rhythms on the pedal now.`,
+      );
+    });
+  }
+
+  /** Keeps a copy of the pedal's rhythms in this browser, to keep working without the RC-600. */
+  async function copyPedalToOffline() {
+    if (!dirHandle || !slotList) return;
+    if (
+      offlineCopy?.dirty &&
+      !window.confirm(
+        "The offline list has changes that were not sent or downloaded. Replace it with the RC-600's rhythms?",
+      )
+    )
+      return;
+    await runSlotChange(async () => {
+      const origin = `RC-600 on ${new Date().toLocaleDateString()}`;
+      const copy = { records: [...slotList.records], origin, dirty: false };
+      await saveOfflineSlots({ bytes: writeRhythmRc0(copy.records), origin, dirty: false });
+      setOfflineCopy(copy);
+      setStatus(`Copied the ${copy.records.length} RC-600 rhythms to the offline list in this browser.`);
+    });
+  }
 
   async function saveToSlot() {
     if (!resolved.length) return;
@@ -2856,6 +2916,15 @@ export function RhythmConverterTab({
         onDelete={deleteSlot}
         onTarget={setSlot}
         onSaveToLibrary={startSlotRhythmSave}
+        offline={
+          offlineCopy
+            ? { count: offlineCopy.records.length, origin: offlineCopy.origin, dirty: offlineCopy.dirty }
+            : null
+        }
+        onSendOffline={(mode) => void sendOfflineToPedal(mode)}
+        onCopyToOffline={() => void copyPedalToOffline()}
+        onConnectUsb={onConnectUsb}
+        onBackupDone={onBackupDone}
       />
       <input
         ref={slotFileRef}

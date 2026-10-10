@@ -2,31 +2,6 @@
   "version": 1,
   "kits": [
     {
-      "id": "studio-16",
-      "name": "Studio",
-      "source": "native",
-      "updatedAt": "2026-09-13T18:00:00.000Z",
-      "padCount": 16,
-      "notes": [
-        36,
-        38,
-        39,
-        37,
-        42,
-        46,
-        44,
-        56,
-        41,
-        43,
-        45,
-        47,
-        49,
-        51,
-        52,
-        53
-      ]
-    },
-    {
       "id": "rock-12",
       "name": "Rock",
       "source": "native",

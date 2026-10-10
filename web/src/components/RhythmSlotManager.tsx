@@ -15,6 +15,9 @@ export interface SlotInfo {
 
 const SLOTS_TEXT = `Every user rhythm on the RC-600 lives in one file, ROLAND/DATA/RHYTHM.RC0 (up to ${MAX_USER_PATTERNS} slots, shown on the pedal under Rhythm → Genre: User). With the RC-600 drive open (USB storage mode), every change here is written to the pedal at once. Without the pedal, open a RHYTHM.RC0 (a backup, or a copy from ROLAND/DATA) or start an empty list, make your changes, then Download RHYTHM.RC0 and copy it to ROLAND/DATA on the pedal; the offline list stays in this browser until you close it. Load puts a slot in the builder so you can edit it; Save to Slot then replaces it. The library button saves a slot to your rhythm library, and each of its parts to the part library tagged with the rhythm name. Moving or deleting slots renumbers the ones after it, so memories that pick a user rhythm by number may point to a different one.`;
 
+const SYNC_TEXT =
+  "There are two places for user rhythms. The offline list lives in this browser: open a RHYTHM.RC0 (a backup) or start an empty list, and every Save to Offline Slot goes there, even with no pedal around. The RC-600 list is the pedal itself: it shows when the RC-600 is in USB Storage mode and its ROLAND folder is open (Connect RC-600), and every change there is written to the pedal at once. To move offline work to the pedal, connect it, then use Add to RC-600 (keeps the pedal's rhythms and adds yours; same name replaces) or Replace RC-600 (the pedal ends up with exactly the offline list). Copy to Offline takes the pedal's rhythms home, so you can keep working without it. Without connecting, Download RHYTHM.RC0 and copy the file to ROLAND/DATA on the pedal by hand.";
+
 export function RhythmSlotManager({
   mode,
   origin,
@@ -39,6 +42,11 @@ export function RhythmSlotManager({
   onDelete,
   onTarget,
   onSaveToLibrary,
+  offline,
+  onSendOffline,
+  onCopyToOffline,
+  onConnectUsb,
+  onBackupDone,
 }: {
   /** "drive": the RC-600 drive is open and changes are written to it. "offline": a working copy in the browser. */
   mode: "drive" | "offline";
@@ -65,6 +73,12 @@ export function RhythmSlotManager({
   onDelete: (index: number) => void;
   onTarget: (index: number) => void;
   onSaveToLibrary: (index: number) => void;
+  /** Drive mode: the offline list kept in this browser, if any. */
+  offline: { count: number; origin: string | null; dirty: boolean } | null;
+  onSendOffline: (mode: "merge" | "replace") => void;
+  onCopyToOffline: () => void;
+  onConnectUsb?: () => void;
+  onBackupDone?: () => void;
 }) {
   const [renaming, setRenaming] = useState<{ index: number; name: string } | null>(null);
   const locked = busy || (mode === "drive" && Boolean(writeBlocked));
@@ -84,10 +98,10 @@ export function RhythmSlotManager({
         <span className={`rhythm-slots-source is-${mode}`}>
           <Icon name={mode === "drive" ? "usb" : "folderOpen"} size={14} />
           {mode === "drive"
-            ? "RC-600 drive: changes are saved to the pedal"
+            ? "Showing: RC-600"
             : slots
-              ? `Offline list${origin ? ` from ${origin}` : " (started empty)"}`
-              : "Offline: no RC-600 connected"}
+              ? `Showing: offline list${origin ? ` from ${origin}` : " (started empty)"}`
+              : "Showing: offline list"}
         </span>
         {slots ? (
           <span className="rhythm-slots-count">
@@ -140,7 +154,94 @@ export function RhythmSlotManager({
         ) : null}
       </div>
 
-      {mode === "drive" && writeBlocked ? <p className="drum-pad-hint warn">{writeBlocked}</p> : null}
+      <div className={`rhythm-sync is-${mode}`}>
+        <div className={`rhythm-sync-side${mode === "offline" ? " is-current" : ""}`}>
+          <Icon name="folderOpen" size={18} />
+          <div>
+            <strong>Offline list (this browser)</strong>
+            <span>
+              {mode === "offline"
+                ? slots
+                  ? `${slots.length} rhythm${slots.length === 1 ? "" : "s"}${dirty ? " · changes not on the pedal yet" : ""}`
+                  : "Empty: open a RHYTHM.RC0 or start a list"
+                : offline
+                  ? `${offline.count} rhythm${offline.count === 1 ? "" : "s"}${offline.origin ? ` · from ${offline.origin}` : ""}${offline.dirty ? " · not sent yet" : ""}`
+                  : "None kept in this browser"}
+            </span>
+          </div>
+        </div>
+        <div className="rhythm-sync-actions">
+          {mode === "drive" ? (
+            <>
+              <button
+                type="button"
+                className={`btn${offline?.dirty ? " primary" : ""}`}
+                disabled={!offline?.count || locked}
+                title="Add the offline rhythms to the pedal; a rhythm whose name is already there replaces that slot"
+                onClick={() => onSendOffline("merge")}
+              >
+                <Icon name="upload" size={14} />
+                Add to RC-600
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={!offline?.count || locked}
+                title="Make the pedal's user rhythms exactly the offline list (the rhythms now on the pedal are replaced)"
+                onClick={() => onSendOffline("replace")}
+              >
+                <Icon name="replace1" size={14} />
+                Replace RC-600
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={!slots || busy}
+                title="Copy the pedal's rhythms into the offline list, to keep working without the RC-600"
+                onClick={onCopyToOffline}
+              >
+                <Icon name="download" size={14} />
+                Copy to Offline
+              </button>
+            </>
+          ) : onConnectUsb ? (
+            <button
+              type="button"
+              className="btn primary"
+              title="Put the RC-600 in USB Storage mode and open its ROLAND folder; then send this list to the pedal"
+              onClick={onConnectUsb}
+            >
+              <Icon name="usb" size={14} />
+              Connect RC-600
+            </button>
+          ) : null}
+          <InfoTip label="Offline and RC-600" text={SYNC_TEXT} />
+        </div>
+        <div className={`rhythm-sync-side${mode === "drive" ? " is-current" : ""}`}>
+          <Icon name="usb" size={18} />
+          <div>
+            <strong>RC-600 (pedal)</strong>
+            <span>
+              {mode === "drive"
+                ? slots
+                  ? `${slots.length} rhythm${slots.length === 1 ? "" : "s"} · connected, changes are saved at once`
+                  : "Connected · reading…"
+                : "Not connected"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {mode === "drive" && writeBlocked ? (
+        <p className="drum-pad-hint warn">
+          {writeBlocked}
+          {onBackupDone ? (
+            <button type="button" className="btn primary" onClick={onBackupDone}>
+              Backup done — unlock save
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       {mode === "offline" && slots && !origin ? (
         <p className="drum-pad-hint warn">
           This list started empty: copying it to the pedal replaces every user rhythm there. Open a RHYTHM.RC0 backup
@@ -152,8 +253,8 @@ export function RhythmSlotManager({
         <div className="rhythm-slots-empty">
           <Icon name="usb" size={20} />
           <span>
-            Connect the RC-600 in USB storage mode and open its drive, or work offline: open a RHYTHM.RC0 or start an
-            empty list.
+            No offline list yet. Open a RHYTHM.RC0 (a backup of the pedal) or start an empty list to work without the
+            pedal, or connect the RC-600 to edit its rhythms directly.
           </span>
         </div>
       ) : (

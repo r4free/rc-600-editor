@@ -9703,6 +9703,71 @@ select option {
   color: #f0b429;
 }
 
+.rhythm-sync {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin: 0.2rem 0 0.7rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-chain);
+}
+
+@media (max-width: 52rem) {
+  .rhythm-sync {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rhythm-sync-side {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.rhythm-sync-side.is-current {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+}
+
+.rhythm-sync-side > svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.rhythm-sync-side div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.rhythm-sync-side strong {
+  font-size: 0.82rem;
+}
+
+.rhythm-sync-side span {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.rhythm-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .rhythm-slots-empty {
   display: flex;
   align-items: center;

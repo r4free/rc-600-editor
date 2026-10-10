@@ -1077,6 +1077,213 @@
           ]
         }
       }
+    },
+    {
+      "id": "queen-we-wil-mv1mhint",
+      "name": "Queen We wil",
+      "kit": 0,
+      "tags": [],
+      "updatedAt": "2026-10-09T23:54:57.597Z",
+      "parts": {
+        "varA": {
+          "tempoBpm": 81,
+          "numerator": 4,
+          "denominator": 4,
+          "bars": 1,
+          "lengthTicks": 1920,
+          "notes": [
+            {
+              "tick": 0,
+              "note": 36,
+              "velocity": 102
+            },
+            {
+              "tick": 1,
+              "note": 36,
+              "velocity": 102
+            },
+            {
+              "tick": 58,
+              "note": 36,
+              "velocity": 96
+            },
+            {
+              "tick": 238,
+              "note": 36,
+              "velocity": 103
+            },
+            {
+              "tick": 244,
+              "note": 36,
+              "velocity": 101
+            },
+            {
+              "tick": 301,
+              "note": 36,
+              "velocity": 103
+            },
+            {
+              "tick": 478,
+              "note": 39,
+              "velocity": 103
+            },
+            {
+              "tick": 481,
+              "note": 39,
+              "velocity": 96
+            },
+            {
+              "tick": 541,
+              "note": 39,
+              "velocity": 101
+            },
+            {
+              "tick": 955,
+              "note": 36,
+              "velocity": 100
+            },
+            {
+              "tick": 962,
+              "note": 36,
+              "velocity": 97
+            },
+            {
+              "tick": 1020,
+              "note": 36,
+              "velocity": 98
+            },
+            {
+              "tick": 1199,
+              "note": 36,
+              "velocity": 102
+            },
+            {
+              "tick": 1201,
+              "note": 36,
+              "velocity": 102
+            },
+            {
+              "tick": 1257,
+              "note": 36,
+              "velocity": 103
+            },
+            {
+              "tick": 1437,
+              "note": 39,
+              "velocity": 97
+            },
+            {
+              "tick": 1442,
+              "note": 39,
+              "velocity": 105
+            },
+            {
+              "tick": 1496,
+              "note": 39,
+              "velocity": 98
+            }
+          ]
+        },
+        "ending": {
+          "tempoBpm": 81,
+          "numerator": 4,
+          "denominator": 4,
+          "bars": 1,
+          "lengthTicks": 1920,
+          "notes": [
+            {
+              "tick": 0,
+              "note": 36,
+              "velocity": 105
+            },
+            {
+              "tick": 4,
+              "note": 36,
+              "velocity": 96
+            },
+            {
+              "tick": 61,
+              "note": 36,
+              "velocity": 102
+            },
+            {
+              "tick": 240,
+              "note": 36,
+              "velocity": 96
+            },
+            {
+              "tick": 241,
+              "note": 36,
+              "velocity": 94
+            },
+            {
+              "tick": 299,
+              "note": 36,
+              "velocity": 99
+            },
+            {
+              "tick": 475,
+              "note": 39,
+              "velocity": 97
+            },
+            {
+              "tick": 484,
+              "note": 39,
+              "velocity": 106
+            },
+            {
+              "tick": 539,
+              "note": 39,
+              "velocity": 96
+            },
+            {
+              "tick": 956,
+              "note": 36,
+              "velocity": 101
+            },
+            {
+              "tick": 957,
+              "note": 36,
+              "velocity": 98
+            },
+            {
+              "tick": 1024,
+              "note": 36,
+              "velocity": 96
+            },
+            {
+              "tick": 1202,
+              "note": 36,
+              "velocity": 99
+            },
+            {
+              "tick": 1203,
+              "note": 36,
+              "velocity": 105
+            },
+            {
+              "tick": 1261,
+              "note": 36,
+              "velocity": 95
+            },
+            {
+              "tick": 1438,
+              "note": 39,
+              "velocity": 98
+            },
+            {
+              "tick": 1443,
+              "note": 39,
+              "velocity": 96
+            },
+            {
+              "tick": 1501,
+              "note": 39,
+              "velocity": 99
+            }
+          ]
+        }
+      }
     }
   ]
 }

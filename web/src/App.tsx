@@ -2167,11 +2167,6 @@ export function App() {
           </section>
         </div>
       )}
-
-      {usbConnectOpen ? (
-        <UsbConnectModal onClose={() => setUsbConnectOpen(false)} onOpenFolder={confirmUsbConnect} />
-      ) : null}
-
       {rhythmConverterMounted ? (
         <div className="modal-backdrop rhythm-converter-modal" role="presentation" hidden={!rhythmConverterOpen}>
           <div className="modal-sheet modal-fullscreen" role="dialog" aria-modal="true" aria-label="Rhythm Converter">
@@ -2211,10 +2206,18 @@ export function App() {
                 onUnsavedChange={(pending) => {
                   rhythmConverterUnsavedRef.current = pending;
                 }}
+                onConnectUsb={() => setUsbConnectOpen(true)}
+                onBackupDone={
+                  hasDirHandle && !backupAck && !(requireLicense && !sessionOk) ? () => setBackupAck(true) : undefined
+                }
               />
             </div>
           </div>
         </div>
+      ) : null}
+
+      {usbConnectOpen ? (
+        <UsbConnectModal onClose={() => setUsbConnectOpen(false)} onOpenFolder={confirmUsbConnect} />
       ) : null}
 
       {discardAllOpen ? (
