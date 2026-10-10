@@ -2165,6 +2165,22 @@ button.unlock-guide {
   text-align: center;
 }
 
+.license-upgrade-badge {
+  border-color: color-mix(in srgb, var(--warn, #f5b942) 55%, transparent);
+  color: var(--warn, #f5b942);
+}
+
+.license-upgrade-modal .unlock-form {
+  margin-top: 1rem;
+}
+
+.license-upgrade-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 760px) {
   .unlock-screen {
     grid-template-columns: 1fr;

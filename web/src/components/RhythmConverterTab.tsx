@@ -116,6 +116,8 @@ import {
   type PartRole,
 } from "../rhythmConverter/sectionSuggest";
 import { emptyPart, type EditGrid } from "../rhythmConverter/partEdit";
+import { PREVIEW_LIST_SAVE } from "../licensePlan";
+import { usePreview } from "../licensePlanContext";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { BarThumb, RhythmPartEditor, type EditorView } from "./RhythmPartEditor";
@@ -352,6 +354,7 @@ export function RhythmConverterTab({
   dirHandle: DirectoryHandleLike | null;
   writeBlockedReason: string | null;
 }) {
+  const preview = usePreview();
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1072,6 +1075,10 @@ export function RhythmConverterTab({
   }
 
   async function saveLibraryDraft() {
+    if (preview) {
+      setLibraryError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (!libraryDraft) return;
     const { from } = libraryDraft;
     const meta = {
@@ -1138,6 +1145,10 @@ export function RhythmConverterTab({
   }
 
   async function importLibrary(file: File) {
+    if (preview) {
+      setError(PREVIEW_LIST_SAVE);
+      return;
+    }
     setError(null);
     try {
       const count = partLibrary.importUser(JSON.parse(await file.text()));
@@ -1209,6 +1220,10 @@ export function RhythmConverterTab({
   }
 
   async function saveRhythmDraft() {
+    if (preview) {
+      setRhythmError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (!rhythmDraft) return;
     const { existing, slot: fromSlot, name, tags, withParts } = rhythmDraft;
     const parts = fromSlot ? partsFromRhythm(fromSlot.rhythm) : resolved;
@@ -1257,6 +1272,10 @@ export function RhythmConverterTab({
   }
 
   async function deleteRhythm(r: LibraryRhythm) {
+    if (preview) {
+      setRhythmError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (!window.confirm(`Delete the rhythm "${r.name}" from the library?`)) return;
     setLibraryBusy(true);
     setRhythmError(null);
@@ -1273,6 +1292,7 @@ export function RhythmConverterTab({
 
   /** Writes the slot list: straight to the open drive, or to the offline copy in this browser. */
   async function commitSlots(records: SlotRecord[], origin?: string | null): Promise<void> {
+    if (preview) throw new Error(PREVIEW_LIST_SAVE);
     if (dirHandle) {
       if (writeBlockedReason) throw new Error(writeBlockedReason);
       await writeFileToDirectory(dirHandle, RHYTHM_RC0_PATH, await writeRhythmFile(records));
@@ -1387,6 +1407,10 @@ export function RhythmConverterTab({
   }
 
   async function confirmPedalImport() {
+    if (preview) {
+      setRhythmError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (!pedalImport) return;
     const chosen = pedalImport.items.filter((i) => pedalImport.picked.includes(i.slot)).map((i) => i.rhythm);
     setLibraryBusy(true);
@@ -1414,6 +1438,10 @@ export function RhythmConverterTab({
   }
 
   async function importRhythms(file: File) {
+    if (preview) {
+      setRhythmError(PREVIEW_LIST_SAVE);
+      return;
+    }
     setRhythmError(null);
     try {
       const count = rhythmLibrary.importUser(JSON.parse(await file.text()));
@@ -1609,7 +1637,7 @@ export function RhythmConverterTab({
       if (cancelled || !saved) return;
       const records = saved.records ?? (saved.bytes ? await readRhythmFile(saved.bytes) : []);
       const list = { records, origin: saved.origin, dirty: saved.dirty };
-      if (!saved.records) await saveOfflineSlots(list);
+      if (!saved.records && !preview) await saveOfflineSlots(list);
       if (cancelled) return;
       if (dirHandle) setOfflineCopy(list);
       else setSlotList(list);
@@ -1621,7 +1649,7 @@ export function RhythmConverterTab({
     return () => {
       cancelled = true;
     };
-  }, [dirHandle, readDriveSlots]);
+  }, [dirHandle, preview, readDriveSlots]);
 
   /** Puts the offline list on the pedal: "merge" adds its rhythms (same name replaces), "replace" swaps the whole file. */
   async function sendOfflineToPedal(mode: "merge" | "replace") {
@@ -1651,6 +1679,10 @@ export function RhythmConverterTab({
 
   /** Keeps a copy of the pedal's rhythms in this browser, to keep working without the RC-600. */
   async function copyPedalToOffline() {
+    if (preview) {
+      setError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (!dirHandle || !slotList) return;
     if (
       offlineCopy?.dirty &&
@@ -1716,12 +1748,16 @@ export function RhythmConverterTab({
       const list = { records, origin: file.name, dirty: false };
       setSlotList(list);
       setSlot(NEW_SLOT);
-      await saveOfflineSlots(list);
+      if (!preview) await saveOfflineSlots(list);
       setStatus(`Opened ${file.name}: ${records.length} user rhythm${records.length === 1 ? "" : "s"}.`);
     });
   }
 
   async function startEmptySlots() {
+    if (preview) {
+      setError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (
       slotList?.dirty &&
       !window.confirm("The offline list has changes that were not downloaded. Start an empty list anyway?")
@@ -1740,10 +1776,14 @@ export function RhythmConverterTab({
       return;
     setSlotList(null);
     setSlot(NEW_SLOT);
-    await saveOfflineSlots(null).catch(() => undefined);
+    if (!preview) await saveOfflineSlots(null).catch(() => undefined);
   }
 
   async function downloadSlots() {
+    if (preview) {
+      setError(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (!slotList) return;
     let bytes: Uint8Array;
     try {
@@ -2224,7 +2264,13 @@ export function RhythmConverterTab({
                             />
                           </span>
                         ) : null}
-                        <button type="button" className="btn" disabled={!selectionEvents} onClick={startSelectionSave}>
+                        <button
+                          type="button"
+                          className="btn"
+                          disabled={!selectionEvents || preview}
+                          title={preview ? PREVIEW_LIST_SAVE : undefined}
+                          onClick={startSelectionSave}
+                        >
                           <Icon name="library" size={14} />
                           Save to Library…
                         </button>
@@ -2392,8 +2438,12 @@ export function RhythmConverterTab({
           <button
             type="button"
             className="btn primary"
-            disabled={!resolved.length}
-            title="Save every part set here as one rhythm in the rhythm library; each part also goes to the part library, tagged with the rhythm name"
+            disabled={!resolved.length || preview}
+            title={
+              preview
+                ? PREVIEW_LIST_SAVE
+                : "Save every part set here as one rhythm in the rhythm library; each part also goes to the part library, tagged with the rhythm name"
+            }
             onClick={() => {
               setRhythmModal(true);
               startRhythmSave();
@@ -2501,9 +2551,9 @@ export function RhythmConverterTab({
                   <button
                     type="button"
                     className="btn ghost"
-                    disabled={!ready}
+                    disabled={!ready || preview}
                     aria-label={`Save ${PART_LABELS[role]} to the library`}
-                    title="Save to Library"
+                    title={preview ? PREVIEW_LIST_SAVE : "Save to Library"}
                     onClick={() => startLibrarySave(role)}
                   >
                     <Icon name="save" size={14} />
@@ -2652,10 +2702,12 @@ export function RhythmConverterTab({
             previewId={rhythmPreviewId}
             progress={progress}
             canSaveCurrent={resolved.length > 0}
-            canWritePedal={!dirHandle || !writeBlockedReason}
+            canWritePedal={!preview && (!dirHandle || !writeBlockedReason)}
             sendLabel={dirHandle ? "Save to RC-600" : "Add to Offline Slots"}
             writeTitle={
-              !dirHandle
+              preview
+                ? PREVIEW_LIST_SAVE
+                : !dirHandle
                 ? "No RC-600 connected: adds them to the offline slot list (RC-600 Slots); download RHYTHM.RC0 there when you are done."
                 : (writeBlockedReason ?? undefined)
             }
@@ -2949,6 +3001,7 @@ export function RhythmConverterTab({
         progress={progress}
         busy={saving}
         writeBlocked={writeBlockedReason ?? undefined}
+        listLocked={preview ? PREVIEW_LIST_SAVE : undefined}
         kitLabel={(k) => RHYTHM_KITS[k] ?? `Kit ${k + 1}`}
         onOpenFile={() => slotFileRef.current?.click()}
         onStartEmpty={() => void startEmptySlots()}
@@ -2992,9 +3045,11 @@ export function RhythmConverterTab({
           type="button"
           className="btn primary"
           onClick={() => void saveToSlot()}
-          disabled={!resolved.length || (Boolean(dirHandle) && Boolean(writeBlockedReason)) || saving}
+          disabled={!resolved.length || preview || (Boolean(dirHandle) && Boolean(writeBlockedReason)) || saving}
           title={
-            dirHandle
+            preview
+              ? PREVIEW_LIST_SAVE
+              : dirHandle
               ? (writeBlockedReason ?? "Write this rhythm to the RC-600 drive")
               : "No RC-600 connected: saves into the offline slot list; download RHYTHM.RC0 under RC-600 Slots when you are done"
           }
@@ -3007,7 +3062,8 @@ export function RhythmConverterTab({
         <button
           type="button"
           className="btn"
-          disabled={!resolved.length}
+          disabled={!resolved.length || preview}
+          title={preview ? PREVIEW_LIST_SAVE : undefined}
           onClick={() => {
             setRhythmModal(true);
             startRhythmSave();

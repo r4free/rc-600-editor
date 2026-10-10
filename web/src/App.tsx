@@ -136,6 +136,15 @@ import { NavigationBreadcrumb } from "./components/NavigationBreadcrumb";
 import type { SetlistMidiAction } from "./presets/playlist";
 import { isDemoPage } from "./demoMode";
 import { DemoModeProvider } from "./demoModeContext";
+import {
+  PREVIEW_BANNER,
+  PREVIEW_LIST_SAVE,
+  PREVIEW_PEDAL_SAVE,
+  licenseBadgeText,
+  previewBlocksPedalSave,
+} from "./licensePlan";
+import { PreviewProvider } from "./licensePlanContext";
+import { LicenseUpgrade } from "./components/LicenseUpgrade";
 
 const WORKSPACES = ["memory", "system", "play-drum", "setlists", "tuner"] as const;
 type Workspace = (typeof WORKSPACES)[number];
@@ -299,6 +308,16 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  const licenseExpiresAt = session?.license?.expiresAt;
+  useEffect(() => {
+    if (!licenseExpiresAt) return;
+    const end = Date.parse(licenseExpiresAt);
+    if (!Number.isFinite(end)) return;
+    const wait = Math.min(Math.max(end - Date.now() + 1000, 0), 2_147_000_000);
+    const timer = window.setTimeout(() => void fetchSession().then(setSession), wait);
+    return () => window.clearTimeout(timer);
+  }, [licenseExpiresAt]);
 
   useEffect(() => {
     if (demoMode) return;
@@ -986,6 +1005,10 @@ export function App() {
 
   async function saveCurrent() {
     if (!slot || !baseXml) return;
+    if (previewBlocksPedalSave(session?.plan, Boolean(dirHandleRef.current))) {
+      setError(PREVIEW_PEDAL_SAVE);
+      return;
+    }
     if (requireLicense && !sessionOk) {
       setError("Enter a valid license key before saving.");
       return;
@@ -1029,6 +1052,10 @@ export function App() {
 
   async function saveAll() {
     if (dirtySlots.length === 0) return;
+    if (previewBlocksPedalSave(session?.plan, Boolean(dirHandleRef.current))) {
+      setError(PREVIEW_PEDAL_SAVE);
+      return;
+    }
     if (requireLicense && !sessionOk) {
       setError("Enter a valid license key before saving.");
       return;
@@ -1113,6 +1140,10 @@ export function App() {
 
   async function saveSystem() {
     if (!sysBaseXml) return;
+    if (previewBlocksPedalSave(session?.plan, Boolean(dirHandleRef.current))) {
+      setError(PREVIEW_PEDAL_SAVE);
+      return;
+    }
     if (requireLicense && !sessionOk) {
       setError("Enter a valid license key before saving.");
       return;
@@ -1648,6 +1679,7 @@ export function App() {
   }
 
   const showDemoFixtures = !demoMode && session.license == null;
+  const licenseBadge = licenseBadgeText(session.plan, session.license?.expiresAt);
 
   if (requireLicense && !sessionOk && !demoMode) {
     return (
@@ -1669,6 +1701,7 @@ export function App() {
 
   return (
     <DemoModeProvider enabled={demoMode}>
+    <PreviewProvider enabled={session.plan === "preview"}>
     <div className={`app${demoMode ? " demo-mode" : ""}`}>
       <header className="topbar">
         <div className="topbar-start">
@@ -1706,6 +1739,17 @@ export function App() {
         </div>
         <div className="topbar-actions">
           <DevLicenseSlot />
+          {licenseBadge ? (
+            <LicenseUpgrade
+              label={licenseBadge}
+              hint={
+                session.plan === "preview"
+                  ? `${PREVIEW_BANNER} Enter a full license key to save everything.`
+                  : "Trial key: the editor stays open until the end date. Enter a full license key to keep using it."
+              }
+              onActivated={setSession}
+            />
+          ) : null}
           <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
             <Icon name="help" size={14} /> Guide
           </a>
@@ -1882,7 +1926,8 @@ export function App() {
             <button
               type="button"
               className="btn warn"
-              disabled={!dirty || !slot || saving}
+              disabled={!dirty || !slot || saving || previewBlocksPedalSave(session.plan, hasDirHandle)}
+              title={previewBlocksPedalSave(session.plan, hasDirHandle) ? PREVIEW_PEDAL_SAVE : undefined}
               onClick={() => void saveCurrent()}
             >
               <Icon name="save" size={14} />
@@ -1891,7 +1936,8 @@ export function App() {
             <button
               type="button"
               className="btn warn"
-              disabled={!anyMemoryDirty || saving}
+              disabled={!anyMemoryDirty || saving || previewBlocksPedalSave(session.plan, hasDirHandle)}
+              title={previewBlocksPedalSave(session.plan, hasDirHandle) ? PREVIEW_PEDAL_SAVE : undefined}
               onClick={() => void saveAll()}
             >
               <Icon name="save" size={14} />
@@ -2282,7 +2328,9 @@ export function App() {
                   <HoverTip
                     label="Save system"
                     text={
-                      !sysDirty
+                      previewBlocksPedalSave(session.plan, hasDirHandle)
+                        ? PREVIEW_PEDAL_SAVE
+                        : !sysDirty
                         ? "No system changes to save yet. Change a setting under System (Setup, MIDI, USB, Ctl Func…) and this button writes it."
                         : hasDirHandle
                           ? "Writes your System changes (Setup, MIDI, USB, Ctl Func…) to SYSTEM1.RC0 and SYSTEM2.RC0 in the open ROLAND folder. These settings apply to the whole pedal, not to one memory."
@@ -2294,7 +2342,7 @@ export function App() {
                     <button
                       type="button"
                       className="btn warn"
-                      disabled={!sysDirty || saving}
+                      disabled={!sysDirty || saving || previewBlocksPedalSave(session.plan, hasDirHandle)}
                       onClick={() => void saveSystem()}
                     >
                       <Icon name="save" size={14} />
@@ -2557,12 +2605,17 @@ export function App() {
                         onPatch={pushOps}
                         dirHandle={hasDirHandle ? dirHandleRef.current : null}
                         canWrite={
-                          hasDirHandle && backupAck && (!requireLicense || sessionOk)
+                          hasDirHandle &&
+                          backupAck &&
+                          (!requireLicense || sessionOk) &&
+                          !previewBlocksPedalSave(session.plan, true)
                         }
                         writeBlockedReason={
                           !hasDirHandle
                             ? null
-                            : requireLicense && !sessionOk
+                            : previewBlocksPedalSave(session.plan, true)
+                              ? PREVIEW_PEDAL_SAVE
+                              : requireLicense && !sessionOk
                               ? "Enter a valid license key before writing track audio."
                               : !backupAck
                                 ? "Confirm the backup before writing track audio."
@@ -2650,7 +2703,9 @@ export function App() {
                 onSelectPedalKit={selectPedalRhythmKit}
                 dirHandle={hasDirHandle ? dirHandleRef.current : null}
                 writeBlockedReason={
-                  requireLicense && !sessionOk
+                  session.plan === "preview"
+                    ? PREVIEW_LIST_SAVE
+                    : requireLicense && !sessionOk
                     ? "Enter a valid license key before saving to the RC-600."
                     : !backupAck
                       ? "Confirm the backup before saving to the RC-600."
@@ -2661,7 +2716,11 @@ export function App() {
                 }}
                 onConnectUsb={() => setUsbConnectOpen(true)}
                 onBackupDone={
-                  hasDirHandle && !backupAck && !(requireLicense && !sessionOk) ? () => setBackupAck(true) : undefined
+                  session.plan === "preview"
+                    ? undefined
+                    : hasDirHandle && !backupAck && !(requireLicense && !sessionOk)
+                      ? () => setBackupAck(true)
+                      : undefined
                 }
               />
             </div>
@@ -2847,6 +2906,7 @@ export function App() {
         </div>
       ) : null}
     </div>
+    </PreviewProvider>
     </DemoModeProvider>
   );
 }

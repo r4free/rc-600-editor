@@ -68,6 +68,7 @@ export type LicenseInfo = {
   id: string;
   expiresAt?: string;
   note?: string;
+  plan?: "full" | "preview";
 };
 
 export type SessionInfo = {
@@ -75,6 +76,8 @@ export type SessionInfo = {
   mode: "open" | "license";
   requireLicense: boolean;
   license: LicenseInfo | null;
+  /** "preview" when this browser's key is a preview key. */
+  plan?: "full" | "preview";
 };
 
 export async function fetchSession(): Promise<SessionInfo> {
@@ -82,16 +85,18 @@ export async function fetchSession(): Promise<SessionInfo> {
     const res = await fetch("/api/session", { credentials: "include" });
     if (!res.ok) {
       // Prefer staying open so a downed API does not trap users on a license screen.
-      return { ok: true, mode: "open", requireLicense: false, license: null };
+      return { ok: true, mode: "open", requireLicense: false, license: null, plan: "full" };
     }
     const data = (await res.json()) as Partial<SessionInfo> & { ok?: boolean };
     // Public mode (default): never block the editor on a stale unlock cookie / old API shape.
+    const plan = data.plan === "preview" ? "preview" : "full";
     if (data.requireLicense !== true) {
       return {
         ok: true,
         mode: "open",
         requireLicense: false,
         license: data.license ?? null,
+        plan,
       };
     }
     return {
@@ -99,9 +104,10 @@ export async function fetchSession(): Promise<SessionInfo> {
       mode: "license",
       requireLicense: true,
       license: data.license ?? null,
+      plan,
     };
   } catch {
-    return { ok: true, mode: "open", requireLicense: false, license: null };
+    return { ok: true, mode: "open", requireLicense: false, license: null, plan: "full" };
   }
 }
 

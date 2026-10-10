@@ -73,26 +73,34 @@ export type SessionInfo = {
   mode: "open" | "license";
   requireLicense: boolean;
   license: LicensePublic | null;
+  /** "preview" when the active key is a preview key. "full" otherwise, including open mode with no key. */
+  plan: "full" | "preview";
 };
+
+function licenseFromCookie(c: Context): LicensePublic | null {
+  const verified = verifyLicenseSessionToken(getCookie(c, SESSION_COOKIE));
+  if (!verified) return null;
+  const lic = findLicenseById(verified.licenseId);
+  if (!lic || !isLicenseStillValid(lic)) return null;
+  return licensePublic(lic);
+}
 
 export function readSessionInfo(c: Context): SessionInfo {
   const requireLicense = requireLicenseEnabled();
+  const license = licenseFromCookie(c);
+  const plan = license?.plan === "preview" ? "preview" : "full";
   if (!requireLicense) {
-    return { ok: true, mode: "open", requireLicense: false, license: null };
+    return { ok: true, mode: "open", requireLicense: false, license: null, plan };
   }
-  const verified = verifyLicenseSessionToken(getCookie(c, SESSION_COOKIE));
-  if (!verified) {
-    return { ok: false, mode: "license", requireLicense: true, license: null };
-  }
-  const lic = findLicenseById(verified.licenseId);
-  if (!lic || !isLicenseStillValid(lic)) {
-    return { ok: false, mode: "license", requireLicense: true, license: null };
+  if (!license) {
+    return { ok: false, mode: "license", requireLicense: true, license: null, plan: "full" };
   }
   return {
     ok: true,
     mode: "license",
     requireLicense: true,
-    license: licensePublic(lic),
+    license,
+    plan,
   };
 }
 

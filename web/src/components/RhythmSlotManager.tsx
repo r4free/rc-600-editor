@@ -29,6 +29,7 @@ export function RhythmSlotManager({
   progress,
   busy,
   writeBlocked,
+  listLocked,
   kitLabel,
   onOpenFile,
   onStartEmpty,
@@ -60,6 +61,8 @@ export function RhythmSlotManager({
   progress: number;
   busy: boolean;
   writeBlocked?: string;
+  /** Preview key: play and load stay available; saving the list does not. */
+  listLocked?: string;
   kitLabel: (kit: number) => string;
   onOpenFile: () => void;
   onStartEmpty: () => void;
@@ -81,7 +84,7 @@ export function RhythmSlotManager({
   onBackupDone?: () => void;
 }) {
   const [renaming, setRenaming] = useState<{ index: number; name: string } | null>(null);
-  const locked = busy || (mode === "drive" && Boolean(writeBlocked));
+  const locked = busy || (mode === "drive" && Boolean(writeBlocked)) || Boolean(listLocked);
 
   function commitRename() {
     if (!renaming) return;
@@ -126,7 +129,7 @@ export function RhythmSlotManager({
               <Icon name="folderOpen" size={14} />
               Open RHYTHM.RC0…
             </button>
-            <button type="button" className="btn ghost" onClick={onStartEmpty} disabled={busy}>
+            <button type="button" className="btn ghost" onClick={onStartEmpty} disabled={busy || Boolean(listLocked)} title={listLocked}>
               <Icon name="plus" size={14} />
               Start Empty List
             </button>
@@ -136,11 +139,13 @@ export function RhythmSlotManager({
           type="button"
           className={`btn${mode === "offline" && dirty ? " primary" : ""}`}
           onClick={onDownload}
-          disabled={!slots || busy}
+          disabled={!slots || busy || Boolean(listLocked)}
           title={
-            mode === "drive"
-              ? "Download a backup of the pedal's RHYTHM.RC0"
-              : "Download the file to copy to ROLAND/DATA on the RC-600"
+            listLocked
+              ? listLocked
+              : mode === "drive"
+                ? "Download a backup of the pedal's RHYTHM.RC0"
+                : "Download the file to copy to ROLAND/DATA on the RC-600"
           }
         >
           <Icon name="download" size={14} />
@@ -196,8 +201,8 @@ export function RhythmSlotManager({
               <button
                 type="button"
                 className="btn ghost"
-                disabled={!slots || busy}
-                title="Copy the pedal's rhythms into the offline list, to keep working without the RC-600"
+                disabled={!slots || busy || Boolean(listLocked)}
+                title={listLocked ?? "Copy the pedal's rhythms into the offline list, to keep working without the RC-600"}
                 onClick={onCopyToOffline}
               >
                 <Icon name="download" size={14} />
@@ -232,7 +237,9 @@ export function RhythmSlotManager({
         </div>
       </div>
 
-      {mode === "drive" && writeBlocked ? (
+      {listLocked ? (
+        <p className="drum-pad-hint warn">{listLocked}</p>
+      ) : mode === "drive" && writeBlocked ? (
         <p className="drum-pad-hint warn">
           {writeBlocked}
           {onBackupDone ? (
@@ -317,9 +324,9 @@ export function RhythmSlotManager({
                   <button
                     type="button"
                     className="btn ghost"
-                    disabled={!s.previewId}
+                    disabled={!s.previewId || Boolean(listLocked)}
                     aria-label={`Save slot ${i + 1} to the rhythm library`}
-                    title="Save to Rhythm Library (each part also goes to the part library, tagged with the rhythm name)"
+                    title={listLocked ?? "Save to Rhythm Library (each part also goes to the part library, tagged with the rhythm name)"}
                     onClick={() => onSaveToLibrary(i)}
                   >
                     <Icon name="library" size={14} />

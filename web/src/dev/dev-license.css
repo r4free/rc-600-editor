@@ -12,6 +12,7 @@
 }
 
 .dev-license-form input,
+.dev-license-form select,
 .dev-license-form textarea {
   width: 100%;
   padding: 0.62rem 0.75rem;
@@ -27,9 +28,30 @@
   color-scheme: dark;
 }
 
+.dev-license-form select:focus,
 .dev-license-form input:focus {
   border-color: var(--accent-dim);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-dim) 24%, transparent);
+}
+
+.dev-license-period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.dev-license-period span {
+  margin-right: 0.25rem;
+}
+
+.dev-license-period .btn.is-on {
+  border-color: var(--accent-dim);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent-dim) 22%, transparent);
 }
 
 .dev-license-dates {

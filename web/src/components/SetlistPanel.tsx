@@ -22,6 +22,8 @@ import { scoreAssetStore } from "../setlists/scoreAssetStore";
 import { Icon } from "./Icon";
 import { demoSetlist } from "../demoMode";
 import { useDemoMode } from "../demoModeContext";
+import { PREVIEW_LIST_SAVE } from "../licensePlan";
+import { usePreview } from "../licensePlanContext";
 import { SetlistSongMusicEditor } from "./SetlistSongMusicEditor";
 import { SetlistChartViewer } from "./SetlistChartViewer";
 import { VoiceToneMonitor } from "./VoiceToneMonitor";
@@ -94,6 +96,8 @@ export function SetlistPanel({
   onRequestShowSetlists?: () => void;
 }) {
   const viewOnly = useDemoMode();
+  const preview = usePreview();
+  const lockLists = viewOnly || preview;
   const [setlists, setSetlists] = useState<Setlist[]>(() =>
     viewOnly ? [demoSetlist()] : userSetlistStore.list(),
   );
@@ -233,6 +237,10 @@ export function SetlistPanel({
   }
 
   function commit(next: Setlist[]) {
+    if (preview) {
+      setStatus(PREVIEW_LIST_SAVE);
+      return;
+    }
     if (viewOnly) {
       setSetlists(next);
       return;
@@ -458,9 +466,10 @@ export function SetlistPanel({
         <div className="playlist-panel-head">
           <div>
             <span className="playlist-eyebrow">Setlists</span>
-            <strong>{viewOnly ? "Sample setlist" : "Choose a setlist to perform"}</strong>
+            <strong>{viewOnly ? "Sample setlist" : preview ? "Play a setlist" : "Choose a setlist to perform"}</strong>
+            {preview && !viewOnly ? <small>{PREVIEW_LIST_SAVE}</small> : null}
           </div>
-          {viewOnly ? null : (
+          {lockLists ? null : (
           <div className="setlist-panel-actions">
             <input
               ref={fileRef}
@@ -515,7 +524,7 @@ export function SetlistPanel({
                     </small>
                   </div>
                   <div className="setlist-card-actions" onClick={(event) => event.stopPropagation()}>
-                    {viewOnly ? null : (
+                    {lockLists ? null : (
                     <button
                       type="button"
                       className="btn ghost"
@@ -541,7 +550,11 @@ export function SetlistPanel({
             })}
           </div>
         ) : (
-          <p className="playlist-empty">No setlists yet. Create one to start arranging songs.</p>
+          <p className="playlist-empty">
+            {preview
+              ? "No setlists in this browser yet. A preview key can play setlists that are already here."
+              : "No setlists yet. Create one to start arranging songs."}
+          </p>
         )}
 
         {scoreSong ? (

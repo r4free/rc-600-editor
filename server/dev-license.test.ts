@@ -71,7 +71,9 @@ describe("dev license issuer", () => {
     assert.equal(issued.expiresAt, undefined);
     assert.equal(issued.startsAt, undefined);
     assert.equal(issued.note, "loochcam@gmail.com-Paul Camilleri (Eudlo QLD)");
+    assert.equal(issued.plan, "full");
     assert.equal(findValidLicense(issued.key)?.id, issued.id);
+    assert.equal(findValidLicense(issued.key)?.plan, undefined);
   });
 
   it("creates a window when start and end are set", () => {
@@ -87,6 +89,24 @@ describe("dev license issuer", () => {
     assert.equal(issued.startsAt, new Date(startsAt).toISOString());
     assert.equal(issued.expiresAt, new Date(expiresAt).toISOString());
     assert.equal(findValidLicense(issued.key)?.id, issued.id);
+  });
+
+  it("issues a preview key and can switch it back to full", () => {
+    const issued = issueLocalLicense({
+      name: "Preview",
+      email: "preview@example.com",
+      plan: "preview",
+    });
+    assert.equal(issued.plan, "preview");
+    assert.equal(findValidLicense(issued.key)?.plan, "preview");
+    assert.equal(listLocalLicenses().find((l) => l.id === issued.id)?.plan, "preview");
+    const updated = updateLocalLicense(issued.id, {
+      name: "Preview",
+      email: "preview@example.com",
+      plan: "full",
+    });
+    assert.equal(updated.plan, "full");
+    assert.equal(findValidLicense(issued.key)?.plan, undefined);
   });
 
   it("rejects a key that has not started", () => {

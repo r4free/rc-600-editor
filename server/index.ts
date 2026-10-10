@@ -14,6 +14,7 @@ import {
 } from "./session.js";
 import {
   findValidLicense,
+  licenseKeyError,
   licensePublic,
   requireLicenseEnabled,
 } from "./licenses.js";
@@ -226,20 +227,23 @@ app.post("/api/license", async (c) => {
   }
   const lic = findValidLicense(key);
   if (!lic) {
+    const error = licenseKeyError(key);
     if (form) {
       c.header("Cache-Control", "no-store");
-      return c.html(activationPageHtml("Invalid or expired license key"), 401);
+      return c.html(activationPageHtml(error), 401);
     }
-    return c.json({ error: "Invalid or expired license key" }, 401);
+    return c.json({ error }, 401);
   }
   const token = createLicenseSessionToken(lic.id, lic.expiresAt);
   setSessionCookie(c, token);
   if (form) return c.redirect("/", 303);
+  const license = licensePublic(lic);
   return c.json({
     ok: true,
     mode: "license" as const,
     requireLicense: true,
-    license: licensePublic(lic),
+    license,
+    plan: license.plan,
   });
 });
 

@@ -3,7 +3,14 @@
  * Production (NODE_ENV or Render) and any non-local host are refused.
  * There is no flag that turns this on.
  */
-import { createLicense, loadLicenses, saveLicenses, type LicenseRecord } from "./licenses.js";
+import {
+  createLicense,
+  loadLicenses,
+  readLicensePlan,
+  saveLicenses,
+  type LicensePlan,
+  type LicenseRecord,
+} from "./licenses.js";
 import {
   appendLicenseLog,
   listIssuedLicenses,
@@ -45,14 +52,15 @@ export function issueLocalLicense(input: {
   location?: unknown;
   startsAt?: unknown;
   expiresAt?: unknown;
-}): { key: string; id: string; note: string; startsAt?: string; expiresAt?: string } {
-  const { name, email, location, startsAt, expiresAt } = readLicenseFields(input);
+  plan?: unknown;
+}): { key: string; id: string; note: string; plan: LicensePlan; startsAt?: string; expiresAt?: string } {
+  const { name, email, location, startsAt, expiresAt, plan } = readLicenseFields(input);
   if (expiresAt && Date.parse(expiresAt) < Date.now()) {
     throw new Error("End date is already past");
   }
 
   const note = licenseNote(name, email, location);
-  const { record, key } = createLicense({ note, startsAt, expiresAt });
+  const { record, key } = createLicense({ note, startsAt, expiresAt, plan });
   const local: IssuedLicense = {
     id: record.id,
     key,
@@ -60,6 +68,7 @@ export function issueLocalLicense(input: {
     email,
     ...(location ? { location } : {}),
     note: record.note,
+    plan,
     startsAt: record.startsAt,
     expiresAt: record.expiresAt,
     createdAt: record.createdAt,
@@ -70,6 +79,7 @@ export function issueLocalLicense(input: {
     key,
     id: record.id,
     note,
+    plan,
     startsAt: record.startsAt,
     expiresAt: record.expiresAt,
   };
@@ -88,6 +98,7 @@ export type ManagedLicense = {
   createdAt: string;
   updatedAt?: string;
   revoked?: boolean;
+  plan: LicensePlan;
   /** In data/licenses.json, so the public site accepts it once deployed. */
   inPublicFile: boolean;
   /** In data/issued-licenses.json, so the key can be emailed again. */
@@ -117,6 +128,7 @@ export function listLocalLicenses(): ManagedLicense[] {
       createdAt: pub?.createdAt ?? local?.createdAt ?? "",
       updatedAt: local?.updatedAt,
       revoked: pub?.revoked,
+      plan: pub ? (pub.plan === "preview" ? "preview" : "full") : local?.plan === "preview" ? "preview" : "full",
       inPublicFile: Boolean(pub),
       inLocalFile: Boolean(local),
     });
@@ -126,11 +138,18 @@ export function listLocalLicenses(): ManagedLicense[] {
 
 export function updateLocalLicense(
   id: string,
-  input: { name?: unknown; email?: unknown; location?: unknown; startsAt?: unknown; expiresAt?: unknown },
+  input: {
+    name?: unknown;
+    email?: unknown;
+    location?: unknown;
+    startsAt?: unknown;
+    expiresAt?: unknown;
+    plan?: unknown;
+  },
 ): ManagedLicense {
   const before = snapshot(id);
   if (!before.public && !before.local) throw new Error("License not found");
-  const { name, email, location, startsAt, expiresAt } = readLicenseFields(input);
+  const { name, email, location, startsAt, expiresAt, plan } = readLicenseFields(input);
   const note = licenseNote(name, email, location);
   const updatedAt = new Date().toISOString();
 
@@ -142,6 +161,7 @@ export function updateLocalLicense(
       const next: LicenseRecord = { ...l, note };
       setOptional(next, "startsAt", startsAt);
       setOptional(next, "expiresAt", expiresAt);
+      setOptional(next, "plan", plan === "preview" ? "preview" : undefined);
       nextPublic = next;
       return next;
     });
@@ -150,7 +170,7 @@ export function updateLocalLicense(
 
   let nextLocal: IssuedLicense | null = null;
   if (before.local) {
-    nextLocal = { ...before.local, name, email, note, updatedAt };
+    nextLocal = { ...before.local, name, email, note, plan, updatedAt };
     setOptional(nextLocal, "location", location || undefined);
     setOptional(nextLocal, "startsAt", startsAt);
     setOptional(nextLocal, "expiresAt", expiresAt);
@@ -193,7 +213,8 @@ function readLicenseFields(input: {
   location?: unknown;
   startsAt?: unknown;
   expiresAt?: unknown;
-}): { name: string; email: string; location: string; startsAt?: string; expiresAt?: string } {
+  plan?: unknown;
+}): { name: string; email: string; location: string; plan: LicensePlan; startsAt?: string; expiresAt?: string } {
   const name = typeof input.name === "string" ? input.name.trim() : "";
   const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
   const location = typeof input.location === "string" ? input.location.trim() : "";
@@ -206,7 +227,7 @@ function readLicenseFields(input: {
   if (startsAt && expiresAt && Date.parse(expiresAt) < Date.parse(startsAt)) {
     throw new Error("End date is before the start date");
   }
-  return { name, email, location, startsAt, expiresAt };
+  return { name, email, location, plan: readLicensePlan(input.plan), startsAt, expiresAt };
 }
 
 function licenseNote(name: string, email: string, location: string): string {

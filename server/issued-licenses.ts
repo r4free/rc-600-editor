@@ -12,6 +12,8 @@ export type IssuedLicense = {
   email?: string;
   location?: string;
   note?: string;
+  /** "preview" or "full". Absent on keys issued before plans existed. */
+  plan?: "full" | "preview";
   startsAt?: string;
   expiresAt?: string;
   createdAt: string;

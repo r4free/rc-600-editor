@@ -8,6 +8,8 @@ import {
   createLicense,
   findValidLicense,
   hashLicenseKey,
+  licenseKeyError,
+  licensePublic,
   requireLicenseEnabled,
 } from "./licenses.js";
 
@@ -73,5 +75,24 @@ describe("licenses", () => {
     assert.equal(saved.issued[0]?.key, key);
     assert.equal(saved.issued[0]?.note, "buyer@example.com");
     assert.equal(readFileSync(join(dir, "licenses.json"), "utf8").includes(key), false);
+  });
+
+  it("treats a missing plan as full and keeps preview on the record", () => {
+    const full = createLicense({ note: "full" });
+    assert.equal(full.record.plan, undefined);
+    assert.equal(licensePublic(full.record).plan, "full");
+    const preview = createLicense({ note: "preview", plan: "preview" });
+    assert.equal(preview.record.plan, "preview");
+    assert.equal(licensePublic(preview.record).plan, "preview");
+    assert.equal(findValidLicense(preview.key)?.plan, "preview");
+  });
+
+  it("says when a trial key ended or has not started", () => {
+    const ended = createLicense({ note: "ended", expiresAt: new Date(Date.now() - 86_400_000).toISOString() });
+    assert.equal(findValidLicense(ended.key), null);
+    assert.match(licenseKeyError(ended.key), /^This key ended on /);
+    const later = createLicense({ note: "later", startsAt: new Date(Date.now() + 86_400_000).toISOString() });
+    assert.match(licenseKeyError(later.key), /^This key starts on /);
+    assert.equal(licenseKeyError("RC600-0000-0000-0000"), "Invalid license key");
   });
 });

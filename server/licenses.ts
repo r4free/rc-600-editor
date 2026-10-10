@@ -2,6 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
+/** Absent or "full" is a normal key. "preview" can play and look, with limited saving. */
+export type LicensePlan = "full" | "preview";
+
 export type LicenseRecord = {
   id: string;
   /** sha256 hex of normalized key */
@@ -10,6 +13,8 @@ export type LicenseRecord = {
   startsAt?: string;
   /** ISO timestamp; absent means the key never expires */
   expiresAt?: string;
+  /** Omitted on older keys and on full keys. */
+  plan?: LicensePlan;
   note?: string;
   createdAt: string;
   revoked?: boolean;
@@ -23,7 +28,12 @@ export type LicensePublic = {
   id: string;
   expiresAt?: string;
   note?: string;
+  plan: LicensePlan;
 };
+
+export function readLicensePlan(value: unknown): LicensePlan {
+  return value === "preview" ? "preview" : "full";
+}
 
 function licensesPath(): string {
   return resolve(process.cwd(), process.env.RC600_LICENSES_PATH || "data/licenses.json");
@@ -76,6 +86,7 @@ export function createLicense(opts: {
   startsAt?: string;
   /** ISO timestamp. Omit (and omit days) for a key that never expires. */
   expiresAt?: string;
+  plan?: LicensePlan;
 }): { record: LicenseRecord; key: string } {
   const key = opts.key ? normalizeKey(opts.key) : generateLicenseKey();
   const record: LicenseRecord = {
@@ -84,6 +95,7 @@ export function createLicense(opts: {
     note: opts.note,
     createdAt: new Date().toISOString(),
   };
+  if (opts.plan === "preview") record.plan = "preview";
   if (opts.startsAt) record.startsAt = opts.startsAt;
   if (opts.expiresAt) {
     record.expiresAt = opts.expiresAt;
@@ -108,11 +120,30 @@ export function findValidLicense(key: string): LicenseRecord | null {
   return lic && isLicenseStillValid(lic) ? lic : null;
 }
 
+function dayText(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+/** Why a key cannot be used right now, in words for the activation screen. */
+export function licenseKeyError(key: string): string {
+  const hash = hashLicenseKey(key);
+  const lic = loadLicenses().licenses.find((l) => l.keyHash === hash);
+  if (!lic || lic.revoked) return "Invalid license key";
+  if (lic.startsAt && Date.parse(lic.startsAt) > Date.now()) {
+    return `This key starts on ${dayText(lic.startsAt)}.`;
+  }
+  if (lic.expiresAt && Date.parse(lic.expiresAt) < Date.now()) {
+    return `This key ended on ${dayText(lic.expiresAt)}.`;
+  }
+  return "Invalid or expired license key";
+}
+
 export function licensePublic(lic: LicenseRecord): LicensePublic {
   return {
     id: lic.id,
     expiresAt: lic.expiresAt,
     note: lic.note,
+    plan: lic.plan === "preview" ? "preview" : "full",
   };
 }
 

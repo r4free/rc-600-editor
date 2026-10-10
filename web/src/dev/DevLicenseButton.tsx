@@ -15,6 +15,7 @@ type ManagedLicense = {
   createdAt: string;
   updatedAt?: string;
   revoked?: boolean;
+  plan?: "full" | "preview";
   inPublicFile: boolean;
   inLocalFile: boolean;
 };
@@ -23,11 +24,12 @@ type Fields = {
   name: string;
   email: string;
   location: string;
+  plan: "full" | "preview";
   startsOn: string;
   endsOn: string;
 };
 
-const EMPTY_FIELDS: Fields = { name: "", email: "", location: "", startsOn: "", endsOn: "" };
+const EMPTY_FIELDS: Fields = { name: "", email: "", location: "", plan: "full", startsOn: "", endsOn: "" };
 
 function dayStartIso(ymd: string): string {
   return new Date(`${ymd}T00:00:00`).toISOString();
@@ -43,6 +45,21 @@ function isoToYmd(iso: string | undefined): string {
   if (Number.isNaN(date.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const TRIAL_DAYS = [3, 7, 14, 30] as const;
+
+function localYmd(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Starts today and ends at the end of the last day, so "7 days" covers today plus six more. */
+function trialWindow(days: number): { startsOn: string; endsOn: string } {
+  const start = new Date();
+  const end = new Date(start);
+  end.setDate(end.getDate() + days - 1);
+  return { startsOn: localYmd(start), endsOn: localYmd(end) };
 }
 
 function formatDay(iso: string | undefined): string {
@@ -71,6 +88,7 @@ function fieldsBody(fields: Fields) {
     name: fields.name,
     email: fields.email,
     location: fields.location,
+    plan: fields.plan,
     startsAt: fields.startsOn ? dayStartIso(fields.startsOn) : "",
     expiresAt: fields.endsOn ? dayEndIso(fields.endsOn) : "",
   };
@@ -124,6 +142,39 @@ function LicenseFields({ fields, onChange }: { fields: Fields; onChange: (next: 
             autoComplete="off"
           />
         </label>
+        <label>
+          Key
+          <select value={fields.plan} onChange={(e) => set({ plan: e.target.value === "preview" ? "preview" : "full" })}>
+            <option value="full">Full — save everything</option>
+            <option value="preview">Preview — play and look, limited save</option>
+          </select>
+        </label>
+        <div className="dev-license-period" role="group" aria-label="Trial period">
+          <span>Trial period</span>
+          {TRIAL_DAYS.map((days) => {
+            const range = trialWindow(days);
+            const on = fields.startsOn === range.startsOn && fields.endsOn === range.endsOn;
+            return (
+              <button
+                key={days}
+                type="button"
+                className={`btn ghost${on ? " is-on" : ""}`}
+                aria-pressed={on}
+                onClick={() => set(range)}
+              >
+                {days} days
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className={`btn ghost${!fields.startsOn && !fields.endsOn ? " is-on" : ""}`}
+            aria-pressed={!fields.startsOn && !fields.endsOn}
+            onClick={() => set({ startsOn: "", endsOn: "" })}
+          >
+            No end
+          </button>
+        </div>
         <div className="dev-license-dates">
           <label>
             Starts
@@ -135,12 +186,20 @@ function LicenseFields({ fields, onChange }: { fields: Fields; onChange: (next: 
           </label>
         </div>
       </div>
-      <p className="dev-license-hint">Leave both dates empty for a key that never expires.</p>
+      <p className="dev-license-hint">
+        Leave both dates empty for a key that never expires. A trial period starts today and ends at the end of its
+        last day; after that the editor asks for a new key. A preview key can play and look through the editor.
+        Setlists and rhythm lists are not saved. Memories save only while the RC-600 is not connected.
+      </p>
     </>
   );
 }
 
-function EmailPanel({ license }: { license: Pick<ManagedLicense, "key" | "name" | "email" | "startsAt" | "expiresAt"> }) {
+function EmailPanel({
+  license,
+}: {
+  license: Pick<ManagedLicense, "key" | "name" | "email" | "plan" | "startsAt" | "expiresAt">;
+}) {
   const { copied, copy } = useCopy();
   if (!license.key) {
     return (
@@ -149,10 +208,11 @@ function EmailPanel({ license }: { license: Pick<ManagedLicense, "key" | "name" 
       </p>
     );
   }
-  const subject = licenseEmailSubject();
+  const subject = licenseEmailSubject(license.plan);
   const message = licenseEmailText({
     name: license.name,
     key: license.key,
+    plan: license.plan,
     startsAt: license.startsAt,
     expiresAt: license.expiresAt,
   });
@@ -206,7 +266,7 @@ function IssuePanel({ onIssued }: { onIssued: () => void }) {
     setError(null);
     setIssued(null);
     try {
-      const data = await readJson<{ id: string; key: string; startsAt?: string; expiresAt?: string }>(
+      const data = await readJson<{ id: string; key: string; plan?: "full" | "preview"; startsAt?: string; expiresAt?: string }>(
         await fetch("/api/dev/licenses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -220,6 +280,7 @@ function IssuePanel({ onIssued }: { onIssued: () => void }) {
         name: fields.name.trim(),
         email: fields.email.trim().toLowerCase(),
         location: fields.location.trim(),
+        plan: data.plan === "preview" ? "preview" : "full",
         startsAt: data.startsAt,
         expiresAt: data.expiresAt,
         createdAt: new Date().toISOString(),
@@ -313,6 +374,7 @@ function KeysPanel({ licenses, loading, error, reload }: {
       name: lic.name,
       email: lic.email,
       location: lic.location,
+      plan: lic.plan === "preview" ? "preview" : "full",
       startsOn: isoToYmd(lic.startsAt),
       endsOn: isoToYmd(lic.expiresAt),
     });
@@ -393,6 +455,7 @@ function KeysPanel({ licenses, loading, error, reload }: {
                 >
                   <span className="dev-license-row-head">
                     <strong>{lic.name || "(no name)"}</strong>
+                    {lic.plan === "preview" ? <span className="dev-license-state is-wait">Preview</span> : null}
                     <span className={`dev-license-state is-${state.tone}`}>{state.label}</span>
                   </span>
                   <span className="dev-license-row-sub">{lic.email || "—"}</span>

@@ -1,4 +1,5 @@
 import type { Plugin } from "vite";
+import { devLicenseIssuerAllowed } from "./server/dev-license.js";
 import { editorSessionAllowed } from "./server/dev-session.js";
 import {
   decidePaidShell,
@@ -15,6 +16,18 @@ export function paidShellPlugin(): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = req.url ?? "/";
         if (shellRequestKind(url) === "api") {
+          next();
+          return;
+        }
+        const forwarded = req.headers["x-forwarded-host"];
+        if (
+          devLicenseIssuerAllowed(
+            process.env,
+            req.headers.host,
+            Array.isArray(forwarded) ? forwarded.join(",") : forwarded,
+          )
+        ) {
+          // Local dev: the React activation screen carries the Issue key manager.
           next();
           return;
         }

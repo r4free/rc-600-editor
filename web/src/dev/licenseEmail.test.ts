@@ -26,4 +26,12 @@ describe("licenseEmailText", () => {
   it("has a subject line", () => {
     assert.match(licenseEmailSubject(), /RC-600/);
   });
+
+  it("describes a preview key", () => {
+    const text = licenseEmailText({ name: "Ada", key: "RC600-1111-2222-3333", plan: "preview" });
+    assert.match(text, /preview key/);
+    assert.match(text, /Setlists and rhythm lists are not saved/);
+    assert.match(text, /editing offline/);
+    assert.match(licenseEmailSubject("preview"), /preview key/);
+  });
 });
