@@ -76,7 +76,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Internal
 
-- **Local license key:** a local development build has an **Issue key** button in the top bar. It asks for name, email, an optional location, optional start and end dates, and whether the key is **Full** or **Preview**. **Trial period** buttons (3, 7, 14 or 30 days, or No end) fill the dates from today. Empty dates create a key that never expires. The command line takes `--days N` and `--preview`. In development the button is also on the activation screen, so a key can be issued before signing in. The button is left out of the production build, and the hosted site answers the same request with “not found.”
+- **Local license key:** a local development build has a **Relationship** button in the top bar. It asks for name, email, an optional location, optional start and end dates, and whether the key is **Full** or **Preview**. **Trial period** buttons (3, 7, 14 or 30 days, or No end) fill the dates from today. Empty dates create a key that never expires. The command line takes `--days N` and `--preview`. In development the button is also on the activation screen, so a key can be issued before signing in. The button is left out of the production build, and the hosted site answers the same request with “not found.”
 
 ## PT
 
@@ -150,9 +150,14 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ### Interno
 
-- **Chave local:** o build de desenvolvimento local tem o botão **Issue key** na barra de cima. Ele pede nome, e-mail, local opcional, datas opcionais de início e fim, e se a chave é **Full** ou **Preview**. Os botões **Trial period** (3, 7, 14 ou 30 dias, ou No end) preenchem as datas a partir de hoje. Sem datas, a chave não expira. A linha de comando aceita `--days N` e `--preview`. Em desenvolvimento o botão também fica na tela de ativação, para emitir uma chave antes de entrar. O botão fica de fora do build de produção, e o site hospedado responde o mesmo pedido com “não encontrado”.
+- **Chave local:** o build de desenvolvimento local tem o botão **Relationship** na barra de cima. Ele pede nome, e-mail, local opcional, datas opcionais de início e fim, e se a chave é **Full** ou **Preview**. Os botões **Trial period** (3, 7, 14 ou 30 dias, ou No end) preenchem as datas a partir de hoje. Sem datas, a chave não expira. A linha de comando aceita `--days N` e `--preview`. Em desenvolvimento o botão também fica na tela de ativação, para emitir uma chave antes de entrar. O botão fica de fora do build de produção, e o site hospedado responde o mesmo pedido com “não encontrado”.
 
 ## Changelog
+
+### 2026-10-11
+
+- **EN:** In local development, the **Issue key** button in the top bar is now **Relationship** (heart icon). Besides issuing and managing keys, its new **Messages** tab has ready-to-copy thank-you messages: type a customer's name, or pick one from your keys, and copy a message to answer them on Facebook, Instagram, WhatsApp and similar. Not on the public site.
+- **PT:** No desenvolvimento local, o botão **Issue key** da barra superior agora se chama **Relationship** (ícone de coração). Além de gerar e gerenciar chaves, a nova aba **Messages** traz mensagens de agradecimento prontas para copiar: digite o nome do cliente, ou escolha um das suas chaves, e copie a mensagem para responder no Facebook, Instagram, WhatsApp e afins. Não existe no site público.
 
 ### 2026-10-10
 
@@ -188,6 +193,8 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **PT:** Uma bolinha de conexão no canto superior direito substitui a faixa de mensagem offline: vermelha com "Editing" offline, verde com a RC-600 conectada, cinza quando desconectada.
 - **EN:** Offline editing: new **Connect RC-600** button. After connecting, a confirmation window lets you write the offline edits to the pedal (each memory into its own slot, backup confirmation required), review them first as unsaved edits, or keep them for later.
 - **PT:** Edição offline: novo botão **Connect RC-600**. Depois de conectar, uma janela de confirmação permite gravar as edições offline na pedaleira (cada memória no próprio slot, exige confirmar o backup), revisar antes como edições não salvas, ou guardar para depois.
+- **EN:** The part editor grid shows a small icon next to each instrument (kick, snare, toms, hi-hat, cymbals, clap, percussion).
+- **PT:** A grade do editor de partes mostra um ícone pequeno ao lado de cada instrumento (bumbo, caixa, tons, chimbal, pratos, palmas, percussão).
 - **EN:** On a preview key, the Rhythm Converter saves a RHYTHM.RC0 with one rhythm only: **Save to RC-600 (1 rhythm)** over USB, or **Download RHYTHM.RC0 (1 rhythm)** offline.
 - **PT:** Com chave preview, o Rhythm Converter salva um RHYTHM.RC0 com um ritmo só: **Save to RC-600 (1 rhythm)** por USB, ou **Download RHYTHM.RC0 (1 rhythm)** no offline.
 - **EN:** The **Connect to USB** button is hidden while the RC-600 is connected over MIDI or over USB (USB shows **Eject USB** instead).

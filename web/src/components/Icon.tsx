@@ -131,6 +131,11 @@ const ICONS = {
   moveLeft: "mdi:arrow-left-bold-outline",
   moveRight: "mdi:arrow-right-bold-outline",
   grid: "mdi:table-large",
+  clap: "mdi:hand-clap",
+  shaker: "mdi:shaker-outline",
+  triangle: "mdi:instrument-triangle",
+  bell: "mdi:bell-outline",
+  whistle: "mdi:whistle-outline",
 } as const;
 
 export type IconName = keyof typeof ICONS;

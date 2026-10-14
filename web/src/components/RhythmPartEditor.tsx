@@ -27,6 +27,7 @@ import {
   type EditGrid,
 } from "../rhythmConverter/partEdit";
 import type { SmfNote } from "../rhythmConverter/smf";
+import { DrumIcon } from "./DrumIcon";
 import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 
@@ -536,7 +537,10 @@ function LaneRow({
   return (
     <>
       <div className={`rhythm-grid-lane${used ? " is-used" : ""}`}>
-        <span title={`Note ${note}`}>{laneLabel(note)}</span>
+        <span className="rhythm-grid-lane-name" title={`Note ${note}`}>
+          <DrumIcon note={note} size={13} />
+          {laneLabel(note)}
+        </span>
         {used ? (
           <button type="button" className="rhythm-grid-lane-clear" aria-label={`Clear ${laneLabel(note)}`} title="Clear row" onClick={onClear}>
             <Icon name="close" size={12} />

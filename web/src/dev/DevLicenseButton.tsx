@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Icon } from "../components/Icon";
 import { Modal } from "../components/Modal";
 import { licenseEmailSubject, licenseEmailText } from "./licenseEmail";
+import { RELATIONSHIP_MESSAGES, fillRelationshipMessage } from "./relationshipMessages";
 import "./dev-license.css";
 
 type ManagedLicense = {
@@ -565,10 +566,56 @@ function KeysPanel({ licenses, loading, error, reload }: {
   );
 }
 
+function MessagesPanel({ names }: { names: string[] }) {
+  const [name, setName] = useState("");
+  const { copied, copy } = useCopy();
+  return (
+    <div className="relationship-messages">
+      <label>
+        Customer name
+        <input
+          className="dev-license-search"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          list="relationship-names"
+          placeholder="Type a name, or pick one of your customers"
+          autoComplete="off"
+        />
+      </label>
+      <datalist id="relationship-names">
+        {names.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
+      <ul className="relationship-list">
+        {RELATIONSHIP_MESSAGES.map((message) => {
+          const text = fillRelationshipMessage(message.text, name);
+          return (
+            <li key={message.id} className="relationship-card">
+              <div className="relationship-card-head">
+                <strong>{message.title}</strong>
+                <button type="button" className="btn" onClick={() => void copy(message.id, text)}>
+                  <Icon name="copy" size={14} />
+                  {copied === message.id ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <p className="relationship-text">{text}</p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export default function DevLicenseButton() {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"issue" | "keys">("issue");
+  const [tab, setTab] = useState<"issue" | "keys" | "messages">("issue");
   const [licenses, setLicenses] = useState<ManagedLicense[]>([]);
+  const customerNames = useMemo(
+    () => [...new Set(licenses.map((l) => l.name.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [licenses],
+  );
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
 
@@ -598,13 +645,14 @@ export default function DevLicenseButton() {
         type="button"
         className="btn"
         onClick={() => setOpen(true)}
-        title="Local development only. This control is not in the production site."
+        title="Customer keys and ready-to-copy messages. Local development only; not in the production site."
       >
-        Issue key
+        <Icon name="heart" size={14} />
+        Relationship
       </button>
       {open ? (
-        <Modal title="License keys" onClose={() => setOpen(false)} wide className="dev-license-modal">
-          <div className="tabs tabs-sub" role="tablist" aria-label="License keys">
+        <Modal title="Relationship" onClose={() => setOpen(false)} wide className="dev-license-modal">
+          <div className="tabs tabs-sub" role="tablist" aria-label="Relationship">
             <button
               type="button"
               role="tab"
@@ -625,11 +673,23 @@ export default function DevLicenseButton() {
               <Icon name="key" size={14} />
               Keys ({licenses.length})
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "messages"}
+              className={`tab ${tab === "messages" ? "active" : ""}`}
+              onClick={() => setTab("messages")}
+            >
+              <Icon name="heart" size={14} />
+              Messages
+            </button>
           </div>
           {tab === "issue" ? (
             <IssuePanel onIssued={() => void reload()} />
-          ) : (
+          ) : tab === "keys" ? (
             <KeysPanel licenses={licenses} loading={loading} error={listError} reload={() => void reload()} />
+          ) : (
+            <MessagesPanel names={customerNames} />
           )}
         </Modal>
       ) : null}

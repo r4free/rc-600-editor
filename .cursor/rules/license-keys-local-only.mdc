@@ -5,7 +5,7 @@ alwaysApply: true
 
 # License keys: local only, never production
 
-Issuing, listing, emailing, editing and deleting license keys (the **Issue key** window) exists **only on the developer's computer**. It must never ship to or run on the public site.
+Issuing, listing, emailing, editing and deleting license keys (the **Relationship** window, which also holds the customer messages) exists **only on the developer's computer**. It must never ship to or run on the public site.
 
 ## Guards that must stay in place
 

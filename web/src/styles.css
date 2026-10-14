@@ -9455,7 +9455,7 @@ button[role="switch"]:focus-visible {
 }
 
 .rhythm-grid {
-  --lane-w: 6.5rem;
+  --lane-w: 7.5rem;
   --cell-w: 1.35rem;
   position: relative;
   display: grid;
@@ -9506,6 +9506,24 @@ button[role="switch"]:focus-visible {
 
 .rhythm-grid-lane.is-used {
   color: var(--text);
+}
+
+.rhythm-grid-lane-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.rhythm-grid-lane .drum-icon {
+  flex: none;
+  opacity: 0.75;
+}
+
+.rhythm-grid-lane.is-used .drum-icon {
+  color: var(--role-color, var(--accent));
+  opacity: 1;
 }
 
 .rhythm-grid-lane-clear {
