@@ -1,4 +1,5 @@
 import { pluckString } from "./chorusPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export type DelayKind = "delay" | "panning" | "reverse" | "mod" | "tape";
 
@@ -119,7 +120,7 @@ const MAX_REVERSE_REPEATS = 24;
 export class DelayPreviewEngine {
   private cfg: DelayPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private plucks: { fwd: AudioBuffer; rev: AudioBuffer }[] = [];
   private nodes: {
     master: GainNode;
@@ -172,12 +173,12 @@ export class DelayPreviewEngine {
     this.buildGraph(ctx);
     this.nextHitTime = ctx.currentTime + 0.05;
     this.hitIndex = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

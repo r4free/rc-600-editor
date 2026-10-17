@@ -1,3 +1,4 @@
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 export interface VocoderPreviewConfig {
   bpm: number;
   /** CARRIER 0–11: MIC1 … INST2-R (0–5), TRACK1–6 (6–11). */
@@ -110,7 +111,7 @@ const GLIDE = 0.03;
 export class VocoderPreviewEngine {
   private cfg: VocoderPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private noise: AudioBuffer | null = null;
   private nodes: {
     master: GainNode;
@@ -206,12 +207,12 @@ export class VocoderPreviewEngine {
     this.eighth = 0;
     this.syllable = 0;
     this.left = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

@@ -1,4 +1,5 @@
 import { stepDurationSec } from "./stepPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface PatternSlicerPreviewConfig {
   bpm: number;
@@ -92,7 +93,7 @@ const PARAM_GLIDE_SEC = 0.03;
 export class PatternSlicerPreviewEngine {
   private cfg: PatternSlicerPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private nodes: {
     master: GainNode;
     gate: GainNode;
@@ -127,12 +128,12 @@ export class PatternSlicerPreviewEngine {
     this.nextBarTime = this.nextSliceTime;
     this.sliceIndex = 0;
     this.bar = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

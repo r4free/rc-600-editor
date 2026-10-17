@@ -1,4 +1,5 @@
 import { pluckString } from "./chorusPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface SustainerPreviewConfig {
   bpm: number;
@@ -52,7 +53,7 @@ const PARAM_GLIDE_SEC = 0.03;
 export class SustainerPreviewEngine {
   private cfg: SustainerPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private notes: AudioBuffer[] = [];
   private nodes: {
     master: GainNode;
@@ -95,12 +96,12 @@ export class SustainerPreviewEngine {
     this.buildGraph(ctx);
     this.nextNoteTime = ctx.currentTime + 0.05;
     this.noteIndex = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

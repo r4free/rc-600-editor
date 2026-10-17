@@ -154,6 +154,10 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ## Changelog
 
+### 2026-10-15 — Keeps playing in a background tab
+
+**EN:** The **pad loops** sent over MIDI and the effect **audio previews** now keep their timing when you switch to another browser tab or another program. Before, the browser slowed the editor's timers in the background, so playback stuttered, stopped, or stopped reaching the pedal until you came back.
+
 ### 2026-10-11
 
 - **EN:** In local development, the **Issue key** button in the top bar is now **Relationship** (heart icon). Besides issuing and managing keys, its new **Messages** tab has ready-to-copy thank-you messages: type a customer's name, or pick one from your keys, and copy a message to answer them on Facebook, Instagram, WhatsApp and similar. Not on the public site.

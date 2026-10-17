@@ -1,5 +1,6 @@
 import { syncRateBeats, type StepTarget } from "@rc600/catalog/input-fx";
 import { oscWaveTerms, vocoderSensGain, vocoderSmoothingHz } from "./vocoderPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export type PreviewSound = "tone" | "beat" | "synth" | "ring" | "phaser" | "flanger" | "tremolo";
 
@@ -414,7 +415,7 @@ function noiseBuffer(ctx: AudioContext): AudioBuffer {
 /** Browser-only reference sound shaped by a step sequence (no MIDI, no samples). */
 export class StepPreviewEngine {
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private cfg: StepPreviewConfig;
   private onStep: (index: number) => void;
 
@@ -542,12 +543,12 @@ export class StepPreviewEngine {
       this.stepIndex = 0;
       this.nextStepTime = t;
     }
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     for (const id of this.uiTimers) clearTimeout(id);
     this.uiTimers.clear();

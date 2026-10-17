@@ -1,4 +1,5 @@
 import { GUITAR_PROGRESSION, pluckString } from "./chorusPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export type ReverbKind = "reverb" | "gate" | "reverse";
 
@@ -120,7 +121,7 @@ function shapeKey(s: ReverbShape): string {
 export class ReverbPreviewEngine {
   private cfg: ReverbPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private stabs: AudioBuffer[] = [];
   private snare: AudioBuffer | null = null;
   private nodes: {
@@ -159,12 +160,12 @@ export class ReverbPreviewEngine {
     this.buildGraph(ctx);
     this.nextHitTime = ctx.currentTime + 0.05;
     this.hitIndex = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

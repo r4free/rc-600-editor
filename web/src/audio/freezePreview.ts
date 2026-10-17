@@ -1,3 +1,4 @@
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 export interface FreezePreviewConfig {
   bpm: number;
   /** ATTACK 0–100: fade time until the frozen sound is output. */
@@ -53,7 +54,7 @@ const DETUNE_CENTS = [-7, 0, 6];
 export class FreezePreviewEngine {
   private cfg: FreezePreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private nodes: { master: GainNode; dry: GainNode; wet: GainNode } | null = null;
   private held: { oscs: OscillatorNode[]; env: GainNode } | null = null;
   private nextEighth = 0;
@@ -87,12 +88,12 @@ export class FreezePreviewEngine {
     this.applyMix();
     this.nextEighth = ctx.currentTime + 0.05;
     this.eighth = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

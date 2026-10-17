@@ -1,4 +1,5 @@
 import { pluckString } from "./chorusPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface G2bPreviewConfig {
   bpm: number;
@@ -34,7 +35,7 @@ const SCHEDULE_AHEAD_SEC = 0.12;
 export class G2bPreviewEngine {
   private cfg: G2bPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private guitar = new Map<number, AudioBuffer>();
   private bass = new Map<number, AudioBuffer>();
   private nodes: { master: GainNode; dry: GainNode; wet: GainNode } | null = null;
@@ -80,12 +81,12 @@ export class G2bPreviewEngine {
     this.applyMix();
     this.nextTime = ctx.currentTime + 0.05;
     this.index = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

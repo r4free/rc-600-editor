@@ -1,5 +1,6 @@
 import { pluckString } from "./chorusPreview";
 import { stepDurationSec } from "./stepPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface AutoRiffPreviewConfig {
   bpm: number;
@@ -111,7 +112,7 @@ const SCHEDULE_AHEAD_SEC = 0.12;
 export class AutoRiffPreviewEngine {
   private cfg: AutoRiffPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private nodes: { master: GainNode; dry: GainNode; wet: GainNode; tone: BiquadFilterNode } | null = null;
   private periodStart = 0;
   private period = 0;
@@ -152,12 +153,12 @@ export class AutoRiffPreviewEngine {
     this.period = 0;
     this.step = 0;
     this.startPeriod();
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     this.stepTimers.forEach(clearTimeout);
     this.stepTimers = [];

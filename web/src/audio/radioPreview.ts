@@ -1,3 +1,4 @@
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 export interface RadioPreviewConfig {
   bpm: number;
   /** LO-FI 1–10: amount of blurring. */
@@ -68,7 +69,7 @@ function driveCurve(drive: number): Float32Array<ArrayBuffer> {
 export class RadioPreviewEngine {
   private cfg: RadioPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private noiseBuf: AudioBuffer | null = null;
   private nodes: {
     master: GainNode;
@@ -154,12 +155,12 @@ export class RadioPreviewEngine {
     this.eighth = 0;
     this.noteIndex = 0;
     this.noteLeft = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

@@ -1,4 +1,5 @@
 import { syncRateBeats } from "@rc600/catalog/input-fx";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface RollPreviewConfig {
   bpm: number;
@@ -53,7 +54,7 @@ const SCHEDULE_AHEAD_SEC = 0.12;
 export class RollPreviewEngine {
   private cfg: RollPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private noise: AudioBuffer | null = null;
   private nodes: { master: GainNode; input: GainNode; dry: GainNode } | null = null;
   private nextSixteenth = 0;
@@ -89,12 +90,12 @@ export class RollPreviewEngine {
     this.nodes = { master, input, dry };
     this.nextSixteenth = ctx.currentTime + 0.05;
     this.sixteenth = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

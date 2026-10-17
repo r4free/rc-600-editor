@@ -1,4 +1,5 @@
 import { formantRatio } from "./robotPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface HarmonyPreviewConfig {
   bpm: number;
@@ -92,7 +93,7 @@ const GLIDE = 0.03;
 export class HarmonyPreviewEngine {
   private cfg: HarmonyPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private nodes: { master: GainNode; dry: GainNode; hrm: GainNode; pan: StereoPannerNode; pad: GainNode } | null =
     null;
   private nextEighth = 0;
@@ -134,12 +135,12 @@ export class HarmonyPreviewEngine {
     this.eighth = 0;
     this.noteIndex = 0;
     this.left = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

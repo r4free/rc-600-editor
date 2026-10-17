@@ -1,3 +1,4 @@
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 export type BeatFxEffect = "scatter" | "repeat" | "shift" | "flick";
 
 export interface BeatFxPreviewConfig {
@@ -226,7 +227,7 @@ const TRACK_BEATS = TRACK_BARS * 4;
 export class BeatFxPreviewEngine {
   private cfg: BeatFxPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private master: GainNode | null = null;
   private track: { bpm: number; forward: AudioBuffer; reversed: AudioBuffer } | null = null;
   private mode: BeatFxSwitch = false;
@@ -278,12 +279,12 @@ export class BeatFxPreviewEngine {
     this.engaged = null;
     this.last = null;
     this.marks = [];
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const master = this.master;

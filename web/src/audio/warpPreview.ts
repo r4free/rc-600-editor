@@ -1,3 +1,4 @@
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 export interface WarpPreviewConfig {
   bpm: number;
   /** LEVEL 0–100: effect volume. */
@@ -49,7 +50,7 @@ function warpImpulse(ctx: BaseAudioContext, seconds: number): AudioBuffer {
 export class WarpPreviewEngine {
   private cfg: WarpPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private nodes: { master: GainNode; input: GainNode; send: GainNode; level: GainNode; lfos: OscillatorNode[] } | null =
     null;
   private nextSixteenth = 0;
@@ -106,12 +107,12 @@ export class WarpPreviewEngine {
     this.nodes = { master, input, send, level, lfos };
     this.nextSixteenth = ctx.currentTime + 0.05;
     this.sixteenth = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

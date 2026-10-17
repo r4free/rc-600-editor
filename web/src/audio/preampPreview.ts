@@ -1,4 +1,5 @@
 import { GUITAR_PROGRESSION, pluckString } from "./chorusPreview";
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 
 export interface PreampPreviewConfig {
   bpm: number;
@@ -95,7 +96,7 @@ const PARAM_GLIDE_SEC = 0.03;
 export class PreampPreviewEngine {
   private cfg: PreampPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private strums: AudioBuffer[] = [];
   private nodes: {
     master: GainNode;
@@ -140,12 +141,12 @@ export class PreampPreviewEngine {
     this.buildGraph(ctx);
     this.nextStrumTime = ctx.currentTime + 0.05;
     this.chord = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const nodes = this.nodes;

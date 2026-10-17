@@ -7,6 +7,7 @@ import {
   type PadTimingOverride,
   type TimingConfig,
 } from "./drumLoop";
+import { clearBgInterval, clearBgTimeout, setBgInterval, setBgTimeout } from "./bgTimer";
 
 const SCHEDULE_AHEAD_SEC = 0.12;
 const LOOKAHEAD_MS = 25;
@@ -48,7 +49,7 @@ export function usePadLoopEngine({
   const [playingPads, setPlayingPads] = useState<Set<number>>(() => new Set());
   const voicesRef = useRef(new Map<number, VoiceState>());
   const ctxRef = useRef<AudioContext | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<number | null>(null);
   const offTimersRef = useRef(new Map<number, number>());
 
   const globalRef = useRef(globalTiming);
@@ -92,7 +93,7 @@ export function usePadLoopEngine({
   const clearNoteOff = useCallback((padId: number) => {
     const t = offTimersRef.current.get(padId);
     if (t != null) {
-      clearTimeout(t);
+      clearBgTimeout(t);
       offTimersRef.current.delete(padId);
     }
   }, []);
@@ -103,10 +104,10 @@ export function usePadLoopEngine({
       if (!ctx) return;
       const midi = midiFor(padId);
       const delayMs = Math.max(0, (whenAudio - ctx.currentTime) * 1000);
-      window.setTimeout(() => {
+      setBgTimeout(() => {
         onDrumNoteRef.current(midi, resolvePadVelocity(velocityRef.current, overridesRef.current[padId]), true);
         clearNoteOff(padId);
-        const off = window.setTimeout(() => {
+        const off = setBgTimeout(() => {
           onDrumNoteRef.current(midi, 0, false);
           offTimersRef.current.delete(padId);
         }, NOTE_OFF_SEC * 1000);
@@ -118,7 +119,7 @@ export function usePadLoopEngine({
 
   const stopScheduler = useCallback(() => {
     if (timerRef.current != null) {
-      clearInterval(timerRef.current);
+      clearBgInterval(timerRef.current);
       timerRef.current = null;
     }
   }, []);
@@ -159,7 +160,7 @@ export function usePadLoopEngine({
   const startScheduler = useCallback(() => {
     ensureCtx();
     if (timerRef.current != null) return;
-    timerRef.current = setInterval(tick, LOOKAHEAD_MS);
+    timerRef.current = setBgInterval(tick, LOOKAHEAD_MS);
   }, [ensureCtx, tick]);
 
   const stopAll = useCallback(() => {

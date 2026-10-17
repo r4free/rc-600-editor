@@ -1,3 +1,4 @@
+import { clearBgInterval, setBgInterval } from "../bgTimer";
 export interface RobotPreviewConfig {
   bpm: number;
   /** NOTE 0–11 (C–B): the fixed pitch of the robot voice. */
@@ -48,7 +49,7 @@ const SCHEDULE_AHEAD_SEC = 0.12;
 export class RobotPreviewEngine {
   private cfg: RobotPreviewConfig;
   private ctx: AudioContext | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: number | null = null;
   private master: GainNode | null = null;
   private nextEighth = 0;
   private eighth = 0;
@@ -79,12 +80,12 @@ export class RobotPreviewEngine {
     this.eighth = 0;
     this.syllable = 0;
     this.left = 0;
-    this.timer = setInterval(() => this.schedule(), LOOKAHEAD_MS);
+    this.timer = setBgInterval(() => this.schedule(), LOOKAHEAD_MS);
     this.schedule();
   }
 
   stop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    if (this.timer !== null) clearBgInterval(this.timer);
     this.timer = null;
     const ctx = this.ctx;
     const master = this.master;
