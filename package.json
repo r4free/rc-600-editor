@@ -21,6 +21,7 @@
     "@hono/node-server": "^2.1.1",
     "@iconify/react": "^6.0.2",
     "@iconify/types": "^2.0.0",
+    "@sentry/react": "^11.8.0",
     "fflate": "^0.8.2",
     "hono": "^4.13.7",
     "react": "^19.0.0",

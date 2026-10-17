@@ -14,6 +14,8 @@ try {
 export default defineConfig({
   plugins: [paidShellPlugin(), reactDevtoolsMcp(), react(), alphaTab()],
   root: "web",
+  // Repo-root .env (VITE_*) — not web/, which is only the Vite app root.
+  envDir: resolve(__dirname),
   publicDir: resolve(__dirname, "web/public"),
   resolve: {
     alias: {

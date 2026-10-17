@@ -70,6 +70,7 @@ import {
   type MemoryCopySelection,
 } from "./presets/memoryClipboard";
 import { Icon } from "./components/Icon";
+import { SentryFeedbackButton } from "./components/SentryFeedbackButton";
 import { InfoTip } from "./components/InfoTip";
 import { HoverTip } from "./components/HoverTip";
 import { DevLicenseSlot } from "./dev/DevLicenseSlot";
@@ -2036,6 +2037,7 @@ export function App() {
             <Icon name="help" size={14} /> Guide
           </a>
           ) : null}
+          <SentryFeedbackButton />
           {!demoMode && requireLicense ? (
             <button
               type="button"

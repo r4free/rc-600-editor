@@ -154,6 +154,10 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ## Changelog
 
+### 2026-10-17 — Feedback button (Sentry)
+
+**EN:** The top bar has a **Feedback** button (when Sentry is configured). It opens a form to report a bug or send feedback, with an optional screenshot. Submissions land in the RC-600 Sentry project.
+
 ### 2026-10-15 — Keeps playing in a background tab
 
 **EN:** The **pad loops** sent over MIDI and the effect **audio previews** now keep their timing when you switch to another browser tab or another program. Before, the browser slowed the editor's timers in the background, so playback stuttered, stopped, or stopped reaching the pedal until you came back.

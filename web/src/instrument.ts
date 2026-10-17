@@ -1,0 +1,34 @@
+import * as Sentry from "@sentry/react";
+
+const dsn = import.meta.env.VITE_SENTRY_DSN?.trim();
+if (dsn) {
+  Sentry.init({
+    dsn,
+    environment: import.meta.env.MODE,
+    release: import.meta.env.VITE_SENTRY_RELEASE,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.feedbackIntegration({
+        autoInject: false,
+        colorScheme: "dark",
+        showBranding: false,
+        enableScreenshot: true,
+        formTitle: "Feedback",
+        triggerLabel: "Feedback",
+        submitButtonLabel: "Send",
+        messagePlaceholder: "What went wrong, or what would you like to see?",
+        successMessageText: "Thanks — we got your feedback.",
+        themeDark: {
+          background: "#1a1d24",
+          foreground: "#e8eaef",
+          accentBackground: "#00c7fd",
+          accentForeground: "#0a0c10",
+        },
+      }),
+    ],
+    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1,
+    tracePropagationTargets: [/^\//, /^https:\/\/rc\.test/, /\/api/],
+  });
+}
+
+export { Sentry };
