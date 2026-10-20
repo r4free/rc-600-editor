@@ -17,7 +17,13 @@ export function navigationTrail(groups: readonly ActiveTabGroup[]): ActiveTabGro
 function childGroup({ name, selected }: ActiveTabGroup): string | undefined {
   if (name === "Workspace") return selected === "Memory" ? "Memory editor" : selected === "System" ? "System" : undefined;
   if (name === "Memory editor" || name === "System") {
-    if (["Loop", "Input", "Output", "Mixer", "Ctl Func", "Input FX", "Track FX"].includes(selected)) return selected;
+    if (
+      ["Loop", "Memory Mixer", "Input", "Output", "I/O Mixer", "Mixer", "Ctl Func", "Input FX", "Track FX"].includes(
+        selected,
+      )
+    ) {
+      return selected;
+    }
   }
   if (name === "Loop" && selected === "Tracks") return "Track";
   if (name === "Input" && selected === "EQ") return "Input EQ";

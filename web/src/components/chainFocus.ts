@@ -3,6 +3,7 @@ import type { MemorySelectId } from "./memoryChainModel";
 export type MemoryTabId =
   | "info"
   | "loop"
+  | "memMixer"
   | "audio"
   | "ctl"
   | "assigns"

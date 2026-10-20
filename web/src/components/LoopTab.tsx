@@ -26,10 +26,13 @@ import type { PatchOp } from "@rc600/rc0/ops";
 import { Icon, type IconName } from "./Icon";
 import { InfoTip } from "./InfoTip";
 import { ParamControl } from "./ParamControl";
+import { TrackMixerBoard } from "./TrackMixerBoard";
 
 const LOOP_SUBS = ["track", "rec", "play", "rhythm"] as const;
 type LoopSub = (typeof LOOP_SUBS)[number];
 const TRACK_NOS = [1, 2, 3, 4, 5, 6] as const;
+const TRACK_PICKER = [...TRACK_NOS, "mixer"] as const;
+type TrackPicker = (typeof TRACK_PICKER)[number];
 
 const SUBS: { id: LoopSub; label: string; icon: IconName }[] = [
   { id: "track", label: "Tracks", icon: "loop" },
@@ -830,7 +833,8 @@ export function LoopTab({
   onPatch: PatchHandler;
 }) {
   const [sub, setSub] = usePersistedTab<LoopSub>("loop", "track", LOOP_SUBS);
-  const [trackNo, setTrackNo] = usePersistedTab("loopTrack", 1, TRACK_NOS);
+  const [trackPick, setTrackPick] = usePersistedTab<TrackPicker>("loopTrack", 1, TRACK_PICKER);
+  const trackNo = trackPick === "mixer" ? 1 : trackPick;
 
   const track = model.tracks[trackNo - 1] ?? {};
   const inputMask = num(track, "Q", 127);
@@ -861,16 +865,30 @@ export function LoopTab({
                 key={n}
                 type="button"
                 role="tab"
-                aria-selected={trackNo === n}
-                className={`tab ${trackNo === n ? "active" : ""}`}
-                onClick={() => setTrackNo(n)}
+                aria-selected={trackPick === n}
+                className={`tab ${trackPick === n ? "active" : ""}`}
+                onClick={() => setTrackPick(n)}
               >
                 <Icon name="play" size={12} />
                 Track {n}
               </button>
             ))}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={trackPick === "mixer"}
+              className={`tab ${trackPick === "mixer" ? "active" : ""}`}
+              onClick={() => setTrackPick("mixer")}
+            >
+              <Icon name="tune" size={12} />
+              Mixer
+            </button>
           </div>
 
+          {trackPick === "mixer" ? (
+            <TrackMixerBoard model={model} onPatch={onPatch} />
+          ) : (
+            <>
           <div className="param-columns">
             {TRACK_PARAMS.filter((def) => TRACK_LEVEL_TAGS.includes(def.tag)).map((def) => (
               <ParamControl
@@ -953,6 +971,8 @@ export function LoopTab({
               />
             ))}
           </div>
+            </>
+          )}
         </>
       ) : null}
 

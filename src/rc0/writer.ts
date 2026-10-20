@@ -4,6 +4,8 @@ import {
   MEMORY_COPY_INPUT_SETUP_TAGS,
   MEMORY_COPY_MIXER_INPUT_TAGS,
   MEMORY_COPY_MIXER_OUTPUT_TAGS,
+  MEMORY_COPY_REC_SENS_TAGS,
+  MEMORY_COPY_TRACK_LEVEL_PAN_TAGS,
   parseMemoryCopySelection,
   pickTags,
   type MemoryCopySelection,
@@ -234,7 +236,19 @@ function applyMemoryCopySelection(
   for (const t of sel.tracks) {
     patched = patchTrack(patched, t, source.tracks[t - 1] ?? {});
   }
+  if (sel.trackLevelPan) {
+    for (let t = 1; t <= 6; t++) {
+      patched = patchTrack(
+        patched,
+        t,
+        pickTags(source.tracks[t - 1] ?? {}, MEMORY_COPY_TRACK_LEVEL_PAN_TAGS),
+      );
+    }
+  }
   if (sel.rec) patched = patchMemSection(patched, "REC", source.rec);
+  else if (sel.autoRecSens) {
+    patched = patchMemSection(patched, "REC", pickTags(source.rec, MEMORY_COPY_REC_SENS_TAGS));
+  }
   if (sel.play) patched = patchMemSection(patched, "PLAY", source.play);
   if (sel.rhythm) patched = patchMemSection(patched, "RHYTHM", source.rhythm);
 

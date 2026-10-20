@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/react";
 
+/** Production Vite builds only — local `npm run ui` never sends events even if VITE_SENTRY_DSN is set. */
 const dsn = import.meta.env.VITE_SENTRY_DSN?.trim();
-if (dsn) {
+if (dsn && import.meta.env.PROD) {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
@@ -26,7 +27,7 @@ if (dsn) {
         },
       }),
     ],
-    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1,
+    tracesSampleRate: 0.1,
     tracePropagationTargets: [/^\//, /^https:\/\/rc\.test/, /\/api/],
   });
 }

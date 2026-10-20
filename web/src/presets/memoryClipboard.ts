@@ -1,6 +1,7 @@
 import {
   emptyMemoryCopySelection,
   memoryCopySelectionHasContent,
+  memoryMixerCopySelection,
   parseMemoryCopySelection,
   selectAllMemoryCopySelection,
   summarizeMemoryCopySelection,
@@ -23,6 +24,7 @@ export type MemoryClipboard = {
 export {
   emptyMemoryCopySelection,
   memoryCopySelectionHasContent,
+  memoryMixerCopySelection,
   parseMemoryCopySelection,
   selectAllMemoryCopySelection,
   summarizeMemoryCopySelection,

@@ -106,7 +106,8 @@ export const TRACK_PARAMS: ParamDef[] = [
     min: 0,
     max: 100,
     default: 50,
-    info: "Stereo position of the track (L50–CENTER–R50).",
+    info:
+      "Stereo position of the track (L50–CENTER–R50). Tracks are dual-mono: Pan places the whole phrase in the stereo field. With Stereo Link ON, that field is the linked MAIN/SUB pair. With Stereo Link OFF, route the track to MAIN L and/or MAIN R separately — Pan still shapes left/right balance on each jack you enable; for hard mono splits, pan hard left and route only to L (or hard right only to R).",
   },
   {
     tag: "D",

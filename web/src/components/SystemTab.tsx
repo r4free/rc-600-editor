@@ -37,7 +37,7 @@ type SysPrimary = (typeof SYS_TABS)[number];
 const PRIMARY: { id: SysPrimary; label: string; icon: IconName }[] = [
   { id: "input", label: "Input", icon: "mic" },
   { id: "output", label: "Output", icon: "master" },
-  { id: "mixer", label: "Mixer", icon: "tune" },
+  { id: "mixer", label: "I/O Mixer", icon: "tune" },
   { id: "ctl", label: "Ctl Func", icon: "controls" },
   { id: "usb", label: "USB", icon: "usb" },
   { id: "midi", label: "MIDI", icon: "midi" },
@@ -446,7 +446,7 @@ export function SystemTab({
         <span className="tabs-help">
           <InfoTip
             label="System"
-            text={`Editing SYSTEM${side}.RC0 (active side by count ${baseSystem.count}). Same Input / Output / Mixer / Ctl layout as Memory; Preference chooses MEMORY vs SYSTEM on the pedal.`}
+            text={`Editing SYSTEM${side}.RC0 (active side by count ${baseSystem.count}). Same Input / Output / I/O Mixer / Ctl layout as Memory; Preference chooses MEMORY vs SYSTEM on the pedal.`}
           />
         </span>
       </div>

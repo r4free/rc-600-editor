@@ -44,6 +44,7 @@ import { AssignTab } from "./components/AssignTab";
 import { InputTab } from "./components/InputTab";
 import { OutputTab } from "./components/OutputTab";
 import { MixerTab } from "./components/MixerTab";
+import { MemoryMixerTab } from "./components/MemoryMixerTab";
 import { InputFxTab } from "./components/InputFxTab";
 import { TrackFxTab } from "./components/TrackFxTab";
 import { AudioTab } from "./components/AudioTab";
@@ -63,6 +64,7 @@ import { Modal } from "./components/Modal";
 import {
   loadMemoryClipboard,
   loadSkipApplyConfirm,
+  memoryMixerCopySelection,
   saveMemoryClipboard,
   saveSkipApplyConfirm,
   wavTracksForSelection,
@@ -159,6 +161,7 @@ type RhythmConverterView = (typeof RHYTHM_CONVERTER_VIEWS)[number];
 const MEMORY_TABS = [
   "info",
   "loop",
+  "memMixer",
   "audio",
   "ctl",
   "assigns",
@@ -1531,7 +1534,10 @@ export function App() {
     setApplyConfirm({ targets: filtered, skipChecked: false });
   }
 
-  async function captureMemoryClipboard(selection: MemoryCopySelection) {
+  async function captureMemoryClipboard(
+    selection: MemoryCopySelection,
+    options?: { openMassApply?: boolean },
+  ) {
     if (!slot || !baseXml) return;
     try {
       const sourceXml = dirty
@@ -1547,6 +1553,7 @@ export function App() {
       setMemoryClipboard(clip);
       setCopyModalOpen(false);
       setStatus(`Copied ${clip.summary} from memory ${String(slot).padStart(2, "0")}`);
+      if (options?.openMassApply) setMassApplyOpen(true);
     } catch (e) {
       setError(String(e));
     }
@@ -1870,12 +1877,13 @@ export function App() {
   const tabs: { id: TabId; label: string }[] = [
     { id: "info", label: "Info" },
     { id: "loop", label: "Loop" },
+    { id: "memMixer", label: "Memory Mixer" },
     { id: "audio", label: "Audio" },
     { id: "ctl", label: "Ctl Func" },
     { id: "assigns", label: "Assigns" },
     { id: "input", label: "Input" },
     { id: "output", label: "Output" },
-    { id: "mixer", label: "Mixer" },
+    { id: "mixer", label: "I/O Mixer" },
     { id: "ifx", label: "Input FX" },
     { id: "tfx", label: "Track FX" },
   ];
@@ -2927,6 +2935,29 @@ export function App() {
                     )}
 
                     {tab === "loop" && model ? <LoopTab model={model} onPatch={pushOps} /> : null}
+
+                    {tab === "memMixer" && model ? (
+                      <MemoryMixerTab
+                        model={model}
+                        onPatch={pushOps}
+                        onCopyToMemories={
+                          demoMode
+                            ? undefined
+                            : () =>
+                                void captureMemoryClipboard(memoryMixerCopySelection(), {
+                                  openMassApply: true,
+                                })
+                        }
+                        copyDisabled={!slot || !baseXml || saving}
+                        copyDisabledReason={
+                          !slot || !baseXml
+                            ? "Select a memory first"
+                            : saving
+                              ? "Busy…"
+                              : null
+                        }
+                      />
+                    ) : null}
 
                     {tab === "audio" && model ? (
                       <AudioTab

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ParamDef } from "@rc600/catalog/params";
 import type { TagMap } from "@rc600/rc0/memory";
+import { Icon } from "./Icon";
 import { InfoTip } from "./InfoTip";
 
 const WHEEL_STEP = 40;
@@ -12,7 +13,7 @@ export function eqDisplay(def: ParamDef, v: number): { value: string; unit?: str
     return { value: db > 0 ? `+${db}` : String(db), unit: "dB" };
   }
   const label = def.options.find((o) => o.value === v)?.label ?? String(v);
-  if (label === "FLAT") return { value: "Flat" };
+  if (label === "FLAT") return { value: "FLAT" };
   const space = label.lastIndexOf(" ");
   if (space > 0) return { value: label.slice(0, space), unit: label.slice(space + 1) };
   return { value: label, unit: "Q" };
@@ -118,15 +119,22 @@ export function EqFader({
   const fill = bipolar
     ? { bottom: Math.min(pct, centerPct), height: Math.abs(pct - centerPct) }
     : { bottom: 0, height: pct };
-  const shown = display(def, value);
-  const text = `${shown.value}${shown.unit ? ` ${shown.unit}` : ""}`;
+  const formatReadout = (v: number) => {
+    const shown = display(def, v);
+    if (!shown.unit) return shown.value;
+    return /^(Hz|kHz|Q)$/i.test(shown.unit)
+      ? `${shown.value}${shown.unit}`
+      : `${shown.value} ${shown.unit}`;
+  };
+  const text = formatReadout(value);
+  const defaultText = formatReadout(fallback);
   const changed = value !== fallback;
 
   return (
-    <div className={`eq-fader${bipolar ? " is-gain" : ""}${changed ? " is-changed" : ""}`}>
-      <div className="eq-fader-readout">
-        <span className="eq-fader-value">{shown.value}</span>
-        <span className="eq-fader-unit">{shown.unit ?? "\u00a0"}</span>
+    <div className={`eq-fader${bipolar ? " is-gain" : " is-fill"}${changed ? " is-changed" : ""}`}>
+      <div className="eq-fader-label">
+        <span className="eq-fader-short">{short}</span>
+        {def.info ? <InfoTip label={def.name} text={def.info} /> : null}
       </div>
       <div
         id={id}
@@ -139,7 +147,7 @@ export function EqFader({
         aria-valuemax={max}
         aria-valuenow={value}
         aria-valuetext={text}
-        title={`${def.name}: ${text}. Drag, scroll or use the arrow keys. Double-click to reset.`}
+        title={`${def.name}: ${text}. Drag, scroll or use the arrow keys.`}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -149,7 +157,6 @@ export function EqFader({
         onPointerMove={(e) => {
           if (e.currentTarget.hasPointerCapture(e.pointerId)) fromPointer(e.clientY);
         }}
-        onDoubleClick={() => commit(fallback)}
         onKeyDown={(e) => {
           const page = Math.max(1, Math.round(span / 10));
           const moves: Record<string, number> = {
@@ -169,14 +176,27 @@ export function EqFader({
         }}
       >
         <div className="eq-fader-rail" ref={railRef}>
-          {bipolar ? <span className="eq-fader-zero" style={{ bottom: `${centerPct}%` }} /> : null}
           <span className="eq-fader-fill" style={{ bottom: `${fill.bottom}%`, height: `${fill.height}%` }} />
           <span className="eq-fader-thumb" style={{ bottom: `${pct}%` }} />
         </div>
       </div>
-      <div className="eq-fader-label">
-        <span>{short}</span>
-        {def.info ? <InfoTip label={def.name} text={def.info} /> : null}
+      <div className="eq-fader-foot">
+        <div className="eq-fader-readout" aria-hidden="true">
+          {text}
+        </div>
+        <button
+          type="button"
+          className="eq-fader-reset"
+          aria-label={`Reset ${def.name} to ${defaultText}`}
+          title={`Reset to ${defaultText}`}
+          disabled={!changed}
+          onClick={(e) => {
+            e.stopPropagation();
+            commit(fallback);
+          }}
+        >
+          <Icon name="restore" size={12} />
+        </button>
       </div>
     </div>
   );
@@ -230,6 +250,7 @@ export function EqFaderBoard({
       <div className="eq-board-bands">
         {bands.map((band) => (
           <section key={band.title} className="eq-band">
+            <h4 className="eq-band-title">{band.title}</h4>
             <div className="eq-band-faders">
               {band.faders.map(({ tag, short }) => {
                 const def = params.find((p) => p.tag === tag);
@@ -246,7 +267,6 @@ export function EqFaderBoard({
                 );
               })}
             </div>
-            <h4 className="eq-band-title">{band.title}</h4>
           </section>
         ))}
       </div>

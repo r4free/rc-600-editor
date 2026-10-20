@@ -349,22 +349,22 @@ export function MemoryCopyModal({
           </SectionCard>
 
           <SectionCard
-            title="Mixer"
+            title="I/O Mixer"
             onSelectAll={() => patch({ mixerInput: true, mixerOutput: true })}
             onClear={() => patch({ mixerInput: false, mixerOutput: false })}
           >
-            <SubSection title="Input">
+            <SubSection title="Input Mixer">
               <Toggle
                 id="mixer-input"
-                label="Input"
+                label="Input Mixer"
                 checked={sel.mixerInput}
                 onChange={(v) => patch({ mixerInput: v })}
               />
             </SubSection>
-            <SubSection title="Output">
+            <SubSection title="Output Mixer">
               <Toggle
                 id="mixer-output"
-                label="Output"
+                label="Output Mixer"
                 checked={sel.mixerOutput}
                 onChange={(v) => patch({ mixerOutput: v })}
               />

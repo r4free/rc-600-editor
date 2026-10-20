@@ -9,6 +9,8 @@ const ICONS = {
   play: "mdi:play",
   playCircle: "mdi:play-circle-outline",
   stop: "mdi:stop",
+  checkboxOn: "mdi:checkbox-marked",
+  checkboxOff: "mdi:checkbox-blank-outline",
   dice: "mdi:dice-5",
   save: "mdi:content-save-outline",
   refresh: "mdi:refresh",

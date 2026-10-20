@@ -30,6 +30,10 @@ export type MemoryCopySelection = {
   // Mixer → Input / Output
   mixerInput: boolean;
   mixerOutput: boolean;
+  /** Play Level + Pan (tags C/D) for all six tracks — Memory Mixer. */
+  trackLevelPan: boolean;
+  /** Auto Rec Sens only (REC tag D) — Memory Mixer. */
+  autoRecSens: boolean;
 
   // Assigns
   assigns: number[];
@@ -69,8 +73,23 @@ export const MEMORY_COPY_MIXER_INPUT_TAGS = [
   "K",
   "L",
 ] as const;
-/** MIXER tags for Mixer → Output (incl. Loop / Rhythm levels). */
-export const MEMORY_COPY_MIXER_OUTPUT_TAGS = ["M", "N", "O", "P", "Q", "R", "S", "T"] as const;
+/** MIXER tags for Mixer → Output (incl. Loop / Rhythm / Phones / Master). */
+export const MEMORY_COPY_MIXER_OUTPUT_TAGS = [
+  "M",
+  "N",
+  "O",
+  "P",
+  "Q",
+  "R",
+  "S",
+  "T",
+  "U",
+  "V",
+] as const;
+/** TRACK tags for Memory Mixer Level + Pan. */
+export const MEMORY_COPY_TRACK_LEVEL_PAN_TAGS = ["C", "D"] as const;
+/** REC tags for Memory Mixer Auto Rec Sens. */
+export const MEMORY_COPY_REC_SENS_TAGS = ["D"] as const;
 
 export function emptyMemoryCopySelection(): MemoryCopySelection {
   return {
@@ -90,6 +109,8 @@ export function emptyMemoryCopySelection(): MemoryCopySelection {
     masterFx: false,
     mixerInput: false,
     mixerOutput: false,
+    trackLevelPan: false,
+    autoRecSens: false,
     assigns: [],
     ifxSetup: false,
     ifxBanks: [false, false, false, false],
@@ -135,6 +156,8 @@ export function selectAllMemoryCopySelection(): MemoryCopySelection {
   s.masterFx = true;
   s.mixerInput = true;
   s.mixerOutput = true;
+  s.trackLevelPan = true;
+  s.autoRecSens = true;
   s.assigns = Array.from({ length: 16 }, (_, i) => i + 1);
   s.ifxSetup = true;
   s.ifxBanks = [true, true, true, true];
@@ -154,7 +177,7 @@ export function memoryCopySelectionHasContent(sel: MemoryCopySelection): boolean
   if (sel.rec || sel.play || sel.rhythm) return true;
   if (sel.inputSetup || sel.inputEq || sel.inputDynamics) return true;
   if (sel.outputSetup || sel.routing || sel.outputEq || sel.masterFx) return true;
-  if (sel.mixerInput || sel.mixerOutput) return true;
+  if (sel.mixerInput || sel.mixerOutput || sel.trackLevelPan || sel.autoRecSens) return true;
   if (sel.assigns.length) return true;
   if (sel.ifxSetup || sel.ifxBanks.some(Boolean) || sel.ifxSlots.some((row) => row.some(Boolean))) {
     return true;
@@ -201,6 +224,8 @@ export function summarizeMemoryCopySelection(sel: MemoryCopySelection): string {
     const bits = [sel.mixerInput ? "Input" : null, sel.mixerOutput ? "Output" : null].filter(Boolean);
     parts.push(`Mixer (${bits.join(", ")})`);
   }
+  if (sel.trackLevelPan) parts.push("Track Level/Pan");
+  if (sel.autoRecSens) parts.push("Auto Rec Sens");
   if (sel.assigns.length) parts.push(`Assigns (${sel.assigns.length})`);
   const ifxN =
     (sel.ifxSetup ? 1 : 0) +
@@ -253,6 +278,8 @@ export function parseMemoryCopySelection(raw: unknown): MemoryCopySelection | nu
     "masterFx",
     "mixerInput",
     "mixerOutput",
+    "trackLevelPan",
+    "autoRecSens",
     "ifxSetup",
     "tfxSetup",
   ] as const) {
@@ -314,4 +341,14 @@ export function pickTags(source: TagMap, tags: readonly string[]): TagMap {
     if (source[tag] !== undefined) out[tag] = source[tag]!;
   }
   return out;
+}
+
+/** Selection for everything shown on the Memory Mixer tab. */
+export function memoryMixerCopySelection(): MemoryCopySelection {
+  const s = emptyMemoryCopySelection();
+  s.trackLevelPan = true;
+  s.autoRecSens = true;
+  s.mixerInput = true;
+  s.mixerOutput = true;
+  return s;
 }
