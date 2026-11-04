@@ -13,6 +13,7 @@ const viteEnv =
             VITE_RC_EDITOR_URL?: string;
             VITE_GR_EDITOR_URL?: string;
             VITE_TONEX_EDITOR_URL?: string;
+            VITE_VE_EDITOR_URL?: string;
             PROD?: boolean;
           };
         }
@@ -62,6 +63,13 @@ export const TONEX_EDITOR_URL = editorUrl(
   viteEnv?.VITE_TONEX_EDITOR_URL,
   "https://tonex-pedal-editor.onrender.com",
   "https://tonex-pedal-editor.test",
+);
+
+/** Local Herd alias; production Render URL unless `VITE_VE_EDITOR_URL` overrides. */
+export const VE_EDITOR_URL = editorUrl(
+  viteEnv?.VITE_VE_EDITOR_URL,
+  "https://ve-500-editor.onrender.com",
+  "https://ve.test",
 );
 
 export type LicenseInfo = {

@@ -17,7 +17,7 @@ npm run dev
 
 Sobe a API em **http://127.0.0.1:5191** e o Vite em **http://127.0.0.1:5190** (proxy `/api`). Abra o Vite no Chrome/Edge.
 
-O select da barra superior abre o VG-800, GM-800 ou TONEX Pedal (`https://vg.test` / `https://gm.test` / `https://tonex-pedal-editor.test` no local; `https://vg-800-editor.onrender.com` / `https://gm-800-editor.onrender.com` / `https://tonex-pedal-editor.onrender.com` em produção).
+O select da barra superior abre VG-800, GM-800, GT-1000, VE-500, GR-55 ou TONEX Pedal (aliases Herd no local, URLs Render em produção; p.ex. `https://ve.test` / `https://ve-500-editor.onrender.com`).
 
 **Desenvolvimento local:** com `RC600_REQUIRE_LICENSE=1` no `.env`, o Vite e a API pedem a mesma chave do site hospedado. Sem cookie de sessão, a tela de ativação aparece. Com a chave, o editor abre.
 

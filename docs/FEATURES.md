@@ -28,7 +28,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **User guide:** the Guide link opens an expanded English visual walkthrough with current editor screenshots, card/slider/fader gestures, EQ and routing, pedal controls, dedicated effect editors, step sequences and browser audio previews. Includes listening exercises, file/MIDI workflows, troubleshooting, light/dark themes, keyboard-accessible image enlargement and printing to PDF.
 - Memory / looper oriented web editor for the Boss RC-600.
 - Horizontal editor tabs and English-only UI (see Cursor rules).
-- Links to sibling VG / GM / GT / TONEX editors.
+- Links to sibling VG / GM / GT / VE-500 / TONEX editors.
 - On iPhone/iPad browsers without Web MIDI, a dismissible warning recommends opening the site in **Web MIDI Browser** (App Store), and MIDI Connect is enabled when that API is present.
 - **Setlists:** live charts, score guides, and setlist editing are part of the editor. On the hosted site they open with the same license key as the rest of the app. Setlists already saved in this browser stay in this browser.
 - **Keep playing** on alphaTab scores (opt-in): audio keeps going after you close the live viewer or leave Setlists. A floating mini-player shows the song on any screen and restores the viewer; the toggle is remembered in this browser. Stop, turning Keep playing off, or the end of the piece clears the session (playback itself does not resume after a full page reload).
@@ -105,7 +105,7 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **Guia de uso:** o link Guide abre um guia visual ampliado em inglês, com capturas atuais do editor, gestos dos cards/sliders/faders, EQ e roteamento, controles dos pedais, editores dedicados de efeitos, sequências de passos e previews de áudio no navegador. Inclui exercícios de escuta, fluxos de arquivos/MIDI, solução de problemas, temas claro/escuro, ampliação de imagens acessível por teclado e impressão em PDF.
 - Editor web orientado a memória / looper para o Boss RC-600.
 - Abas horizontais e UI só em inglês (ver Cursor rules).
-- Links para os editores irmãos VG / GM / GT / TONEX.
+- Links para os editores irmãos VG / GM / GT / VE-500 / TONEX.
 - Em iPhone/iPad sem Web MIDI, um aviso dispensável recomenda abrir o site no **Web MIDI Browser** (App Store), e o Connect MIDI é liberado quando essa API existe.
 - **Setlists:** charts ao vivo, partituras e edição de setlist fazem parte do editor. No site hospedado eles abrem com a mesma chave de licença do restante do aplicativo. Setlists já salvos neste navegador continuam neste navegador.
 - **Keep playing** nas partituras alphaTab (opcional): o áudio continua depois de fechar a view ao vivo ou sair de Setlists. Um mini-player flutuante mostra a música em qualquer tela e restaura o viewer; o toggle fica lembrado neste navegador. Stop, desligar Keep playing ou o fim da peça limpam a sessão (a reprodução em si não retoma após um reload completo).
@@ -156,6 +156,10 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 - **Chave local:** o build de desenvolvimento local tem o botão **Relationship** na barra de cima. Ele pede nome, e-mail, local opcional, datas opcionais de início e fim, e se a chave é **Full** ou **Preview**. Os botões **Trial period** (3, 7, 14 ou 30 dias, ou No end) preenchem as datas a partir de hoje. Sem datas, a chave não expira. A linha de comando aceita `--days N` e `--preview`. Em desenvolvimento o botão também fica na tela de ativação, para emitir uma chave antes de entrar. O botão fica de fora do build de produção, e o site hospedado responde o mesmo pedido com “não encontrado”.
 
 ## Changelog
+
+### 2026-11-04 — VE-500 in product switcher
+
+**EN:** The top-bar select now includes **VE-500 Editor** (`https://ve.test` locally, `https://ve-500-editor.onrender.com` in production).
 
 ### 2026-10-20 — Memory Mixer track output routing
 

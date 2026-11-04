@@ -1,12 +1,21 @@
-import { GM_EDITOR_URL, GR_EDITOR_URL, GT_EDITOR_URL, RC_EDITOR_URL, TONEX_EDITOR_URL, VG_EDITOR_URL } from "../api";
+import {
+  GM_EDITOR_URL,
+  GR_EDITOR_URL,
+  GT_EDITOR_URL,
+  RC_EDITOR_URL,
+  TONEX_EDITOR_URL,
+  VE_EDITOR_URL,
+  VG_EDITOR_URL,
+} from "../api";
 
-export type EditorPlatformId = "rc-600" | "vg-800" | "gm-800" | "gt-1000" | "gr-55" | "tonex";
+export type EditorPlatformId = "rc-600" | "vg-800" | "gm-800" | "gt-1000" | "ve-500" | "gr-55" | "tonex";
 
 export const EDITOR_PLATFORMS: { id: EditorPlatformId; label: string; url: string }[] = [
   { id: "rc-600", label: "RC-600 Editor", url: RC_EDITOR_URL },
   { id: "vg-800", label: "VG-800 Editor", url: VG_EDITOR_URL },
   { id: "gm-800", label: "GM-800 Editor", url: GM_EDITOR_URL },
   { id: "gt-1000", label: "GT-1000 Editor", url: GT_EDITOR_URL },
+  { id: "ve-500", label: "VE-500 Editor", url: VE_EDITOR_URL },
   { id: "gr-55", label: "GR-55 Editor", url: GR_EDITOR_URL },
   { id: "tonex", label: "TONEX Pedal Editor", url: TONEX_EDITOR_URL },
 ];

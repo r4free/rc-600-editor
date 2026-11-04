@@ -2,6 +2,115 @@
   "version": 1,
   "parts": [
     {
+      "id": "anunciacao-intro-mw1003zx",
+      "name": "Anunciacao Intro",
+      "kind": "intro",
+      "tags": [
+        "Anunciacao",
+        "brazi"
+      ],
+      "updatedAt": "2026-11-03T18:05:16.234Z",
+      "tempoBpm": 100,
+      "numerator": 2,
+      "denominator": 4,
+      "bars": 4,
+      "lengthTicks": 3840,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 42,
+          "velocity": 74
+        },
+        {
+          "tick": 484,
+          "note": 42,
+          "velocity": 77
+        },
+        {
+          "tick": 963,
+          "note": 42,
+          "velocity": 73
+        },
+        {
+          "tick": 3355,
+          "note": 37,
+          "velocity": 73
+        },
+        {
+          "tick": 3597,
+          "note": 55,
+          "velocity": 76
+        }
+      ]
+    },
+    {
+      "id": "anunciacao-variation-a-mw1003zx",
+      "name": "Anunciacao Variation A",
+      "kind": "variation",
+      "tags": [
+        "Anunciacao",
+        "brazi"
+      ],
+      "updatedAt": "2026-11-03T18:05:16.244Z",
+      "tempoBpm": 100,
+      "numerator": 2,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 960,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 36,
+          "velocity": 74
+        },
+        {
+          "tick": 4,
+          "note": 42,
+          "velocity": 73
+        },
+        {
+          "tick": 115,
+          "note": 42,
+          "velocity": 76
+        },
+        {
+          "tick": 244,
+          "note": 42,
+          "velocity": 75
+        },
+        {
+          "tick": 363,
+          "note": 36,
+          "velocity": 79
+        },
+        {
+          "tick": 476,
+          "note": 42,
+          "velocity": 75
+        },
+        {
+          "tick": 599,
+          "note": 42,
+          "velocity": 75
+        },
+        {
+          "tick": 719,
+          "note": 37,
+          "velocity": 80
+        },
+        {
+          "tick": 719,
+          "note": 42,
+          "velocity": 84
+        },
+        {
+          "tick": 843,
+          "note": 42,
+          "velocity": 82
+        }
+      ]
+    },
+    {
       "id": "bemmaior-variation-a-mv1j37pm",
       "name": "bemmaior Variation A",
       "kind": "variation",
@@ -1406,6 +1515,33 @@
       ]
     },
     {
+      "id": "anunciacao-fill-a-mw1003zx",
+      "name": "Anunciacao Fill A",
+      "kind": "fill",
+      "tags": [
+        "Anunciacao",
+        "brazi"
+      ],
+      "updatedAt": "2026-11-03T18:05:16.266Z",
+      "tempoBpm": 100,
+      "numerator": 2,
+      "denominator": 4,
+      "bars": 1,
+      "lengthTicks": 960,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 36,
+          "velocity": 75
+        },
+        {
+          "tick": 2,
+          "note": 42,
+          "velocity": 74
+        }
+      ]
+    },
+    {
       "id": "bemmaior-fill-a-mv1j37pm",
       "name": "bemmaior Fill A",
       "kind": "fill",
@@ -1795,6 +1931,78 @@
           "tick": 1855,
           "note": 42,
           "velocity": 49
+        }
+      ]
+    },
+    {
+      "id": "anunciacao-ending-mw1003zx",
+      "name": "Anunciacao Ending",
+      "kind": "ending",
+      "tags": [
+        "Anunciacao",
+        "brazi"
+      ],
+      "updatedAt": "2026-11-03T18:05:16.275Z",
+      "tempoBpm": 100,
+      "numerator": 2,
+      "denominator": 4,
+      "bars": 2,
+      "lengthTicks": 1920,
+      "notes": [
+        {
+          "tick": 0,
+          "note": 36,
+          "velocity": 73
+        },
+        {
+          "tick": 0,
+          "note": 42,
+          "velocity": 74
+        },
+        {
+          "tick": 238,
+          "note": 42,
+          "velocity": 79
+        },
+        {
+          "tick": 243,
+          "note": 47,
+          "velocity": 80
+        },
+        {
+          "tick": 476,
+          "note": 42,
+          "velocity": 84
+        },
+        {
+          "tick": 481,
+          "note": 48,
+          "velocity": 74
+        },
+        {
+          "tick": 717,
+          "note": 50,
+          "velocity": 82
+        },
+        {
+          "tick": 721,
+          "note": 52,
+          "velocity": 84
+        },
+        {
+          "tick": 958,
+          "note": 38,
+          "velocity": 83
+        },
+        {
+          "tick": 959,
+          "note": 55,
+          "velocity": 75
+        },
+        {
+          "tick": 965,
+          "note": 36,
+          "velocity": 81
         }
       ]
     },
