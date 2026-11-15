@@ -644,6 +644,7 @@ export default function DevLicenseButton() {
       <button
         type="button"
         className="btn"
+        data-action-tone="relationship"
         onClick={() => setOpen(true)}
         title="Customer keys and ready-to-copy messages. Local development only; not in the production site."
       >

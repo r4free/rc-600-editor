@@ -71,7 +71,7 @@ import {
   type MemoryClipboard,
   type MemoryCopySelection,
 } from "./presets/memoryClipboard";
-import { Icon } from "./components/Icon";
+import { Icon, type IconName } from "./components/Icon";
 import { SentryFeedbackButton } from "./components/SentryFeedbackButton";
 import { InfoTip } from "./components/InfoTip";
 import { HoverTip } from "./components/HoverTip";
@@ -243,6 +243,7 @@ export function App() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveResult, setSaveResult] = useState<"saved" | "failed" | null>(null);
   const [discardAllOpen, setDiscardAllOpen] = useState(false);
   const [rhythmConverterView, setRhythmConverterView] = usePersistedTab<RhythmConverterView>(
     "rhythmConverter",
@@ -550,6 +551,7 @@ export function App() {
       autosaveReadyRef.current = false;
       setRootLabel(label);
       setBackupAck(opts?.backupAck ?? false);
+      setSaveResult(null);
       setPendingHandle(null);
       setDrafts(new Map());
       draftsRef.current = new Map();
@@ -1009,7 +1011,7 @@ export function App() {
     if (mode === "review") {
       applyProjectNow(project, slotRef.current);
       setStatus(
-        `Loaded ${describeProject(project)} as unsaved edits. Check them, then Save all / Save system to write to the RC-600.`,
+        `Loaded ${describeProject(project)} as unsaved edits. Check them, then Save all memories / Save system to write to the RC-600.`,
       );
       return;
     }
@@ -1138,7 +1140,7 @@ export function App() {
         : a && b
           ? pickActiveXml(a, b)
           : { side: (a ? "a" : "b") as "a" | "b", xml: (a || b)! };
-    const base = targetSlot === slotRef.current ? xml : picked.xml;
+    const base = picked.xml;
     const { xml: saved } = await assembleLocal({ kind: "patch", xml: base, ops: slotOps });
     const pair = memoryFilesAfterSave(saved);
     return {
@@ -1177,19 +1179,20 @@ export function App() {
       setError("Enter a valid license key before saving.");
       return;
     }
-    if (!backupAck) {
+    if (dirHandleRef.current && !backupAck) {
       setError("Confirm the backup before writing to the looper.");
       return;
     }
     if (!dirty) return;
     setSaving(true);
+    setSaveResult(null);
     setError(null);
     try {
       const { written, saved } = await saveSlotXml(slot, baseXml, ops, files);
       const next = await commitSlotFiles(written, files);
       setFiles(next);
-      setBaseXml(saved);
-      setDrafts((prev) => clearSlotDraft(prev, slot));
+      if (slotRef.current === slot) setBaseXml(saved);
+      setDrafts((prev) => removeSavedOps(prev, slot, ops));
       setCommitted((prev) => commitMemoryOps(prev, slot, ops));
 
       if (dirHandleRef.current) {
@@ -1204,7 +1207,9 @@ export function App() {
       } else {
         setStatus(`Updated MEMORY${String(slot).padStart(3, "0")}A/B — Export ZIP to copy onto the pedal`);
       }
+      setSaveResult("saved");
     } catch (e) {
+      setSaveResult("failed");
       setError(String(e));
       if (String(e).includes("License required") || String(e).includes("expired")) {
         void fetchSession().then(setSession);
@@ -1224,40 +1229,35 @@ export function App() {
       setError("Enter a valid license key before saving.");
       return;
     }
-    if (!backupAck && (dirHandleRef.current || !auto)) {
+    if (dirHandleRef.current && !backupAck) {
       setError("Confirm the backup before writing to the looper.");
       return;
     }
     setSaving(true);
+    setSaveResult(null);
     setError(null);
     try {
-      let next = new Map(files);
+      let next = files;
       let savedCount = 0;
-      let nextCommitted = committed;
-      const savedOps = new Map<number, PatchOp[]>();
       for (const s of dirtySlots) {
         const slotOps = drafts.get(s) ?? [];
         if (slotOps.length === 0) continue;
         const { written, saved } = await saveSlotXml(s, s === slot ? baseXml : "", slotOps, next);
         next = await commitSlotFiles(written, next);
-        if (s === slot) setBaseXml(saved);
-        nextCommitted = commitMemoryOps(nextCommitted, s, slotOps);
-        savedOps.set(s, slotOps);
+        setFiles(next);
+        setDrafts((prev) => removeSavedOps(prev, s, slotOps));
+        setCommitted((prev) => commitMemoryOps(prev, s, slotOps));
+        if (s === slotRef.current) {
+          setBaseXml(saved);
+          if (dirHandleRef.current && s === slot) {
+            pendingMemoryReloadRef.current = {
+              slot: s,
+              kit: model ? num(model.rhythm, "D", 0) : null,
+              assign: model ? findRhythmKitAssign(model.assigns) : null,
+            };
+          }
+        }
         savedCount += 1;
-      }
-      setFiles(next);
-      setDrafts((prev) => {
-        let out = prev;
-        for (const [s, slotOps] of savedOps) out = removeSavedOps(out, s, slotOps);
-        return out;
-      });
-      setCommitted(nextCommitted);
-      if (dirHandleRef.current && slot != null && dirtySlots.includes(slot)) {
-        pendingMemoryReloadRef.current = {
-          slot,
-          kit: model ? num(model.rhythm, "D", 0) : null,
-          assign: model ? findRhythmKitAssign(model.assigns) : null,
-        };
       }
       if (auto) {
         noteAutoSave(`${savedCount} memor${savedCount === 1 ? "y" : "ies"}`);
@@ -1268,7 +1268,9 @@ export function App() {
             : `Updated ${savedCount} memor${savedCount === 1 ? "y" : "ies"} — Export ZIP to copy onto the pedal`,
         );
       }
+      setSaveResult("saved");
     } catch (e) {
+      setSaveResult("failed");
       setError(String(e));
       if (String(e).includes("License required") || String(e).includes("expired")) {
         void fetchSession().then(setSession);
@@ -1279,14 +1281,12 @@ export function App() {
   }
 
   const autoSaveActive = editorSettings.autoSave && (hasDirHandle || offline) && !demoMode;
-  const autoSaveBlocked = !autoSaveActive
-    ? null
-    : previewBlocksPedalSave(session?.plan, hasDirHandle)
+  const saveBlocked = previewBlocksPedalSave(session?.plan, hasDirHandle)
       ? PREVIEW_PEDAL_SAVE
       : requireLicense && !sessionOk
-        ? "Enter a valid license key to auto-save."
+        ? "Enter a valid license key to save."
         : hasDirHandle && !backupAck
-          ? "Confirm the backup to start auto-saving."
+          ? "Confirm your ROLAND backup to save."
           : null;
   const [lastAutoSave, setLastAutoSave] = useState<{ time: string; detail: string } | null>(null);
   function noteAutoSave(what: string) {
@@ -1298,9 +1298,32 @@ export function App() {
       }`,
     });
   }
+  const hasPendingEdits = anyMemoryDirty || sysDirty;
+  const pendingScopes = [
+    anyMemoryDirty ? `${dirtySlots.length} memor${dirtySlots.length === 1 ? "y" : "ies"}` : null,
+    sysDirty ? "system" : null,
+  ].filter(Boolean).join(" + ");
+  const saveState = saving ? "saving"
+    : hasPendingEdits && saveBlocked ? "blocked"
+    : saveResult === "failed" && hasPendingEdits ? "failed"
+    : hasPendingEdits ? "pending"
+    : saveResult === "saved" ? "saved"
+    : "idle";
+  const saveIndicator = ({
+    saving: { icon: "clock", label: autoSaveActive ? "Auto-saving…" : "Saving…" },
+    failed: { icon: "alert", label: autoSaveActive ? "Auto-save failed" : `Save failed · ${pendingScopes} pending` },
+    blocked: { icon: "alert", label: autoSaveActive ? "Auto-save paused" : `Save blocked · ${pendingScopes}` },
+    pending: { icon: autoSaveActive ? "clock" : "edit", label: autoSaveActive ? "Auto-save pending" : `Unsaved · ${pendingScopes}` },
+    saved: { icon: "check", label: lastAutoSave && autoSaveActive ? `Auto-saved ${lastAutoSave.time}` : "Saved" },
+    idle: { icon: "save", label: autoSaveActive ? "Auto-save on" : "No unsaved changes" },
+  } as const)[saveState];
+  const autoSaveDetail = [
+    hasPendingEdits ? `Pending: ${pendingScopes}` : null,
+    saveState === "saved" ? lastAutoSave?.detail : null,
+  ].filter(Boolean).join(" · ");
   const autoSaveTickRef = useRef<() => void>(() => {});
   autoSaveTickRef.current = () => {
-    if (!autoSaveActive || autoSaveBlocked || saving) return;
+    if (!autoSaveActive || saveBlocked || saving) return;
     // One write per tick: memory and System saves both commit into `files`.
     if (anyMemoryDirty) void saveAll({ auto: true });
     else if (sysDirty && sysBaseXml) void saveSystem({ auto: true });
@@ -1361,11 +1384,12 @@ export function App() {
       setError("Enter a valid license key before saving.");
       return;
     }
-    if (!backupAck && (dirHandleRef.current || !auto)) {
+    if (dirHandleRef.current && !backupAck) {
       setError("Confirm the backup before writing.");
       return;
     }
     setSaving(true);
+    setSaveResult(null);
     setError(null);
     try {
       const applied = sysOps;
@@ -1377,7 +1401,9 @@ export function App() {
           ? "Saved SYSTEM1.RC0 and SYSTEM2.RC0"
           : "System updated — Export ZIP to copy onto the pedal",
       );
+      setSaveResult("saved");
     } catch (e) {
+      setSaveResult("failed");
       setError(String(e));
       if (String(e).includes("License required") || String(e).includes("expired")) {
         void fetchSession().then(setSession);
@@ -1440,7 +1466,7 @@ export function App() {
       setError("Enter a valid license key before copying.");
       return;
     }
-    if (!backupAck) {
+    if (dirHandleRef.current && !backupAck) {
       setError("Confirm the backup before writing.");
       return;
     }
@@ -1874,19 +1900,21 @@ export function App() {
     saveFolderMeta({ backupAck });
   }, [hasDirHandle, backupAck]);
 
-  const tabs: { id: TabId; label: string }[] = [
-    { id: "info", label: "Info" },
-    { id: "loop", label: "Loop" },
-    { id: "memMixer", label: "Memory Mixer" },
-    { id: "audio", label: "Audio" },
-    { id: "ctl", label: "Ctl Func" },
-    { id: "assigns", label: "Assigns" },
-    { id: "input", label: "Input" },
-    { id: "output", label: "Output" },
-    { id: "mixer", label: "I/O Mixer" },
-    { id: "ifx", label: "Input FX" },
-    { id: "tfx", label: "Track FX" },
+  const tabs: { id: TabId; label: string; icon: IconName; tone: string }[] = [
+    { id: "info", label: "Info", icon: "info", tone: "memory" },
+    { id: "loop", label: "Loop", icon: "loop", tone: "loop" },
+    { id: "memMixer", label: "Memory Mixer", icon: "equalizer", tone: "loop" },
+    { id: "audio", label: "Audio", icon: "headphones", tone: "loop" },
+    { id: "ctl", label: "Ctl Func", icon: "controls", tone: "control" },
+    { id: "assigns", label: "Assigns", icon: "chain", tone: "control" },
+    { id: "input", label: "Input", icon: "mic", tone: "signal" },
+    { id: "output", label: "Output", icon: "master", tone: "signal" },
+    { id: "mixer", label: "I/O Mixer", icon: "tune", tone: "signal" },
+    { id: "ifx", label: "Input FX", icon: "mfx", tone: "effects" },
+    { id: "tfx", label: "Track FX", icon: "blocks", tone: "effects" },
   ];
+
+  const memoryTabTone = tabs.find((item) => item.id === tab)?.tone;
 
   const memoryOptions = (
     <>
@@ -1974,32 +2002,6 @@ export function App() {
                 onChannel={setMidiCh}
               />
               )}
-              {autoSaveActive ? (
-                autoSaveBlocked ? (
-                  <span className="status-pill auto-save-pill is-blocked" role="status" title={autoSaveBlocked}>
-                    <Icon name="alert" size={13} />
-                    Auto-save paused
-                  </span>
-                ) : anyMemoryDirty || sysDirty || saving ? (
-                  <span
-                    className="status-pill auto-save-pill is-saving"
-                    role="status"
-                    aria-live="polite"
-                    title={`Memory and System changes are saved every ${editorSettings.autoSaveSeconds} seconds. Change this under Editor settings.`}
-                  >
-                    <Icon name="save" size={13} />
-                    Saving…
-                    <span className="auto-save-bar" aria-hidden="true">
-                      <i />
-                    </span>
-                  </span>
-                ) : lastAutoSave ? (
-                  <span className="status-pill auto-save-pill" role="status" title={lastAutoSave.detail}>
-                    <Icon name="save" size={13} />
-                    Auto-saved {lastAutoSave.time}
-                  </span>
-                ) : null
-              ) : null}
             </div>
           </div>
           {demoMode ? null : (
@@ -2041,7 +2043,7 @@ export function App() {
             />
           ) : null}
           {editorSettings.showGuide ? (
-          <a className="btn" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)" style={{ textDecoration: "none" }}>
+          <a className="btn" data-action-tone="help" href="./guia.html" target="_blank" rel="noopener noreferrer" aria-label="User guide (opens in a new tab)">
             <Icon name="help" size={14} /> Guide
           </a>
           ) : null}
@@ -2050,6 +2052,7 @@ export function App() {
             <button
               type="button"
               className="btn ghost"
+              data-action-tone="license"
               aria-label="Clear license"
               title="Clear license: removes the license from this browser so you can use it somewhere else"
               onClick={() => {
@@ -2070,6 +2073,7 @@ export function App() {
           <button
             type="button"
             className="btn primary"
+            data-action-tone="open"
             onClick={openDirectory}
             title="Open the ROLAND folder on USB or disk with write access. Save writes straight back to those files."
           >
@@ -2082,7 +2086,7 @@ export function App() {
             label="Edit offline"
             text="Edit all 99 memories and the system settings without the RC-600 connected. Edits are kept in this browser. When you are done, use Export edits to take them to another device, or Export ZIP to copy them onto the pedal."
           >
-            <button type="button" className="btn primary" onClick={() => void switchToOffline()}>
+            <button type="button" className="btn" data-action-tone="open" onClick={() => void switchToOffline()}>
               <Icon name="edit" size={14} />
               Edit offline
             </button>
@@ -2096,9 +2100,10 @@ export function App() {
           {demoMode ? null : (
           <label
             className="btn"
+            data-action-tone="import"
             title="Load a ROLAND folder from disk without writing back. After Save, use Export ZIP to copy the files onto the pedal."
           >
-            <Icon name="folderOpen" size={14} />
+            <Icon name="upload" size={14} />
             Import folder
             <input
               type="file"
@@ -2113,6 +2118,7 @@ export function App() {
           {demoMode ? null : (
           <label
             className="btn"
+            data-action-tone="import"
             title="Load a ZIP backup of the ROLAND folder. After Save, use Export ZIP to copy the files onto the pedal."
           >
             <Icon name="archive" size={14} />
@@ -2129,6 +2135,7 @@ export function App() {
           <button
             type="button"
             className="btn"
+            data-action-tone="export"
             disabled={!files.size}
             onClick={downloadZip}
             title="Download a ZIP backup of the loaded memories. Copy it onto the pedal if you did not use Open folder."
@@ -2148,7 +2155,8 @@ export function App() {
           >
             <button
               type="button"
-              className="btn warn edits-transfer"
+              className="btn"
+              data-action-tone="export"
               disabled={!hasSessionEdits}
               onClick={exportProject}
             >
@@ -2162,7 +2170,7 @@ export function App() {
             label="Import edits"
             text="Open a file made with Export edits on this or another device. You see which memories it contains before anything changes. Each memory goes back into its own slot (Memory 1 into Memory 1) and the other memories are not touched."
           >
-            <label className="btn warn edits-transfer">
+            <label className="btn" data-action-tone="import">
               <Icon name="upload" size={14} />
               Import edits
               <input
@@ -2181,6 +2189,7 @@ export function App() {
           <button
             type="button"
             className="btn ghost"
+            data-action-tone="caution"
             onClick={() => setDiscardOfflineOpen(true)}
             title="Reset every memory and the system settings to the starting template and delete the autosaved offline edits"
           >
@@ -2195,7 +2204,8 @@ export function App() {
             >
               <button
                 type="button"
-                className="btn primary connect-pedal-btn"
+                className="btn primary"
+                data-action-tone="open"
                 onClick={() => setUsbConnectOpen(true)}
               >
                 <Icon name="usb" size={14} />
@@ -2206,6 +2216,7 @@ export function App() {
             <button
               type="button"
               className="btn"
+              data-action-tone="caution"
               disabled={ejecting}
               onClick={() => void ejectUsb()}
               title="Eject USB Storage so the RC-600 can leave CONNECTING and you can power off"
@@ -2217,6 +2228,7 @@ export function App() {
             <button
               type="button"
               className="btn primary"
+              data-action-tone="open"
               disabled={ejecting}
               onClick={() => setUsbConnectOpen(true)}
               title="How to put the RC-600 in USB Storage, then open the ROLAND folder"
@@ -2225,85 +2237,84 @@ export function App() {
               Connect to USB
             </button>
           )}
-          {demoMode || autoSaveActive ? null : (
-          <div
-            className={`topbar-save-actions${anyMemoryDirty || sysDirty ? " has-pending" : ""}`}
-            aria-label="Save and discard changes"
-          >
-            <button
-              type="button"
-              className="btn warn"
-              disabled={!dirty || !slot || saving || previewBlocksPedalSave(session.plan, hasDirHandle)}
-              title={previewBlocksPedalSave(session.plan, hasDirHandle) ? PREVIEW_PEDAL_SAVE : undefined}
-              onClick={() => void saveCurrent()}
-            >
-              <Icon name="save" size={14} />
-              Save memory
-            </button>
-            <button
-              type="button"
-              className="btn warn"
-              disabled={!anyMemoryDirty || saving || previewBlocksPedalSave(session.plan, hasDirHandle)}
-              title={previewBlocksPedalSave(session.plan, hasDirHandle) ? PREVIEW_PEDAL_SAVE : undefined}
-              onClick={() => void saveAll()}
-            >
-              <Icon name="save" size={14} />
-              Save all
-            </button>
-            <button
-              type="button"
-              className="btn ghost discard-action"
-              disabled={!dirty || !slot || saving}
-              onClick={discardMemory}
-            >
-              <Icon name="restore" size={14} />
-              Discard memory
-            </button>
-            <button
-              type="button"
-              className="btn ghost discard-action"
-              disabled={!anyMemoryDirty || saving}
-              onClick={() => setDiscardAllOpen(true)}
-            >
-              <Icon name="restore" size={14} />
-              Discard all
-            </button>
-          </div>
-          )}
-          {(() => {
-            const statusText = [
-              demoMode ? "Demo · view only" : null,
-              !session.license && session.mode === "open" ? "public" : null,
-              status || null,
-            ]
-              .filter(Boolean)
-              .join(" · ");
-            const memoryUnsaved = !autoSaveActive && (dirty || anyMemoryDirty);
-            const systemUnsaved = !autoSaveActive && sysDirty;
-            const showUnsaved = memoryUnsaved || systemUnsaved;
-            if (!statusText && !showUnsaved) return null;
-            return (
-          <span
-            className={`status-pill ${(memoryUnsaved && dirty) || systemUnsaved ? "dirty" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            {(memoryUnsaved && dirty) || systemUnsaved ? (
-              <span className="unsaved-indicator">
-                <Icon name="dirty" size={11} />
-                Unsaved changes
-              </span>
-            ) : memoryUnsaved ? (
-              <span className="unsaved-indicator">
-                <Icon name="dirty" size={11} />
-                Unsaved memories
-              </span>
-            ) : null}
-            {statusText}
-          </span>
-            );
-          })()}
+          {autoSaveActive && files.size > 0 ? (
+            <span className={`save-state auto-save-status is-${saveState}`} role="status" title={autoSaveDetail || undefined}>
+              <Icon name={saveIndicator.icon} size={13} />
+              {saveIndicator.label}
+              {saveState === "blocked" ? <span className="auto-save-reason">{saveBlocked}</span> : null}
+            </span>
+          ) : null}
+          {status || demoMode ? (
+            <span className="status-pill" role="status">{demoMode ? "Demo · view only" : status}</span>
+          ) : null}
         </div>
+        {!demoMode && !autoSaveActive && files.size > 0 ? (
+          <div className="save-bar" role="group" aria-label="Save and discard changes">
+            <div className="save-summary">
+              <span className={`save-state is-${saveState}`} role="status">
+                <Icon name={saveIndicator.icon} size={16} />
+                {saveIndicator.label}
+              </span>
+              <span className="save-detail">
+                {hasDirHandle ? "Writes to the open ROLAND folder" : "Session only · Export ZIP to transfer to the RC-600"}
+              </span>
+              {saveBlocked && hasPendingEdits ? <span className="save-blocked-reason">{saveBlocked}</span> : null}
+            </div>
+            <div className="topbar-save-actions">
+              <div className="save-buttons">
+                <button
+                  type="button"
+                  className={`btn ${workspace === "system" && sysDirty ? "save-secondary" : "save-primary"}`}
+                  disabled={!dirty || !slot || saving || Boolean(saveBlocked)}
+                  onClick={() => void saveCurrent()}
+                >
+                  <Icon name="save" size={16} />
+                  {slot ? `Save memory ${String(slot).padStart(2, "0")}` : "Save memory"}
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${!dirty && anyMemoryDirty && !(workspace === "system" && sysDirty) ? "save-primary" : "save-secondary"}`}
+                  disabled={!anyMemoryDirty || saving || Boolean(saveBlocked)}
+                  onClick={() => void saveAll()}
+                >
+                  <Icon name="saveAll" size={16} />
+                  Save all memories
+                </button>
+                {sysBaseXml ? (
+                  <button
+                    type="button"
+                    className={`btn ${sysDirty && (workspace === "system" || !anyMemoryDirty) ? "save-primary" : "save-secondary"}`}
+                    disabled={!sysDirty || saving || Boolean(saveBlocked)}
+                    onClick={() => void saveSystem()}
+                  >
+                    <Icon name="system" size={16} />
+                    Save system
+                  </button>
+                ) : null}
+              </div>
+              <div className="discard-buttons">
+                <button
+                  type="button"
+                  className="btn ghost discard-action"
+                  disabled={!dirty || !slot || saving}
+                  onClick={discardMemory}
+                >
+                  <Icon name="restore" size={14} />
+                  Discard memory
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost discard-action"
+                  disabled={!anyMemoryDirty || saving}
+                  onClick={() => setDiscardAllOpen(true)}
+                >
+                  <Icon name="restore" size={14} />
+                  Discard all memories
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </header>
 
       {demoMode ? (
@@ -2317,21 +2328,22 @@ export function App() {
 
       {!demoMode && env.blockReason === "ios" ? <IosMidiNotice /> : null}
 
-      {!demoMode && !backupAck && files.size > 0 && (
+      {!demoMode && hasDirHandle && !backupAck && files.size > 0 && (
         <div className="warn-banner">
           <p>
             Back up the ROLAND folder before writing to the looper. Saves patch .RC0 files in place
             (A/B pair + count).
           </p>
           <button type="button" className="btn primary" onClick={() => setBackupAck(true)}>
-            Backup done — unlock save
+            <Icon name="check" size={16} />
+            Confirm backup
           </button>
         </div>
       )}
 
       {error && (
-        <div className="warn-banner" style={{ borderColor: "var(--danger)" }}>
-          <p>{error}</p>
+        <div className="warn-banner editor-error" role="alert">
+          <p><Icon name="alert" size={16} /> {error}</p>
           <button type="button" className="btn ghost" onClick={() => setError(null)}>
             Close
           </button>
@@ -2354,11 +2366,12 @@ export function App() {
       ) : files.size === 0 ? (
         <div className="main">
           <section className="editor-panel">
-            <div className="tabs tabs-workspace" role="tablist" aria-label="Workspace">
+            <div className="tabs tabs-workspace tab-palette" role="tablist" aria-label="Workspace">
               <button
                 type="button"
                 role="tab"
                 aria-selected={workspace === "memory"}
+                data-tab-tone="memory"
                 className={`tab ${workspace === "memory" ? "active" : ""}`}
                 onClick={() => setWorkspace("memory")}
               >
@@ -2369,6 +2382,7 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "system"}
+                data-tab-tone="system"
                 className={`tab ${workspace === "system" ? "active" : ""}`}
                 onClick={() => setWorkspace("system")}
               >
@@ -2379,16 +2393,18 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "play-drum"}
+                data-tab-tone="play-drum"
                 className={`tab ${workspace === "play-drum" ? "active" : ""}`}
                 onClick={() => setWorkspace("play-drum")}
               >
-                <Icon name="note" size={14} />
+                <Icon name="grid" size={14} />
                 Play Drum
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={workspace === "setlists"}
+                data-tab-tone="setlists"
                 className={`tab ${workspace === "setlists" ? "active" : ""}`}
                 onClick={() => setWorkspace("setlists")}
               >
@@ -2399,6 +2415,7 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "tuner" || tunerWindowOpen}
+                data-tab-tone="tuner"
                 className={`tab ${workspace === "tuner" || tunerWindowOpen ? "active" : ""}`}
                 onClick={openTuner}
               >
@@ -2407,6 +2424,7 @@ export function App() {
               </button>
               <button
                 type="button"
+                data-tab-tone="converter"
                 className={`tab ${rhythmConverterOpen ? "active" : ""}`}
                 aria-haspopup="dialog"
                 onClick={openRhythmConverter}
@@ -2416,12 +2434,13 @@ export function App() {
               </button>
               <button
                 type="button"
+                data-tab-tone="settings"
                 className={`tab ${editorSettingsOpen ? "active" : ""}`}
                 aria-haspopup="dialog"
                 onClick={() => setEditorSettingsOpen(true)}
               >
-                <Icon name="system" size={14} />
-                Editor
+                <Icon name="tune" size={14} />
+                Editor settings
               </button>
             </div>
             {editorSettings.showBreadcrumbs ? <NavigationBreadcrumb /> : null}
@@ -2575,12 +2594,13 @@ export function App() {
       ) : (
         <div className="main">
           <section className="editor-panel">
-            <div className="tabs tabs-workspace" role="tablist" aria-label="Workspace">
+            <div className="tabs tabs-workspace tab-palette" role="tablist" aria-label="Workspace">
               {editorSettings.showMemorySidebar ? (
               <button
                 type="button"
                 role="tab"
                 aria-selected={workspace === "memory"}
+                data-tab-tone="memory"
                 className={`tab ${workspace === "memory" ? "active" : ""}`}
                 onClick={() => setWorkspace("memory")}
               >
@@ -2588,7 +2608,7 @@ export function App() {
                 Memory
               </button>
               ) : (
-              <label className={`tab tab-memory-select ${workspace === "memory" ? "active" : ""}`}>
+              <label data-tab-tone="memory" className={`tab tab-memory-select ${workspace === "memory" ? "active" : ""}`}>
                 <Icon name="library" size={14} />
                 <select
                   aria-label="Memory"
@@ -2608,6 +2628,7 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "system"}
+                data-tab-tone="system"
                 className={`tab ${workspace === "system" ? "active" : ""}`}
                 onClick={() => {
                   setWorkspace("system");
@@ -2621,16 +2642,18 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "play-drum"}
+                data-tab-tone="play-drum"
                 className={`tab ${workspace === "play-drum" ? "active" : ""}`}
                 onClick={() => setWorkspace("play-drum")}
               >
-                <Icon name="note" size={14} />
+                <Icon name="grid" size={14} />
                 Play Drum
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={workspace === "setlists"}
+                data-tab-tone="setlists"
                 className={`tab ${workspace === "setlists" ? "active" : ""}`}
                 onClick={() => setWorkspace("setlists")}
               >
@@ -2641,6 +2664,7 @@ export function App() {
                 type="button"
                 role="tab"
                 aria-selected={workspace === "tuner" || tunerWindowOpen}
+                data-tab-tone="tuner"
                 className={`tab ${workspace === "tuner" || tunerWindowOpen ? "active" : ""}`}
                 onClick={openTuner}
               >
@@ -2649,6 +2673,7 @@ export function App() {
               </button>
               <button
                 type="button"
+                data-tab-tone="converter"
                 className={`tab ${rhythmConverterOpen ? "active" : ""}`}
                 aria-haspopup="dialog"
                 onClick={openRhythmConverter}
@@ -2658,44 +2683,19 @@ export function App() {
               </button>
               <button
                 type="button"
+                data-tab-tone="settings"
                 className={`tab ${editorSettingsOpen ? "active" : ""}`}
                 aria-haspopup="dialog"
                 onClick={() => setEditorSettingsOpen(true)}
               >
-                <Icon name="system" size={14} />
-                Editor
+                <Icon name="tune" size={14} />
+                Editor settings
               </button>
               {sysBaseXml && (workspace === "system" || sysDirty) ? (
                 <>
-                  <span className="status-pill" style={{ marginLeft: "auto" }}>
+                  <span className="status-pill system-file-status">
                     SYSTEM{sysSide} · count {systemModel?.count ?? "—"}
                   </span>
-                  {demoMode || autoSaveActive ? null : (
-                  <HoverTip
-                    label="Save system"
-                    text={
-                      previewBlocksPedalSave(session.plan, hasDirHandle)
-                        ? PREVIEW_PEDAL_SAVE
-                        : !sysDirty
-                        ? "No system changes to save yet. Change a setting under System (Setup, MIDI, USB, Ctl Func…) and this button writes it."
-                        : hasDirHandle
-                          ? "Writes your System changes (Setup, MIDI, USB, Ctl Func…) to SYSTEM1.RC0 and SYSTEM2.RC0 in the open ROLAND folder. These settings apply to the whole pedal, not to one memory."
-                          : offline
-                            ? "Applies your System changes in this offline session. They go into Export edits and Export ZIP; nothing is sent to a pedal. These settings apply to the whole pedal, not to one memory."
-                            : "Applies your System changes to the loaded files. Use Export ZIP to copy SYSTEM1.RC0 and SYSTEM2.RC0 onto the pedal. These settings apply to the whole pedal, not to one memory."
-                    }
-                  >
-                    <button
-                      type="button"
-                      className="btn warn"
-                      disabled={!sysDirty || saving || previewBlocksPedalSave(session.plan, hasDirHandle)}
-                      onClick={() => void saveSystem()}
-                    >
-                      <Icon name="save" size={14} />
-                      Save system
-                    </button>
-                  </HoverTip>
-                  )}
                 </>
               ) : null}
             </div>
@@ -2817,6 +2817,7 @@ export function App() {
                                 ? `Memory ${String(s.slot).padStart(2, "0")} ${name || ""}, unsaved changes`
                                 : undefined
                             }
+                            aria-current={slot === s.slot ? "true" : undefined}
                             onClick={() => loadSlot(s.slot, files, { syncPedal: !demoMode })}
                             onDoubleClick={() => {
                               if (offline) setRenaming({ slot: s.slot, value: name.trimEnd() });
@@ -2828,7 +2829,7 @@ export function App() {
                             <span className="slot">{String(s.slot).padStart(2, "0")}</span>
                             <span className="name">{name || "—"}</span>
                             <span className="meta">
-                              {unsaved ? <Icon name="dirty" className="mem-dirty" size={10} /> : null}
+                              {unsaved ? <Icon name="edit" className="mem-dirty" size={12} /> : null}
                               {s.active.toUpperCase()}
                             </span>
                           </button>
@@ -2866,16 +2867,18 @@ export function App() {
                       }
                     }}
                   />
-                  <div className="tabs" role="tablist" aria-label="Memory editor">
+                  <div className="tabs tab-palette memory-tabs" role="tablist" aria-label="Memory editor">
                     {tabs.map((t) => (
                       <button
                         key={t.id}
                         type="button"
                         role="tab"
                         aria-selected={tab === t.id}
+                        data-tab-tone={t.tone}
                         className={`tab ${tab === t.id ? "active" : ""}`}
                         onClick={() => setTab(t.id)}
                       >
+                        <Icon name={t.icon} size={14} />
                         {t.label}
                       </button>
                     ))}
@@ -2908,7 +2911,7 @@ export function App() {
                       </div>
                     )}
                   </div>
-                  <div className="editor-body">
+                  <div className="editor-body tab-scope" data-tab-tone={memoryTabTone}>
                     {!model ? <p className="hint">Select a memory.</p> : null}
 
                     {tab === "info" && model && (
@@ -3142,7 +3145,7 @@ export function App() {
             </li>
             <li>
               <strong>Review first</strong> loads them as unsaved edits so you can check each one,
-              then use Save all / Save system.
+              then use Save all memories / Save system.
             </li>
             <li>
               <strong>Not now</strong> leaves the pedal as it is. Your offline edits stay in this
@@ -3319,7 +3322,7 @@ export function App() {
               <button
                 type="button"
                 className="btn primary"
-                disabled={!backupAck || saving}
+                disabled={(hasDirHandle && !backupAck) || saving}
                 onClick={() => {
                   if (applyConfirm.skipChecked) saveSkipApplyConfirm(true);
                   const targets = applyConfirm.targets;

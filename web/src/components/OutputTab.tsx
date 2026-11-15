@@ -417,7 +417,7 @@ export function OutputTab({
   }
 
   const routePaintProps = {
-    className: "setup-columns route-paint",
+    className: "route-paint",
     onPointerDown: startRoutePaint,
     onClickCapture: (e: ReactMouseEvent) => {
       if (!suppressClick.current) return;
@@ -425,6 +425,7 @@ export function OutputTab({
       e.preventDefault();
     },
   };
+  const routingTag = routingSub === "track" ? "tagTrack" : "tagInput";
 
   return (
     <div className="output-tab">
@@ -531,80 +532,106 @@ export function OutputTab({
             ) : null}
           </div>
 
-          {routingSub === "track" ? (
+          {routingSub !== "phones" ? (
             <div {...routePaintProps}>
-              {dests.map((dest) => {
-                const destLabel = outputRouteDestLabel(dest, model.output);
-                const mask = num(model.routing, dest.tagTrack);
-                return (
-                  <section key={dest.id} aria-label={destLabel}>
-                    <div className="track-state-cards">
-                      {OUTPUT_ROUTE_TRACK_BITS.map((trk) => (
-                        <TrackStateCard
-                          key={trk.bit}
-                          id={`out-trk-${dest.id}-${trk.bit}`}
-                          def={{ tag: dest.tagTrack, name: trk.name, kind: "bool", info: trk.info }}
-                          view={routeTrackView(trk.name, destLabel)}
-                          value={bitOn(mask, trk.bit) ? 1 : 0}
-                          onChange={(v) => setRouteBits(dest, "tagTrack", [trk.bit], Boolean(v))}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {routingSub === "input" ? (
-            <div {...routePaintProps}>
-              <section aria-label="Input/Rhythm">
-                <div className="track-state-cards">
-                  <TrackStateCard
-                    id="out-rhythm-out"
-                    def={OUTPUT_RHYTHM_OUT}
-                    view={RHYTHM_OUT_VIEW}
-                    value={num(model.routing, "Q", OUTPUT_RHYTHM_OUT.default ?? 0)}
-                    onChange={(v) => patchRouting({ Q: String(v) })}
-                  />
-                  <TrackStateCard
-                    id="out-input-thru"
-                    def={OUTPUT_INPUT_THRU}
-                    view={INPUT_THRU_VIEW}
-                    value={num(model.routing, "P", OUTPUT_INPUT_THRU.default ?? 0)}
-                    onChange={(v) => patchRouting({ P: String(v) })}
-                  />
-                  {phonesOutIndividual(model.routing) ? null : (
+              {routingSub === "input" ? (
+                <section className="setup-columns" aria-label="Input/Rhythm options">
+                  <div className="track-state-cards">
                     <TrackStateCard
-                      id="out-phones-rhythm"
-                      def={OUTPUT_PHONES_RHYTHM}
-                      view={PHONES_RHYTHM_VIEW}
-                      value={num(model.routing, "S", OUTPUT_PHONES_RHYTHM.default ?? 0)}
-                      onChange={(v) => patchRouting({ S: String(v) })}
+                      id="out-rhythm-out"
+                      def={OUTPUT_RHYTHM_OUT}
+                      view={RHYTHM_OUT_VIEW}
+                      value={num(model.routing, "Q", OUTPUT_RHYTHM_OUT.default ?? 0)}
+                      onChange={(v) => patchRouting({ Q: String(v) })}
                     />
-                  )}
-                </div>
-              </section>
-              {dests.map((dest) => {
-                const destLabel = outputRouteDestLabel(dest, model.output);
-                const mask = num(model.routing, dest.tagInput);
-                return (
-                  <section key={dest.id} aria-label={destLabel}>
-                    <div className="track-state-cards">
-                      {inputGroups.map((src) => (
-                        <TrackStateCard
-                          key={src.name}
-                          id={`out-in-${dest.id}-${src.bits.join("-")}`}
-                          def={{ tag: dest.tagInput, name: src.name, kind: "bool", info: src.info }}
-                          view={routeSourceView(src.name, destLabel)}
-                          value={bitOn(mask, src.bits[0]) ? 1 : 0}
-                          onChange={(v) => setRouteBits(dest, "tagInput", src.bits, Boolean(v))}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
+                    <TrackStateCard
+                      id="out-input-thru"
+                      def={OUTPUT_INPUT_THRU}
+                      view={INPUT_THRU_VIEW}
+                      value={num(model.routing, "P", OUTPUT_INPUT_THRU.default ?? 0)}
+                      onChange={(v) => patchRouting({ P: String(v) })}
+                    />
+                    {phonesOutIndividual(model.routing) ? null : (
+                      <TrackStateCard
+                        id="out-phones-rhythm"
+                        def={OUTPUT_PHONES_RHYTHM}
+                        view={PHONES_RHYTHM_VIEW}
+                        value={num(model.routing, "S", OUTPUT_PHONES_RHYTHM.default ?? 0)}
+                        onChange={(v) => patchRouting({ S: String(v) })}
+                      />
+                    )}
+                  </div>
+                </section>
+              ) : null}
+              <div className="routing-outputs">
+                {dests.filter((dest) => dest.role === "primary").map((output) => {
+                  const { linkTag } = output;
+                  const linked = linkTag !== null && outputStereoLinked(model.output, linkTag);
+                  const channels = dests.filter((dest) => dest.linkTag === linkTag);
+                  return (
+                    <section
+                      key={output.id}
+                      className="routing-output"
+                      data-output={output.id}
+                      aria-label={output.linkedLabel}
+                    >
+                      <div className="routing-output-header">
+                        <h3>
+                          <Icon name={output.phones ? "headphones" : "speaker"} size={17} />
+                          {output.linkedLabel}
+                        </h3>
+                        {linkTag !== null ? (
+                          <button
+                            type="button"
+                            className={`track-mixer-route track-mixer-link${linked ? " is-on" : ""}`}
+                            aria-label={`${output.linkedLabel} Stereo Link`}
+                            aria-pressed={linked}
+                            title={linked ? "Route left and right independently" : "Link left and right using the left channel settings"}
+                            onClick={() => setSetup(linkTag, linked ? 0 : 1)}
+                          >
+                            <Icon name={linked ? "connect" : "disconnect"} size={14} />
+                            Stereo Link · {linked ? "On" : "Off"}
+                          </button>
+                        ) : null}
+                      </div>
+                      {channels.map((dest) => {
+                        const destLabel = outputRouteDestLabel(dest, model.output);
+                        const mask = num(model.routing, dest[routingTag]);
+                        return (
+                          <div key={dest.id} className="routing-output-channel" role="group" aria-label={destLabel}>
+                            {channels.length > 1 ? <h4>{destLabel}</h4> : null}
+                            <div className="track-state-cards">
+                              {routingSub === "track" ? (
+                                OUTPUT_ROUTE_TRACK_BITS.map((trk) => (
+                                  <TrackStateCard
+                                    key={trk.bit}
+                                    id={`out-trk-${dest.id}-${trk.bit}`}
+                                    def={{ tag: dest.tagTrack, name: trk.name, kind: "bool", info: trk.info }}
+                                    view={routeTrackView(trk.name, destLabel)}
+                                    value={bitOn(mask, trk.bit) ? 1 : 0}
+                                    onChange={(v) => setRouteBits(dest, "tagTrack", [trk.bit], Boolean(v))}
+                                  />
+                                ))
+                              ) : (
+                                inputGroups.map((src) => (
+                                  <TrackStateCard
+                                    key={src.name}
+                                    id={`out-in-${dest.id}-${src.bits.join("-")}`}
+                                    def={{ tag: dest.tagInput, name: src.name, kind: "bool", info: src.info }}
+                                    view={routeSourceView(src.name, destLabel)}
+                                    value={bitOn(mask, src.bits[0]) ? 1 : 0}
+                                    onChange={(v) => setRouteBits(dest, "tagInput", src.bits, Boolean(v))}
+                                  />
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </section>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
 

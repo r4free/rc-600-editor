@@ -99,7 +99,7 @@ export function EditorSettingsModal({
           {...common}
           setting="fullWidth"
           label="Full Width"
-          info="Removes the side margins and the maximum width around the editor so it stretches across the whole window."
+          info="Removes the maximum width so the editor can use more of the window, with a small margin on each side."
         />
         <SwitchSetting
           {...common}

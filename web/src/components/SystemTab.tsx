@@ -34,14 +34,14 @@ import {
 const SYS_TABS = ["input", "output", "mixer", "ctl", "usb", "midi", "setup"] as const;
 type SysPrimary = (typeof SYS_TABS)[number];
 
-const PRIMARY: { id: SysPrimary; label: string; icon: IconName }[] = [
-  { id: "input", label: "Input", icon: "mic" },
-  { id: "output", label: "Output", icon: "master" },
-  { id: "mixer", label: "I/O Mixer", icon: "tune" },
-  { id: "ctl", label: "Ctl Func", icon: "controls" },
-  { id: "usb", label: "USB", icon: "usb" },
-  { id: "midi", label: "MIDI", icon: "midi" },
-  { id: "setup", label: "Setup", icon: "system" },
+const PRIMARY: { id: SysPrimary; label: string; icon: IconName; tone: string }[] = [
+  { id: "input", label: "Input", icon: "mic", tone: "signal" },
+  { id: "output", label: "Output", icon: "master", tone: "signal" },
+  { id: "mixer", label: "I/O Mixer", icon: "tune", tone: "signal" },
+  { id: "ctl", label: "Ctl Func", icon: "controls", tone: "control" },
+  { id: "usb", label: "USB", icon: "usb", tone: "connection" },
+  { id: "midi", label: "MIDI", icon: "midi", tone: "connection" },
+  { id: "setup", label: "Setup", icon: "system", tone: "system" },
 ];
 
 const USB_VIEWS: Record<string, TrackStateView> = {
@@ -428,14 +428,15 @@ export function SystemTab({
   };
 
   return (
-    <div className="system-tab">
-      <div className="tabs tabs-sub" role="tablist" aria-label="System">
+    <div className="system-tab tab-scope" data-tab-tone={PRIMARY.find((item) => item.id === primary)?.tone}>
+      <div className="tabs tabs-sub tab-palette" role="tablist" aria-label="System">
         {PRIMARY.map((t) => (
           <button
             key={t.id}
             type="button"
             role="tab"
             aria-selected={primary === t.id}
+            data-tab-tone={t.tone}
             className={`tab ${primary === t.id ? "active" : ""}`}
             onClick={() => setPrimary(t.id)}
           >
