@@ -82,6 +82,15 @@
       "keyHash": "777871c438c1f03560810ba646f2c8b97dea3593da80747b26a6bfde1dd95430",
       "note": "an.qualia@gmail.com-Alan Roposa",
       "createdAt": "2026-11-01T03:05:07.173Z"
+    },
+    {
+      "id": "aad3769653db",
+      "keyHash": "83bd36b9ed3baa2c00079073a55836dae0649e0685d1ca1ecff90afd60da28c3",
+      "note": "rabarnacle@gmail.com-Roger Barnacle",
+      "createdAt": "2026-11-15T14:58:21.719Z",
+      "plan": "preview",
+      "startsAt": "2026-11-15T03:00:00.000Z",
+      "expiresAt": "2026-11-22T02:59:59.999Z"
     }
   ]
 }
