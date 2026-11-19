@@ -8,8 +8,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Keep the first generated value. Replacing it on later syncs signs everyone out.
       - key: RC600_SESSION_SECRET
         generateValue: true
+        sync: false
       # Paid editor: activation page until a license key is accepted.
       - key: RC600_REQUIRE_LICENSE
         value: "1"

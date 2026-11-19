@@ -258,33 +258,67 @@ export class Rc600Midi {
   channel = 0; // 0-based Rx CTL CH
   /** Extra channels for PC / kit CC / incoming PC (Rx Rhythm CH when it differs). */
   listenChannels: number[] = [];
-  onStateChange: ((ports: { outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }) => void) | null =
-    null;
+  onStateChange:
+    | ((ports: { outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }, unplugged: boolean) => void)
+    | null = null;
   onIncomingProgramChange: ((slot: number) => void) | null = null;
 
+  /** Inputs that already have a listener. Re-assigning onmidimessage reopens the port and can loop on unplug. */
+  private armedInputs = new WeakSet<MIDIInput>();
+  private stateTimer: ReturnType<typeof setTimeout> | null = null;
+
   async requestAccess(): Promise<{ outputs: MidiPortInfo[]; inputs: MidiPortInfo[] }> {
+    if (this.access) this.access.onstatechange = null;
     this.access = await navigator.requestMIDIAccess({ sysex: false });
-    this.access.onstatechange = () => {
-      this.armInputs();
-      this.onStateChange?.(this.listPorts());
+    this.access.onstatechange = (ev) => {
+      const port = (ev as MIDIConnectionEvent).port;
+      if (port?.state === "disconnected") {
+        this.unplugPending = true;
+        if (port.type === "input") (port as MIDIInput).onmidimessage = null;
+        if (this.out && port.id === this.out.id) this.out = null;
+      }
+      this.scheduleStateChange();
     };
     this.armInputs();
     return this.listPorts();
+  }
+
+  private unplugPending = false;
+
+  /**
+   * Unplugging fires a burst of events. Handle the burst once, after it settles.
+   * `unplugged` is true when the burst included a removal: callers must not
+   * open() ports then, because Windows is still tearing the device down.
+   */
+  private scheduleStateChange(): void {
+    if (this.stateTimer != null) return;
+    this.stateTimer = setTimeout(() => {
+      this.stateTimer = null;
+      const unplugged = this.unplugPending;
+      this.unplugPending = false;
+      if (this.out && this.out.state === "disconnected") this.out = null;
+      this.armInputs();
+      this.onStateChange?.(this.listPorts(), unplugged);
+    }, 80);
   }
 
   listPorts(): { outputs: MidiPortInfo[]; inputs: MidiPortInfo[] } {
     const outputs: MidiPortInfo[] = [];
     const inputs: MidiPortInfo[] = [];
     if (!this.access) return { outputs, inputs };
-    this.access.outputs.forEach((p) => outputs.push(portInfo(p)));
-    this.access.inputs.forEach((p) => inputs.push(portInfo(p)));
+    this.access.outputs.forEach((p) => {
+      if (p.state !== "disconnected") outputs.push(portInfo(p));
+    });
+    this.access.inputs.forEach((p) => {
+      if (p.state !== "disconnected") inputs.push(portInfo(p));
+    });
     return { outputs, inputs };
   }
 
   connect(outputId: string): boolean {
     if (!this.access) return false;
     const out = this.access.outputs.get(outputId);
-    if (!out) return false;
+    if (!out || out.state === "disconnected") return false;
     this.out = out;
     this.armInputs();
     void this.armOutputs();
@@ -311,7 +345,7 @@ export class Rc600Midi {
     add(this.out);
     if (this.access) {
       this.access.outputs.forEach((p) => {
-        if (isLikelyRc600(p.name ?? "")) add(p);
+        if (p.state !== "disconnected" && isLikelyRc600(p.name ?? "")) add(p);
       });
     }
     return outs;
@@ -320,6 +354,8 @@ export class Rc600Midi {
   private armInputs(): void {
     if (!this.access) return;
     this.access.inputs.forEach((p) => {
+      if (p.state === "disconnected" || this.armedInputs.has(p)) return;
+      this.armedInputs.add(p);
       p.onmidimessage = (ev) => {
         const slot = parseCtlProgramChange(ev.data, [this.channel, ...this.listenChannels]);
         if (slot != null) this.onIncomingProgramChange?.(slot);
@@ -329,6 +365,7 @@ export class Rc600Midi {
 
   private async armOutputs(): Promise<void> {
     for (const out of this.noteOutputs()) {
+      if (out.state === "disconnected") continue;
       if (out.connection !== "open" && typeof out.open === "function") {
         try {
           await out.open();
@@ -340,6 +377,7 @@ export class Rc600Midi {
   }
 
   private sendTo(out: MIDIOutput, data: Uint8Array, timestamp?: number): void {
+    if (out.state === "disconnected") return;
     try {
       if (timestamp != null) out.send(data, timestamp);
       else out.send(data);

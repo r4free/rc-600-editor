@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Context, Next } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import {
@@ -10,10 +10,20 @@ import {
 } from "./licenses.js";
 
 export const SESSION_COOKIE = "rc600_session";
-const MAX_AGE_SEC = 60 * 60 * 24 * 7; // 7 days
+/** Chrome caps persistent cookies at 400 days. Lifetime licenses stay signed in. */
+const MAX_AGE_SEC = 60 * 60 * 24 * 400;
 
+/** Stable across deploys: a changing secret signs every browser out. */
 function secret(): string {
-  return process.env.RC600_SESSION_SECRET || "dev-insecure-secret";
+  const fromEnv = process.env.RC600_SESSION_SECRET?.trim();
+  if (fromEnv) return fromEnv;
+  if (process.env.RENDER) {
+    const serviceId = process.env.RENDER_SERVICE_ID?.trim() || "render";
+    return createHash("sha256")
+      .update(`50a3727bca3b664ac210c5f2bb33d6839d7e003e4f72bf9dcc05a57f8e285aad:${serviceId}`)
+      .digest("hex");
+  }
+  return "dev-insecure-secret";
 }
 
 function sign(payload: string): string {

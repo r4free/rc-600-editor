@@ -157,6 +157,10 @@ Shared ritual: https://github.com/r4free/boss-editor-guidelines (`shared/feature
 
 ## Changelog
 
+### 2026-11-18 — License key is remembered; unplugging the pedal no longer freezes the browser
+
+**EN:** After a key is accepted, this browser remembers it. After an update or a new deploy the editor opens without asking for the key again, until the user clicks **Clear license** (or the key ends or is revoked). Unplugging the RC-600 while the editor is open no longer freezes the tab: the connection is dropped cleanly and reconnects when the pedal is plugged back in.
+
 ### 2026-11-04 — VE-500 in product switcher
 
 **EN:** The top-bar select now includes **VE-500 Editor** (`https://ve.test` locally, `https://ve-500-editor.onrender.com` in production).

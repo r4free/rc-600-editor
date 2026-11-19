@@ -1589,6 +1589,8 @@ export function App() {
     (ports: { outputs: MidiPortInfo[] }, autoConnect: boolean) => {
       setMidiAccess(true);
       setOutputs(ports.outputs);
+      // The linked port vanished (unplugged): drop the stale connection.
+      if (!midiRef.current.connectedName) setConnected(null);
       const prefs = loadMidiPrefs();
       const preferred =
         ports.outputs.find((p) => p.id === outId) ??
@@ -1830,8 +1832,10 @@ export function App() {
 
   useEffect(() => {
     const midi = midiRef.current;
-    midi.onStateChange = (ports) => {
-      applyMidiPortsRef.current(ports, !connectedRef.current);
+    midi.onStateChange = (ports, unplugged) => {
+      // After an unplug, never open() ports: Windows is still removing the device.
+      // The next event (cable back in) reconnects.
+      applyMidiPortsRef.current(ports, !unplugged && !connectedRef.current);
     };
     midi.onIncomingProgramChange = (incomingSlot) => {
       if (Date.now() < ignoreIncomingPcUntilRef.current) return;

@@ -90,6 +90,52 @@ export type SessionInfo = {
   plan?: "full" | "preview";
 };
 
+const LICENSE_KEY_STORAGE = "rc600.licenseKey";
+
+function readSavedLicenseKey(): string {
+  try {
+    return localStorage.getItem(LICENSE_KEY_STORAGE)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveLicenseKey(key: string): void {
+  try {
+    localStorage.setItem(LICENSE_KEY_STORAGE, key.trim());
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function forgetLicenseKey(): void {
+  try {
+    localStorage.removeItem(LICENSE_KEY_STORAGE);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** The session cookie can be lost (new deploy, new secret, 7-day expiry). Re-activate with the saved key. */
+async function restoreSavedLicense(): Promise<SessionInfo | null> {
+  const key = readSavedLicenseKey();
+  if (!key) return null;
+  try {
+    const res = await fetch("/api/license", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    if (res.ok) return (await res.json()) as SessionInfo;
+    // Only a definite rejection (revoked, ended) drops the key; outages keep it.
+    if (res.status === 401) forgetLicenseKey();
+  } catch {
+    /* offline: keep the key for next time */
+  }
+  return null;
+}
+
 export async function fetchSession(): Promise<SessionInfo> {
   try {
     const res = await fetch("/api/session", { credentials: "include" });
@@ -97,7 +143,11 @@ export async function fetchSession(): Promise<SessionInfo> {
       // Prefer staying open so a downed API does not trap users on a license screen.
       return { ok: true, mode: "open", requireLicense: false, license: null, plan: "full" };
     }
-    const data = (await res.json()) as Partial<SessionInfo> & { ok?: boolean };
+    let data = (await res.json()) as Partial<SessionInfo> & { ok?: boolean };
+    if (data.requireLicense === true && !data.ok) {
+      const restored = await restoreSavedLicense();
+      if (restored?.ok) data = restored;
+    }
     // Public mode (default): never block the editor on a stale unlock cookie / old API shape.
     const plan = data.plan === "preview" ? "preview" : "full";
     if (data.requireLicense !== true) {
@@ -135,6 +185,7 @@ export async function activateLicense(
     if (!res.ok) {
       return { ok: false, error: data.error || "License activation failed" };
     }
+    if (data.requireLicense) saveLicenseKey(key);
     return { ok: true, session: data };
   } catch {
     return { ok: false, error: "Cannot reach the server. Is the API running?" };
@@ -142,6 +193,7 @@ export async function activateLicense(
 }
 
 export async function lockSession(): Promise<SessionInfo | null> {
+  forgetLicenseKey();
   try {
     const res = await fetch("/api/lock", { method: "POST", credentials: "include" });
     if (!res.ok) return null;
