@@ -249,7 +249,10 @@ export function EqFaderBoard({
       ) : null}
       <div className="eq-board-bands">
         {bands.map((band) => (
-          <section key={band.title} className="eq-band">
+          <section
+            key={band.title}
+            className={`eq-band eq-band-${band.title.toLowerCase().replace(/\s+/g, "-")}`}
+          >
             <h4 className="eq-band-title">{band.title}</h4>
             <div className="eq-band-faders">
               {band.faders.map(({ tag, short }) => {

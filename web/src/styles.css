@@ -8930,16 +8930,27 @@ button[role="switch"]:focus-visible {
 }
 
 .eq-band {
+  --eq-fill: #00c7fd;
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
   align-items: stretch;
   gap: 0.55rem;
   padding: 0.55rem 0.5rem 0.55rem;
-  border: 1px solid #243041;
+  border: 1px solid color-mix(in srgb, var(--eq-fill) 28%, #243041);
   border-radius: 6px;
   background: #121821;
 }
+
+/* Warm → cool by frequency band */
+.eq-band-lo-cut,
+.eq-band-low { --eq-fill: #fb923c; }
+.eq-band-lo-mid { --eq-fill: #facc15; }
+.eq-band-level,
+.eq-band-output { --eq-fill: #4ade80; }
+.eq-band-hi-mid { --eq-fill: #22d3ee; }
+.eq-band-high,
+.eq-band-hi-cut { --eq-fill: #818cf8; }
 
 .eq-band-faders {
   display: flex;
@@ -8949,7 +8960,7 @@ button[role="switch"]:focus-visible {
 
 .eq-band-title {
   margin: 0;
-  color: #9aa8b8;
+  color: color-mix(in srgb, var(--eq-fill) 70%, #9aa8b8);
   font-family: var(--mono);
   font-size: 0.68rem;
   font-weight: 600;
@@ -8959,7 +8970,7 @@ button[role="switch"]:focus-visible {
 }
 
 .eq-fader {
-  --eq-color: #00c7fd;
+  --eq-color: var(--eq-fill, #00c7fd);
   --eq-rail: #1a222e;
   display: flex;
   flex-direction: column;
